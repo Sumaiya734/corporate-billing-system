@@ -6,11 +6,11 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col">
-            <h1 class="page-title"><i class="fas fa-user-tag me-2"></i>Customer Packages</h1>
+            <h1 class="page-title"><i class="fas fa-user-tag me-2"></i>Customer to Products</h1>
         </div>
         <div class="col-auto">
             <a href="{{ route('admin.customer-to-packages.assign') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-2"></i>Assign Package
+                <i class="fas fa-plus me-2"></i>Assign Products
             </a>
         </div>
     </div>
@@ -61,6 +61,89 @@
         </div>
     </div>
 
+    <!-- Search and Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form action="{{ route('admin.customer-to-packages.index') }}" method="GET" id="searchForm">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Search Customers</label>
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="search" 
+                                   name="search" 
+                                   placeholder="Search by name, email, phone, or customer ID..."
+                                   value="{{ request('search') }}">
+                            <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="status" class="form-label">Package Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="">All Status</option>
+                            <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
+                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="expired" {{ request('status') == 'expired' ? 'selected' : '' }}>Expired</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="package_type" class="form-label">Package Type</label>
+                        <select class="form-select" id="package_type" name="package_type">
+                            <option value="">All Types</option>
+                            <option value="regular" {{ request('package_type') == 'regular' ? 'selected' : '' }}>Regular</option>
+                            <option value="special" {{ request('package_type') == 'special' ? 'selected' : '' }}>Special</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                @if(request()->hasAny(['search', 'status', 'package_type']))
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center flex-wrap">
+                            
+                            @if(request('search'))
+                                <span class="badge bg-primary me-2 mb-1">
+                                    Search: "{{ request('search') }}"
+                                    <a href="javascript:void(0)" onclick="removeFilter('search')" class="text-white ms-1">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            @endif
+                            @if(request('status'))
+                                <span class="badge bg-info me-2 mb-1">
+                                    Status: {{ ucfirst(request('status')) }}
+                                    <a href="javascript:void(0)" onclick="removeFilter('status')" class="text-white ms-1">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            @endif
+                            @if(request('package_type'))
+                                <span class="badge bg-warning me-2 mb-1">
+                                    Type: {{ ucfirst(request('package_type')) }}
+                                    <a href="javascript:void(0)" onclick="removeFilter('package_type')" class="text-white ms-1">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            @endif
+                            
+                        </div>
+                    </div>
+                </div>
+                @endif
+            </form>
+        </div>
+    </div>
+
     <!-- Customer Packages Table -->
     <div class="table-container">
         <div class="table-responsive">
@@ -79,11 +162,11 @@
                 </thead>
                 <tbody>
                     @forelse($customers as $customer)
-                        @if($customer->activeCustomerPackages->count() > 0)
-                            @foreach($customer->activeCustomerPackages as $index => $cp)
+                        @if($customer->customerPackages->count() > 0)
+                            @foreach($customer->customerPackages as $index => $cp)
                                 <tr>
                                     @if($index === 0)
-                                        <td rowspan="{{ $customer->activeCustomerPackages->count() }}">
+                                        <td rowspan="{{ $customer->customerPackages->count() }}">
                                             <div class="customer-name">{{ $customer->name }}</div>
                                             <div class="customer-email">{{ $customer->email ?? 'No email' }}</div>
                                             <small class="text-muted">ID: {{ $customer->customer_id }}</small>
@@ -179,12 +262,10 @@
                                                 @endphp
 
                                                 <!-- Toggle Status Button -->
-                                                <form action="{{ route('admin.customer-to-packages.update', $cp->cp_id) }}" 
+                                                <form action="{{ route('admin.customer-to-packages.toggle-status', $cp->cp_id) }}" 
                                                       method="POST" 
                                                       onsubmit="return confirm('{{ $confirmText }}');">
                                                     @csrf
-                                                    @method('PUT')
-                                                    <input type="hidden" name="status" value="{{ $newStatus }}">
                                                     <button type="submit" 
                                                             class="btn btn-sm btn-outline-warning"
                                                             title="{{ $buttonTitle }}">
@@ -215,10 +296,22 @@
                             <td colspan="8" class="text-center py-4">
                                 <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
                                 <h5>No Customer Packages Found</h5>
-                                <p class="text-muted">No packages have been assigned to customers yet.</p>
-                                <a href="{{ route('admin.customer-to-packages.assign') }}" class="btn btn-primary">
-                                    <i class="fas fa-plus me-2"></i>Assign First Package
-                                </a>
+                                <p class="text-muted">
+                                    @if(request()->hasAny(['search', 'status', 'package_type']))
+                                        No packages found matching your search criteria.
+                                    @else
+                                        No packages have been assigned to customers yet.
+                                    @endif
+                                </p>
+                                @if(request()->hasAny(['search', 'status', 'package_type']))
+                                    <a href="{{ route('admin.customer-to-packages.index') }}" class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Clear Search
+                                    </a>
+                                @else
+                                    <a href="{{ route('admin.customer-to-packages.assign') }}" class="btn btn-primary">
+                                        <i class="fas fa-plus me-2"></i>Assign First Package
+                                    </a>
+                                @endif
                             </td>
                         </tr>
                     @endforelse
@@ -232,89 +325,15 @@
         <div class="d-flex justify-content-between align-items-center mt-4">
             <div class="text-muted">
                 Showing {{ $customers->firstItem() }} to {{ $customers->lastItem() }} of {{ $customers->total() }} customers
+                @if(request()->hasAny(['search', 'status', 'package_type']))
+                    <span class="badge bg-info ms-2">Filtered Results</span>
+                @endif
             </div>
             <nav>
-                {{ $customers->links() }}
+                {{ $customers->withQueryString()->links('pagination::bootstrap-5') }}
             </nav>
         </div>
     @endif
-</div>
-
-<!-- Renewal Modal -->
-<div class="modal fade" id="renewalModal" tabindex="-1" aria-labelledby="renewalModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="renewalModalLabel">Renew Package</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to renew this package?</p>
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    This will extend the billing period by one month.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="renewalForm" method="POST">
-                    @csrf
-                    <button type="submit" class="btn btn-success">Renew Package</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Status Change Modal -->
-<div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="statusModalLabel">Change Package Status</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p id="statusMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="statusForm" method="POST">
-                    @csrf
-                    @method('PUT')
-                    <input type="hidden" name="status" id="statusInput">
-                    <button type="submit" class="btn btn-warning" id="statusConfirmBtn">Confirm</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">Delete Package</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to remove this package from the customer?</p>
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    This action cannot be undone!
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="deleteForm" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Delete Package</button>
-                </form>
-            </div>
-        </div>
-    </div>
 </div>
 
 <style>
@@ -448,76 +467,107 @@
         font-size: 0.75rem;
         padding: 0.4rem 0.8rem;
     }
-    /* Modal Styles */
-    .modal-header {
+    .filter-badge {
+        cursor: pointer;
+    }
+    /* Pagination Styles */
+    .pagination {
+        margin-bottom: 0;
+    }
+    .page-link {
+        color: #2c3e50;
+        border: 1px solid #dee2e6;
+    }
+    .page-item.active .page-link {
         background-color: #2c3e50;
-        color: white;
+        border-color: #2c3e50;
     }
-    .modal-header .btn-close {
-        filter: invert(1);
+    .page-link:hover {
+        color: #2c3e50;
+        background-color: #e9ecef;
+        border-color: #dee2e6;
     }
+    .package-warning {
+    font-size: 0.8rem;
+    padding: 0.5rem;
+    border-radius: 5px;
+    margin-top: 0.5rem;
+}
+
+.package-warning i {
+    color: #856404;
+}
+
+.is-duplicate-package {
+    border-color: #dc3545 !important;
+    background-color: #f8d7da !important;
+}
+
+.customer-results-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    background: #fff;
+}
+
+.customer-result-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f8f9fa;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.customer-result-item:hover {
+    background: #e9ecef;
+}
+
+.customer-result-item:last-child {
+    border-bottom: none;
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Renewal Modal Handler
-    const renewalButtons = document.querySelectorAll('[data-renewal]');
-    renewalButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const packageId = this.getAttribute('data-package-id');
-            const customerName = this.getAttribute('data-customer-name');
-            const packageName = this.getAttribute('data-package-name');
-            
-            document.getElementById('renewalMessage').innerHTML = 
-                `Renew package <strong>${packageName}</strong> for customer <strong>${customerName}</strong>?`;
-            
-            document.getElementById('renewalForm').action = `/admin/customer-to-packages/${packageId}/renew`;
-        });
+    // Clear search function
+    window.clearSearch = function() {
+        document.getElementById('search').value = '';
+        document.getElementById('searchForm').submit();
+    }
+
+    // Remove individual filter
+    window.removeFilter = function(param) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete(param);
+        window.location.href = url.toString();
+    }
+
+    // Auto-submit form when select filters change
+    document.getElementById('status').addEventListener('change', function() {
+        document.getElementById('searchForm').submit();
     });
 
-    // Status Change Modal Handler
-    const statusButtons = document.querySelectorAll('[data-status]');
-    statusButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const packageId = this.getAttribute('data-package-id');
-            const customerName = this.getAttribute('data-customer-name');
-            const packageName = this.getAttribute('data-package-name');
-            const currentStatus = this.getAttribute('data-current-status');
-            const newStatus = this.getAttribute('data-new-status');
-            
-            const action = currentStatus === 'active' ? 'pause' : 'activate';
-            const statusText = newStatus === 'active' ? 'active' : 'paused';
-            
-            document.getElementById('statusMessage').innerHTML = 
-                `Are you sure you want to ${action} the package <strong>${packageName}</strong> for customer <strong>${customerName}</strong>?`;
-            
-            document.getElementById('statusInput').value = newStatus;
-            document.getElementById('statusForm').action = `/admin/customer-to-packages/${packageId}`;
-            document.getElementById('statusConfirmBtn').textContent = `${action.charAt(0).toUpperCase() + action.slice(1)} Package`;
-        });
+    document.getElementById('package_type').addEventListener('change', function() {
+        document.getElementById('searchForm').submit();
     });
 
-    // Delete Modal Handler
-    const deleteButtons = document.querySelectorAll('[data-delete]');
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const packageId = this.getAttribute('data-package-id');
-            const customerName = this.getAttribute('data-customer-name');
-            const packageName = this.getAttribute('data-package-name');
-            
-            document.getElementById('deleteMessage').innerHTML = 
-                `Remove package <strong>${packageName}</strong> from customer <strong>${customerName}</strong>?`;
-            
-            document.getElementById('deleteForm').action = `/admin/customer-to-packages/${packageId}`;
-        });
+    // Debounced search
+    let searchTimeout;
+    document.getElementById('search').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            document.getElementById('searchForm').submit();
+        }, 500);
     });
 
     // Auto-dismiss alerts
     const alerts = document.querySelectorAll('.alert');
     alerts.forEach(alert => {
         setTimeout(() => {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
+            if (alert.classList.contains('show')) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }
         }, 5000);
     });
 });

@@ -58,13 +58,14 @@ Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(funct
 
     // Customer Packages Management
     Route::get('/customer-to-packages', [CustomerPackageController::class, 'index'])->name('customer-to-packages.index');
+    Route::get('/customer-to-packages/check-existing', [CustomerPackageController::class, 'checkExistingPackage'])->name('customer-to-packages.check-existing');
     Route::get('/customer-to-packages/assign', [CustomerPackageController::class, 'assign'])->name('customer-to-packages.assign');
     Route::post('/customer-to-packages/store', [CustomerPackageController::class, 'store'])->name('customer-to-packages.store'); 
     Route::get('/customer-to-packages/{id}/edit', [CustomerPackageController::class, 'edit'])->name('customer-to-packages.edit');
     Route::put('/customer-to-packages/{id}', [CustomerPackageController::class, 'update'])->name('customer-to-packages.update');
     Route::delete('/customer-to-packages/{id}', [CustomerPackageController::class, 'destroy'])->name('customer-to-packages.destroy');
     Route::post('/customer-to-packages/{id}/renew', [CustomerPackageController::class, 'renew'])->name('customer-to-packages.renew');
-    
+    Route::post('/customer-to-packages/{id}/toggle-status', [CustomerPackageController::class, 'toggleStatus'])->name('customer-to-packages.toggle-status');
     // Billing Routes - CLEANED UP AND FIXED
     Route::prefix('billing')->name('billing.')->group(function () {
         // Main billing pages

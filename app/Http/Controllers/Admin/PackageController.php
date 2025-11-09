@@ -1,5 +1,4 @@
 <?php
-// app/Http\Controllers/Admin/PackageController.php
 
 namespace App\Http\Controllers\Admin;
 
@@ -22,10 +21,9 @@ class PackageController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:120',
-            'package_type' => 'required|in:regular,special',
+            'package_type' => 'required|string|max:50',
             'description' => 'required|string',
             'monthly_price' => 'required|numeric|min:0',
-            // Remove bandwidth and features as they don't exist in your schema
         ]);
 
         try {
@@ -34,7 +32,8 @@ class PackageController extends Controller
                 'package_type' => $request->package_type,
                 'description' => $request->description,
                 'monthly_price' => $request->monthly_price,
-                // Remove bandwidth and features as they don't exist in your schema
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             return response()->json([
@@ -52,7 +51,6 @@ class PackageController extends Controller
 
     public function show($id)
     {
-        // Use p_id instead of id to match your schema
         $package = Package::where('p_id', $id)->firstOrFail();
         return response()->json($package);
     }
@@ -61,21 +59,20 @@ class PackageController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:120',
-            'package_type' => 'required|in:regular,special',
+            'package_type' => 'required|string|max:50',
             'description' => 'required|string',
             'monthly_price' => 'required|numeric|min:0',
-            // Remove bandwidth and features as they don't exist in your schema
         ]);
 
         try {
-            // Use p_id instead of id to match your schema
             $package = Package::where('p_id', $id)->firstOrFail();
+            
             $package->update([
                 'name' => $request->name,
                 'package_type' => $request->package_type,
                 'description' => $request->description,
                 'monthly_price' => $request->monthly_price,
-                // Remove bandwidth and features as they don't exist in your schema
+                'updated_at' => now(),
             ]);
 
             return response()->json([
@@ -94,7 +91,6 @@ class PackageController extends Controller
     public function destroy($id)
     {
         try {
-            // Use p_id instead of id to match your schema
             $package = Package::where('p_id', $id)->firstOrFail();
             
             // Check if package is assigned to any customers before deletion
@@ -124,28 +120,33 @@ class PackageController extends Controller
         }
     }
 
-    // Remove toggleStatus method completely since we don't have status column
-    // (Already handled in your code, just noting it should be removed)
-
     private function getPackageStats()
     {
         $totalCustomers = DB::table('customer_to_packages')
             ->where('status', 'active')
             ->count();
 
+        $regularPriceRange = Package::where('package_type', 'regular')
+            ->selectRaw('COALESCE(MIN(monthly_price), 0) as min_price, COALESCE(MAX(monthly_price), 0) as max_price')
+            ->first();
+
+        $specialPriceRange = Package::where('package_type', 'special')
+            ->selectRaw('COALESCE(MIN(monthly_price), 0) as min_price, COALESCE(MAX(monthly_price), 0) as max_price')
+            ->first();
+
         return [
             'total_packages' => Package::count(),
             'regular_packages' => Package::where('package_type', 'regular')->count(),
             'special_packages' => Package::where('package_type', 'special')->count(),
             'active_customers' => $totalCustomers,
-            'average_price' => Package::avg('monthly_price'),
+            'average_price' => Package::avg('monthly_price') ?? 0,
             'price_range_regular' => [
-                'min' => Package::where('package_type', 'regular')->min('monthly_price') ?? 0,
-                'max' => Package::where('package_type', 'regular')->max('monthly_price') ?? 0
+                'min' => $regularPriceRange->min_price ?? 0,
+                'max' => $regularPriceRange->max_price ?? 0
             ],
             'price_range_special' => [
-                'min' => Package::where('package_type', 'special')->min('monthly_price') ?? 0,
-                'max' => Package::where('package_type', 'special')->max('monthly_price') ?? 0
+                'min' => $specialPriceRange->min_price ?? 0,
+                'max' => $specialPriceRange->max_price ?? 0
             ],
             'most_popular_package' => $this->getMostPopularPackage()
         ];

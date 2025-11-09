@@ -363,15 +363,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const submitBtn = document.getElementById('submitBtn');
     const packageOptionsTemplate = document.getElementById('packageOptionsTemplate');
 
-    // Update submit button state - FIXED VERSION
+    // Update submit button state
     function updateSubmitButton() {
         const hasCustomer = !!customerIdInput.value;
         const packageSelects = Array.from(document.querySelectorAll('.package-select'));
         const hasPackages = packageSelects.some(sel => sel.value && sel.value !== '');
         
         const shouldEnable = hasCustomer && hasPackages;
-        
-        console.log(`Submit Button: Customer=${hasCustomer}, Packages=${hasPackages}, Enable=${shouldEnable}`);
         
         submitBtn.disabled = !shouldEnable;
         
@@ -487,17 +485,28 @@ document.addEventListener('DOMContentLoaded', function () {
         select.innerHTML = '<option value="">Select a package...</option>' + packageOptionsTemplate.innerHTML;
         updatePackageOptions();
 
-        // Add event listeners
-        select.addEventListener('change', () => { 
-            updateSelectedPackages(); 
+        // Add event listeners for the new row
+        select.addEventListener('change', function() {
+            updateSelectedPackages();
+            calculatePackageAmount(idx);
+            
+            // Check for existing packages when selection changes
+            const customerId = document.getElementById('customerId').value;
+            if (customerId && this.value) {
+                checkExistingPackages(customerId, this.value, idx);
+            }
+            
+            updateSubmitButton();
+        });
+        
+        row.querySelector('.billing-months').addEventListener('change', function() {
             calculatePackageAmount(idx);
             updateSubmitButton();
         });
-        row.querySelector('.billing-months').addEventListener('change', () => {
-            calculatePackageAmount(idx);
-            updateSubmitButton();
+        
+        row.querySelector('.remove-package-btn').addEventListener('click', function() {
+            removePackage(idx);
         });
-        row.querySelector('.remove-package-btn').addEventListener('click', () => removePackage(idx));
 
         // Add summary row
         const summary = document.createElement('div');
@@ -512,6 +521,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Remove Package
     function removePackage(idx) {
+        const packageRow = document.querySelector(`.package-row[data-index="${idx}"]`);
+        const packageSelect = packageRow?.querySelector('.package-select');
+        
+        if (packageSelect && packageSelect.value) {
+            selectedPackages.delete(packageSelect.value);
+        }
+        
         document.querySelector(`.package-row[data-index="${idx}"]`)?.remove();
         document.getElementById(`packageSummary${idx}`)?.remove();
         delete packageAmounts[idx];
@@ -534,9 +550,12 @@ document.addEventListener('DOMContentLoaded', function () {
             Array.from(sel.options).forEach(opt => {
                 if (opt.value && selectedPackages.has(opt.value) && opt.value !== cur) {
                     opt.disabled = true;
+                    opt.innerHTML += ' (already selected)';
                 }
             });
-            sel.value = cur;
+            if (cur) {
+                sel.value = cur;
+            }
         });
     }
 
@@ -571,10 +590,52 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('totalAmount').textContent = `৳ ${tot.toLocaleString()}`;
     }
 
-    // Form Validation
+    // Check for existing packages function
+    function checkExistingPackages(customerId, packageId, index) {
+        if (!customerId || !packageId) return Promise.resolve(true);
+        
+        return fetch(`/admin/customer-to-packages/check-existing?customer_id=${customerId}&package_id=${packageId}`)
+            .then(response => response.json())
+            .then(data => {
+                const packageSelect = document.querySelector(`.package-select[data-index="${index}"]`);
+                const packageRow = packageSelect.closest('.package-row');
+                let warningElement = packageRow.querySelector('.package-warning');
+                
+                if (data.exists) {
+                    if (!warningElement) {
+                        warningElement = document.createElement('div');
+                        warningElement.className = 'package-warning alert alert-warning mt-2';
+                        packageRow.appendChild(warningElement);
+                    }
+                    warningElement.innerHTML = `
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        ${data.message}
+                    `;
+                    warningElement.style.display = 'block';
+                    
+                    // Add error styling to the select
+                    packageSelect.classList.add('is-invalid');
+                    return false;
+                } else {
+                    if (warningElement) {
+                        warningElement.style.display = 'none';
+                    }
+                    // Remove error styling
+                    packageSelect.classList.remove('is-invalid');
+                    return true;
+                }
+            })
+            .catch(error => {
+                console.error('Error checking existing packages:', error);
+                return true;
+            });
+    }
+
+    // Enhanced form validation with duplicate package checking
     document.getElementById('assignPackageForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
         if (!customerIdInput.value) {
-            e.preventDefault();
             alert('Please select a customer.');
             return;
         }
@@ -583,21 +644,43 @@ document.addEventListener('DOMContentLoaded', function () {
         const filled = Array.from(selects).filter(s => s.value && s.value !== '');
         
         if (filled.length === 0) {
-            e.preventDefault();
             alert('Please select at least one package.');
             return;
         }
         
+        // Check for duplicates in current selection
         const selectedValues = filled.map(s => s.value);
         if (new Set(selectedValues).size !== selectedValues.length) {
-            e.preventDefault();
             alert('You cannot assign the same package twice.');
             return;
         }
         
+        // Check for existing packages with the customer
+        const customerId = customerIdInput.value;
+        const checkPromises = filled.map(select => {
+            return checkExistingPackages(customerId, select.value, select.dataset.index);
+        });
+        
         // Show loading state
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Assigning Packages...';
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking Packages...';
+        
+        Promise.all(checkPromises).then(results => {
+            const allValid = results.every(valid => valid);
+            
+            if (!allValid) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check me-2"></i>Assign Packages';
+                alert('Cannot assign packages. Please check the warning messages and select different packages.');
+                return;
+            }
+            
+            // If all valid, proceed with form submission
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Assigning Packages...';
+            
+            // Submit the form
+            this.submit();
+        });
     });
 
     // Initial event listeners for first package
@@ -605,15 +688,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const initialMonths = document.querySelector('.billing-months[data-index="0"]');
     
     if (initialSelect) {
-        initialSelect.addEventListener('change', () => { 
-            updateSelectedPackages(); 
+        initialSelect.addEventListener('change', function() {
+            updateSelectedPackages();
             calculatePackageAmount(0);
+            
+            // Check for existing packages
+            const customerId = document.getElementById('customerId').value;
+            if (customerId && this.value) {
+                checkExistingPackages(customerId, this.value, 0);
+            }
+            
             updateSubmitButton();
         });
     }
     
     if (initialMonths) {
-        initialMonths.addEventListener('change', () => {
+        initialMonths.addEventListener('change', function() {
             calculatePackageAmount(0);
             updateSubmitButton();
         });
@@ -628,7 +718,7 @@ document.addEventListener('DOMContentLoaded', function () {
     updateSubmitButton();
 });
 
-// Helper Functions
+// Enhanced Customer Selection Function
 function selectCustomer(id, name, phone, email, custId) {
     document.getElementById('customerId').value = id;
     document.getElementById('selectedCustomerName').textContent = name;
@@ -644,6 +734,14 @@ function selectCustomer(id, name, phone, email, custId) {
     document.getElementById('customerResults').style.display = 'none';
     document.getElementById('selectedCustomer').style.display = 'block';
     
+    // Check all selected packages for this customer
+    document.querySelectorAll('.package-select').forEach(select => {
+        const index = select.dataset.index;
+        if (select.value) {
+            checkExistingPackages(id, select.value, index);
+        }
+    });
+    
     // Force update of submit button
     const event = new Event('change');
     document.getElementById('customerId').dispatchEvent(event);
@@ -654,6 +752,16 @@ function clearCustomerSelection() {
     document.getElementById('selectedCustomer').style.display = 'none';
     document.getElementById('customerSearch').value = '';
     document.getElementById('customerResults').style.display = 'none';
+    
+    // Clear all package warnings
+    document.querySelectorAll('.package-warning').forEach(warning => {
+        warning.style.display = 'none';
+    });
+    
+    // Remove error styling from all selects
+    document.querySelectorAll('.package-select').forEach(select => {
+        select.classList.remove('is-invalid');
+    });
     
     // Force update of submit button
     const event = new Event('change');

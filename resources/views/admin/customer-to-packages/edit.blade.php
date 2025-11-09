@@ -9,7 +9,7 @@
             <h1 class="page-title"><i class="fas fa-edit me-2"></i>Edit Customer Package</h1>
         </div>
         <div class="col-auto">
-            <a href="{{ route('admin.customer-packages.index') }}" class="btn btn-secondary">
+            <a href="{{ route('admin.customer-to-packages.index') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Back to Packages
             </a>
         </div>
@@ -27,9 +27,9 @@
                         <div class="col-12">
                             <div class="alert alert-info">
                                 <h6><i class="fas fa-user me-2"></i>Customer Information</h6>
-                                <strong>Name:</strong> {{ $customer->name }}<br>
+                                <strong>Name:</strong> {{ $customer->name ?? 'N/A' }}<br>
                                 <strong>Email:</strong> {{ $customer->email ?? 'No email' }}<br>
-                                <strong>Customer ID:</strong> {{ $customer->customer_id }}
+                                <strong>Customer ID:</strong> {{ $customer->customer_id ?? 'N/A' }}
                             </div>
                         </div>
                     </div>
@@ -39,40 +39,29 @@
                         <div class="col-12">
                             <div class="alert alert-secondary">
                                 <h6><i class="fas fa-cube me-2"></i>Package Information</h6>
-                                <strong>Package:</strong> {{ $package->name }}<br>
-                                <strong>Type:</strong> {{ ucfirst($package->package_type) }}<br>
-                                <strong>Original Price:</strong> ৳{{ number_format($package->monthly_price, 2) }}
+                                <strong>Package:</strong> {{ $package->name ?? 'N/A' }}<br>
+                                <strong>Type:</strong> {{ ucfirst($package->package_type ?? 'N/A') }}<br>
+                                <strong>Original Price:</strong> ৳{{ number_format($package->monthly_price ?? 0, 2) }}
                             </div>
                         </div>
                     </div>
 
-                    <form action="{{ route('admin.customer-packages.update', $customerPackage->id) }}" method="POST">
+                    <!-- FIXED FORM ACTION - Use cp_id as the route parameter -->
+                    <form action="{{ route('admin.customer-to-packages.update', $customerPackage->cp_id) }}" method="POST">
                         @csrf
                         @method('PUT')
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="package_price" class="form-label">Package Price (৳) *</label>
-                                <input type="number" step="0.01" class="form-control @error('package_price') is-invalid @enderror" 
-                                       id="package_price" name="package_price" 
-                                       value="{{ old('package_price', $customerPackage->package_price) }}" required>
-                                @error('package_price')
+                                <label for="billing_cycle_months" class="form-label">Billing Cycle (Months) *</label>
+                                <input type="number" class="form-control @error('billing_cycle_months') is-invalid @enderror" 
+                                       id="billing_cycle_months" name="billing_cycle_months" 
+                                       value="{{ old('billing_cycle_months', $customerPackage->billing_cycle_months) }}" min="1" max="12" required>
+                                @error('billing_cycle_months')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label for="billing_months" class="form-label">Billing Months *</label>
-                                <input type="number" class="form-control @error('billing_months') is-invalid @enderror" 
-                                       id="billing_months" name="billing_months" 
-                                       value="{{ old('billing_months', $customerPackage->billing_months) }}" min="1" required>
-                                @error('billing_months')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="status" class="form-label">Status *</label>
                                 <select class="form-select @error('status') is-invalid @enderror" id="status" name="status" required>
@@ -84,11 +73,19 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+                        </div>
 
+                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Assign Date</label>
                                 <input type="text" class="form-control" value="{{ \Carbon\Carbon::parse($customerPackage->assign_date)->format('M d, Y') }}" readonly>
                                 <small class="text-muted">Original assignment date</small>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Due Date</label>
+                                <input type="text" class="form-control" value="{{ \Carbon\Carbon::parse($customerPackage->due_date)->format('M d, Y') }}" readonly>
+                                <small class="text-muted">Calculated due date</small>
                             </div>
                         </div>
 
@@ -96,15 +93,15 @@
                             <div class="col-12">
                                 <div class="alert alert-warning">
                                     <h6><i class="fas fa-calculator me-2"></i>Total Amount</h6>
-                                    <strong>Monthly:</strong> ৳<span id="monthly-display">{{ number_format($customerPackage->package_price, 2) }}</span><br>
-                                    <strong>Total for {{ $customerPackage->billing_months }} month(s):</strong> 
-                                    ৳<span id="total-display">{{ number_format($customerPackage->package_price * $customerPackage->billing_months, 2) }}</span>
+                                    <strong>Monthly:</strong> ৳{{ number_format($package->monthly_price ?? 0, 2) }}<br>
+                                    <strong>Total for <span id="billing-months-display">{{ $customerPackage->billing_cycle_months }}</span> month(s):</strong> 
+                                    ৳<span id="total-display">{{ number_format(($package->monthly_price ?? 0) * $customerPackage->billing_cycle_months, 2) }}</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{{ route('admin.customer-packages.index') }}" class="btn btn-secondary me-md-2">Cancel</a>
+                            <a href="{{ route('admin.customer-to-packages.index') }}" class="btn btn-secondary me-md-2">Cancel</a>
                             <button type="submit" class="btn btn-warning">Update Package</button>
                         </div>
                     </form>
@@ -116,25 +113,28 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const packagePriceInput = document.getElementById('package_price');
-    const billingMonthsInput = document.getElementById('billing_months');
-    const monthlyDisplay = document.getElementById('monthly-display');
+    const billingMonthsInput = document.getElementById('billing_cycle_months');
+    const billingMonthsDisplay = document.getElementById('billing-months-display');
     const totalDisplay = document.getElementById('total-display');
+    const monthlyPrice = {{ $package->monthly_price ?? 0 }};
 
     function updateTotals() {
-        const monthlyPrice = parseFloat(packagePriceInput.value) || 0;
         const months = parseInt(billingMonthsInput.value) || 1;
         const total = monthlyPrice * months;
-
-        monthlyDisplay.textContent = monthlyPrice.toFixed(2);
-        totalDisplay.textContent = total.toFixed(2);
+        
+        if (billingMonthsDisplay) {
+            billingMonthsDisplay.textContent = months;
+        }
+        if (totalDisplay) {
+            totalDisplay.textContent = total.toFixed(2);
+        }
     }
 
-    packagePriceInput.addEventListener('input', updateTotals);
-    billingMonthsInput.addEventListener('input', updateTotals);
-
-    // Initialize on page load
-    updateTotals();
+    if (billingMonthsInput) {
+        billingMonthsInput.addEventListener('input', updateTotals);
+        // Initialize on page load
+        updateTotals();
+    }
 });
 </script>
 
