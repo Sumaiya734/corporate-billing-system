@@ -1,231 +1,745 @@
 @extends('layouts.admin')
-@section('title', 'View Invoice')
+
+@section('title', 'Customer Billing History - ' . ($customer->user->name ?? 'Customer'))
 
 @section('content')
-@php
-    $customerId = request()->route('id') ?? 1;
-    $invoices = [ /* …your data… */ ];
-    $invoice = $invoices[$customerId] ?? $invoices[1];
-@endphp
-
-<!-- NON-PRINTABLE HEADER -->
-<div class="no-print container-fluid p-3 border-bottom">
-    <div class="d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">Invoice – {{ $invoice['customer']['name'] }}</h2>
+<div class="container-fluid p-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="h3 mb-0 page-title">
+                <i class="fas fa-history me-2 text-primary"></i>Customer Billing History
+            </h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="#">Billing</a></li>
+                    <li class="breadcrumb-item active">Customer History</li>
+                </ol>
+            </nav>
+        </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-primary btn-sm" onclick="window.print()">Print</button>
-            <button class="btn btn-primary btn-sm" id="downloadPdf">Download PDF</button>
-            <a href="{{ route('admin.billing.all-invoices') }}" class="btn btn-secondary btn-sm">Back</a>
+            <!-- Back Button -->
+            <a href="{{ route('admin.billing.monthly-bills') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Monthly Bills
+            </a>
+            <!-- Print Button -->
+            <button class="btn btn-outline-primary" id="printBtn">
+                <i class="fas fa-print me-1"></i>Print History
+            </button>
         </div>
     </div>
-</div>
 
-<!-- PRINTABLE AREA -->
-<div id="printableArea">
-    <div class="container-fluid p-3">
-        <div class="card border-0">
-            <div class="card-body">
-
-                <!-- Header -->
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <h3 class="h5 mb-0 fw-bold">INVOICE</h3>
-                        <p class="mb-0 small text-muted">#{{ $invoice['invoice_id'] }}</p>
-                        <div class="mt-2 small">
-                            <p class="mb-0"><strong>NetX Internet Services</strong></p>
-                            <p class="mb-0">123 Business Ave, Dhaka 1212</p>
-                            <p class="mb-0">+880 2 55667788 | billing@netx.com</p>
+    <!-- Customer Info Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-user me-2"></i>Customer Information
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="customer-avatar me-3">
+                            {{ strtoupper(substr($customer->user->name ?? 'C', 0, 1)) }}
+                        </div>
+                        <div>
+                            <h4 class="mb-1">{{ $customer->user->name ?? 'N/A' }}</h4>
+                            <p class="text-muted mb-0">Customer ID: {{ $customer->id }}</p>
                         </div>
                     </div>
-                    <div class="col-6 text-end">
-                        <table class="table table-borderless table-sm small">
-                            <tr><td class="text-end text-muted">Issue:</td><td>{{ \Carbon\Carbon::parse($invoice['issue_date'])->format('M d, Y') }}</td></tr>
-                            <tr><td class="text-end text-muted">Due:</td><td>{{ \Carbon\Carbon::parse($invoice['due_date'])->format('M d, Y') }}</td></tr>
-                            <tr><td class="text-end text-muted">Status:</td>
-                                <td>
-                                    @if($invoice['status']==='paid')   <span class="badge badge-paid">Paid</span>
-                                    @elseif($invoice['status']==='pending') <span class="badge badge-pending">Pending</span>
-                                    @else                                   <span class="badge badge-overdue">Overdue</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            <tr><td class="text-end text-muted">Total:</td><td class="fw-bold text-primary">৳ {{ number_format($invoice['amount'],2) }}</td></tr>
-                        </table>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Email</small>
+                            <p class="mb-2">{{ $customer->user->email ?? 'N/A' }}</p>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Phone</small>
+                            <p class="mb-2">{{ $customer->phone ?? 'N/A' }}</p>
+                        </div>
+                        <div class="col-12">
+                            <small class="text-muted">Address</small>
+                            <p class="mb-0">{{ $customer->address ?? 'N/A' }}</p>
+                        </div>
                     </div>
-                
-
-                <!-- SIDE-BY-SIDE BOXES -->
-                <div class="info-row mb-1">
-                    <div class="info-col col-md-6">
-                        <div class="bg-light p-3 rounded">
-                            <h6 class="fw-bold text-primary mb-2">Invoice Info</h6>
-                            <table class="table table-borderless table-sm small">
-                                <tr><td class="text-muted pe-3">ID:</td><td class="fw-bold">{{ $invoice['invoice_id'] }}</td></tr>
-                                <tr><td class="text-muted">Issue:</td><td>{{ \Carbon\Carbon::parse($invoice['issue_date'])->format('M d, Y') }}</td></tr>
-                                <tr><td class="text-muted">Due:</td><td>{{ \Carbon\Carbon::parse($invoice['due_date'])->format('M d, Y') }}</td></tr>
-                                <tr><td class="text-muted">Status:</td>
-                                    <td>
-                                        @if($invoice['status']==='paid')   <span class="badge badge-paid">Paid</span>
-                                        @elseif($invoice['status']==='pending') <span class="badge badge-pending">Pending</span>
-                                        @else                                   <span class="badge badge-overdue">Overdue</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                                <tr><td class="text-muted">Amount:</td><td class="fw-bold text-success">৳ {{ number_format($invoice['amount'],2) }}</td></tr>
-                            </table>
-                        
+                </div>
+                <div class="col-md-6">
+                    <h6 class="mb-3">Current Packages</h6>
+                    <span class="badge bg-primary me-2 mb-2">Fast Speed - ৳800/month</span>
+                    <span class="badge bg-success me-2 mb-2">Gaming Boost - ৳200/month</span>
                     
-
-                    <div class="info-col col-md-6">
-                        <div class="bg-light p-3 rounded">
-                            <h6 class="fw-bold text-primary mb-2">Billing Details</h6>
-                            <table class="table table-borderless table-sm small">
-                                <tr><td class="text-muted pe-3">Customer:</td><td class="fw-bold">{{ $invoice['customer']['name'] }}</td></tr>
-                                <tr><td class="text-muted">Email:</td><td>{{ $invoice['customer']['email'] }}</td></tr>
-                                <tr><td class="text-muted">Phone:</td><td>{{ $invoice['customer']['phone'] }}</td></tr>
-                                <tr><td class="text-muted">Address:</td><td>{{ $invoice['customer']['address'] }}</td></tr>
-                            </table>
+                    <div class="mt-3">
+                        <h6 class="mb-2">Year Summary (2023)</h6>
+                        <div class="d-flex justify-content-between">
+                            <span>Total Billed:</span>
+                            <strong>৳15,600.00</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Total Paid:</span>
+                            <strong>৳14,200.00</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Outstanding:</span>
+                            <strong class="text-danger">৳1,400.00</strong>
                         </div>
                     </div>
                 </div>
-                
+            </div>
+        </div>
+    </div>
 
-                <!-- Services Table (compact) -->
-                <div class="mb-3">
-                    <h6 class="text-uppercase text-muted mb-1 small">Services & Charges</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered small">
-                            <thead class="table-light">
-                                <tr><th>Description</th><th class="text-end" style="width:90px;">Amount (৳)</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><td>Basic Speed Internet</td><td class="text-end">{{ number_format($invoice['services'][0]['price'],2) }}</td></tr>
-                                <tr><td>Service Charge</td><td class="text-end">50.00</td></tr>
-                                <tr class="table-light"><td><strong>Subtotal</strong></td><td class="text-end"><strong>{{ number_format($invoice['breakdown']['service_charge']+$invoice['breakdown']['regular_package']+$invoice['breakdown']['special_packages'],2) }}</strong></td></tr>
-                                <tr><td>VAT (7%)</td><td class="text-end">{{ number_format($invoice['breakdown']['vat'],2) }}</td></tr>
-                            </tbody>
-                            <tfoot class="table-light">
-                                <tr><td class="fw-bold">Total</td><td class="text-end fw-bold text-primary">৳ {{ number_format($invoice['amount'],2) }}</td></tr>
-                            </tfoot>
-                        </table>
+    <!-- Year Selection -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h5 class="card-title mb-0">Billing History for: <span class="text-primary">2023</span></h5>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary">2021</button>
+                        <button type="button" class="btn btn-outline-primary">2022</button>
+                        <button type="button" class="btn btn-primary">2023</button>
+                        <button type="button" class="btn btn-outline-primary">2024</button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <!-- Payment Info -->
-                <div class="mb-2">
-                    <h6 class="text-uppercase text-muted mb-1 small">Payment Information</h6>
-                    <div class="bg-light p-2 rounded small">
-                        <p class="mb-1"><strong>Accepted:</strong> Cash, bKash, Nagad, Bank Transfer</p>
-                        <p class="mb-0"><strong>Account:</strong> NetX Internet Services Ltd. | 1234567890123 | Prime Bank, Gulshan</p>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="text-center border-top pt-1 small text-muted">
-                    <p class="mb-0"><strong>NetX Internet Services Ltd.</strong> | 123 Business Ave, Dhaka 1212</p>
-                    <p class="mb-0">+880 2 55667788 | billing@netx.com | www.netx.com</p>
-                </div>
-
+    <!-- Billing History Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-file-invoice me-2"></i>Monthly Billing Details
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0" id="billingHistoryTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Billing Month</th>
+                            <th>Services</th>
+                            <th width="120" class="text-end">Bill Amount</th>
+                            <th width="120" class="text-end">Previous Due</th>
+                            <th width="120" class="text-end">Total</th>
+                            <th width="140" class="text-end">Received Amount</th>
+                            <th width="120" class="text-end">Next Due</th>
+                            <th width="100" class="text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- January -->
+                        <tr>
+                            <td>
+                                <strong>January 2023</strong><br>
+                                <small class="text-muted">Due: 10 Feb 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳0.00</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,230.50</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,230.50</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due">৳0.00</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-paid">Paid</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- February -->
+                        <tr>
+                            <td>
+                                <strong>February 2023</strong><br>
+                                <small class="text-muted">Due: 10 Mar 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳0.00</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,230.50</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,230.50</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due">৳0.00</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-paid">Paid</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- March -->
+                        <tr>
+                            <td>
+                                <strong>March 2023</strong><br>
+                                <small class="text-muted">Due: 10 Apr 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳0.00</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,230.50</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,230.50</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due">৳0.00</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-paid">Paid</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- April -->
+                        <tr>
+                            <td>
+                                <strong>April 2023</strong><br>
+                                <small class="text-muted">Due: 10 May 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳0.00</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,230.50</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,230.50</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due">৳0.00</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-paid">Paid</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- May -->
+                        <tr>
+                            <td>
+                                <strong>May 2023</strong><br>
+                                <small class="text-muted">Due: 10 Jun 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳0.00</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,230.50</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,230.50</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due">৳0.00</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-paid">Paid</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- June -->
+                        <tr>
+                            <td>
+                                <strong>June 2023</strong><br>
+                                <small class="text-muted">Due: 10 Jul 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳0.00</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,230.50</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,230.50</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due">৳0.00</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-paid">Paid</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- July -->
+                        <tr>
+                            <td>
+                                <strong>July 2023</strong><br>
+                                <small class="text-muted">Due: 10 Aug 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳0.00</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,230.50</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,230.50</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due">৳0.00</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-paid">Paid</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- August -->
+                        <tr>
+                            <td>
+                                <strong>August 2023</strong><br>
+                                <small class="text-muted">Due: 10 Sep 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳0.00</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,230.50</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,000.00</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due text-danger">৳230.50</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-pending">Partial</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- September -->
+                        <tr>
+                            <td>
+                                <strong>September 2023</strong><br>
+                                <small class="text-muted">Due: 10 Oct 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳230.50</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,461.00</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,000.00</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due text-danger">৳461.00</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-pending">Partial</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- October -->
+                        <tr>
+                            <td>
+                                <strong>October 2023</strong><br>
+                                <small class="text-muted">Due: 10 Nov 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳461.00</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,691.50</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,000.00</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due text-danger">৳691.50</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-pending">Partial</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- November -->
+                        <tr>
+                            <td>
+                                <strong>November 2023</strong><br>
+                                <small class="text-muted">Due: 10 Dec 2023</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳691.50</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳1,922.00</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳1,000.00</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due text-danger">৳922.00</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-pending">Partial</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- December -->
+                        <tr>
+                            <td>
+                                <strong>December 2023</strong><br>
+                                <small class="text-muted">Due: 10 Jan 2024</small>
+                            </td>
+                            <td>
+                                <div class="services-tags">
+                                    <div class="package-line">
+                                        <span class="badge bg-primary">Fast Speed</span>
+                                        <span class="badge bg-success">Gaming Boost</span>
+                                    </div>
+                                    <div class="package-line">
+                                        <small class="text-muted">৳800 + ৳200 </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="bill-amount">৳1,230.50</span>
+                                <small class="text-muted d-block">(৳50 + ৳800 + ৳200 + VAT 7%)</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="previous-due">৳922.00</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="total-amount">৳2,152.50</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="received-amount-display">৳752.50</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="next-due text-danger">৳1,400.00</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-overdue">Overdue</span>
+                            </td>
+                        </tr>
+                        
+                        <!-- Year Total Row -->
+                        <tr class="year-total">
+                            <td class="text-end">
+                                <strong>2023 Year Total:</strong>
+                            </td>
+                            <td>
+                                <!-- Empty for services column -->
+                            </td>
+                            <td class="text-end">
+                                <strong>৳14,766.00</strong>
+                            </td>
+                            <td class="text-end">
+                                <strong>-</strong>
+                            </td>
+                            <td class="text-end">
+                                <strong>৳15,600.00</strong>
+                            </td>
+                            <td class="text-end">
+                                <strong>৳14,200.00</strong>
+                            </td>
+                            <td class="text-end">
+                                <strong class="text-danger">৳1,400.00</strong>
+                            </td>
+                            <td class="text-center">
+                                <strong>Summary</strong>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
-
-<!-- NON-PRINTABLE ACTIONS (keep your modals) -->
-<div class="no-print container-fluid p-3"> … </div>
 @endsection
 
 @section('styles')
 <style>
-    .badge-paid   { background:#28a745; color:#fff; padding:2px 6px; border-radius:12px; font-size:0.65rem; }
-    .badge-pending{ background:#ffc107; color:#212529; padding:2px 6px; border-radius:12px; font-size:0.65rem; }
-    .badge-overdue{ background:#dc3545; color:#fff; padding:2px 6px; border-radius:12px; font-size:0.65rem; }
-
-    @media print {
-    /* 1. Hide everything except printable area */
-    body > *:not(#printableArea),
-    .no-print,
-    .no-print * { display:none !important; }
-
-    #printableArea,
-    #printableArea * { visibility:visible !important; }
-
-    /* 2. FORCE SIDE-BY-SIDE – TINY BOXES */
-    #printableArea .info-row {
-        display:flex !important;
-        flex-wrap:nowrap !important;
-        gap:4px !important;
-        margin-bottom:3px !important;
+    .badge-paid {
+        background-color: #06d6a0 !important;
+        color: white !important;
+        padding: 6px 12px !important;
+        border-radius: 20px !important;
+        font-size: 0.75rem;
+        font-weight: 500;
     }
-    #printableArea .info-col {
-        flex:1 !important;
-        min-width:0 !important;
+    
+    .badge-pending {
+        background-color: #ffd166 !important;
+        color: #000 !important;
+        padding: 6px 12px !important;
+        border-radius: 20px !important;
+        font-size: 0.75rem;
+        font-weight: 500;
     }
-
-    /* 3. ULTRA-TINY BOXES (Invoice Info + Billing Details) */
-    #printableArea .info-col .bg-light {
-        padding:2px 4px !important;
-        border-radius:2px !important;
-        font-size:5.5pt !important;
-        line-height:1.1 !important;
+    
+    .badge-overdue {
+        background-color: #ef476f !important;
+        color: white !important;
+        padding: 6px 12px !important;
+        border-radius: 20px !important;
+        font-size: 0.75rem;
+        font-weight: 500;
     }
-
-    #printableArea .info-col h6 {
-        font-size:6pt !important;
-        margin:0 0 1px 0 !important;
-        font-weight:600 !important;
-    }
-
-    #printableArea .info-col table {
-        margin:0 !important;
-        font-size:5.5pt !important;
+    
+    .customer-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #4361ee;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
     }
 
-    #printableArea .info-col table td {
-        padding:0 2px !important;
-        white-space:nowrap !important;
+    .customer-info-compact {
+        line-height: 1.3;
+        font-size: 0.875rem;
     }
 
-    #printableArea .info-col table td:first-child {
-        color:#555 !important;
-        min-width:38px !important;
+    .customer-info-compact strong {
+        font-size: 0.9rem;
+        margin-bottom: 2px;
     }
 
-    /* 4. PAGE & GLOBAL TINY SIZES */
-    @page { size:A4 portrait; margin:5mm; }
-
-    html,body{
-        background:#fff !important;
-        margin:0 !important;
-        padding:0 !important;
-        font-size:4pt !important;
-        line-height:0.7 !important;
+    .customer-info-compact small {
+        font-size: 0.75rem;
     }
 
-    .container-fluid{ padding:0 !important; width:100% !important; }
-    .card{ border:none !important; box-shadow:none !important; margin:0 !important; }
-    .card-body{ padding:3px !important; }
-
-    h1,h2,h3,h4,h5,h6{ font-size:7.5pt !important; margin:1px 0 !important; }
-    p,td,th,small,span,li{ font-size:5.8pt !important; margin:0.5px 0 !important; }
-    .table{ font-size:5.8pt !important; margin-bottom:0 !important; }
-    .table td,.table th{ padding:1px 2px !important; }
-
-    .bg-light{ background:#f8f9fa !important; }
-
-    /* 5. KILL BOOTSTRAP GRID IN PRINT */
-    .row, .col-*, .col-md-*, .col-lg-*, .col-sm-* {
-        display:block !important;
-        flex:none !important;
-        width:auto !important;
-        padding:0 !important;
+    .services-tags .badge {
+        margin-right: 4px;
+        font-size: 0.75rem;
     }
-}
+
+    .package-line {
+        margin-bottom: 4px;
+    }
+
+    .table th {
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .total-summary {
+        background: #f8f9fa;
+        padding: 10px 15px;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .customer-info-compact i {
+        width: 12px;
+        text-align: center;
+    }
+
+    .received-amount-display {
+        font-weight: 600;
+    }
+
+    .bill-amount {
+        font-weight: 600;
+    }
+
+    .year-total {
+        background-color: #e9f7ef;
+        border-left: 4px solid #28a745;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
 </style>
 @endsection
 
 @section('scripts')
 <script>
-    document.getElementById('downloadPdf').addEventListener('click',()=>window.print());
+    // Print Button Functionality
+    document.getElementById('printBtn').addEventListener('click', function() {
+        alert('Printing billing history for {{ $customer->user->name ?? "Customer" }}');
+        // Add actual print functionality here
+        // window.print();
+    });
+
+    // You can add more JavaScript functionality if needed
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Customer Billing History page loaded for customer: {{ $customer->user->name ?? "Unknown" }}');
+    });
 </script>
 @endsection

@@ -5,498 +5,691 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Customer;
-use App\Models\ServicePackage;
+use App\Models\Package;
+use App\Models\Payment;
+use App\Models\CustomerPackage;
+use App\Models\MonthlyBillingSummary;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
-use PDF;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class BillingController extends Controller
 {
-
-        /**
-     * Display billing invoices summary page
-     */
-    public function billingInvoices()
-    {
-        $billingData = [
-            [
-                'month' => 'January 2024',
-                'total_customers' => 50,
-                'total_amount' => 45000,
-                'received' => 45000,
-                'due' => 0,
-                'status' => 'All Paid'
-            ],
-            [
-                'month' => 'February 2024',
-                'total_customers' => 55,
-                'total_amount' => 49500,
-                'received' => 46000,
-                'due' => 3500,
-                'status' => 'Pending'
-            ],
-            [
-                'month' => 'March 2024',
-                'total_customers' => 58,
-                'total_amount' => 52000,
-                'received' => 48000,
-                'due' => 4000,
-                'status' => 'Pending'
-            ],
-            [
-                'month' => 'April 2024',
-                'total_customers' => 60,
-                'total_amount' => 55000,
-                'received' => 50000,
-                'due' => 5000,
-                'status' => 'Overdue'
-            ],
-        ];
-
-        return view('admin.billing.billing-invoices', compact('billingData'));
-    }
-
-    /**
-     * Display monthly bills page
-     */
-    public function monthlyBills(Request $request)
-{
-    $month = $request->query('month', 'January 2024');
-
-    
-        $stats = [
-            'total_revenue' => 45250,
-            'pending_bills' => 12,
-            'paid_bills' => 38,
-            'avg_bill_amount' => 905
-        ];
-
-        $bills = [
-            [
-                'id' => 1,
-                'invoice_id' => 'INV-2024-001',
-                'customer' => [
-                    'name' => 'John Doe',
-                    'email' => 'john.doe@example.com',
-                    'phone' => '+8801712345678',
-                    'address' => 'Gulshan, Dhaka'
-                ],
-                'services' => [
-                    ['name' => 'Basic Speed', 'price' => 500]
-                ],
-                'due_date' => '2024-02-05',
-                'status' => 'paid',
-                'amount' => 535
-            ],
-        ];
-
-        return view('admin.billing.monthly-bills', compact('stats', 'bills'));
-    }
-
     /**
      * Display all invoices page
      */
     public function allInvoices()
     {
-        $stats = [
-            'total_invoices' => 215,
-            'pending_invoices' => 28,
-            'paid_invoices' => 172,
-            'total_revenue' => 185250
-        ];
+        try {
+            $invoices = Invoice::with(['customer', 'invoicePackages'])
+                ->orderBy('issue_date', 'desc')
+                ->paginate(20);
 
-        $invoices = [
-            [
-                'id' => 1,
-                'invoice_id' => 'INV-2024-001',
-                'customer' => [
-                    'name' => 'John Doe',
-                    'email' => 'john.doe@example.com',
-                    'phone' => '+8801712345678',
-                    'address' => 'Gulshan, Dhaka'
-                ],
-                'services' => [
-                    ['name' => 'Basic Speed', 'price' => 500]
-                ],
-                'issue_date' => '2024-01-01',
-                'due_date' => '2024-01-05',
-                'status' => 'paid',
-                'amount' => 535
-            ],
-            [
-                'id' => 2,
-                'invoice_id' => 'INV-2024-002',
-                'customer' => [
-                    'name' => 'Alice Smith',
-                    'email' => 'alice.smith@example.com',
-                    'phone' => '+8801812345679',
-                    'address' => 'Uttara, Dhaka'
-                ],
-                'services' => [
-                    ['name' => 'Fast Speed', 'price' => 800],
-                    ['name' => 'Gaming Boost', 'price' => 200]
-                ],
-                'issue_date' => '2024-01-01',
-                'due_date' => '2024-01-05',
-                'status' => 'pending',
-                'amount' => 1070
-            ],
-            [
-                'id' => 3,
-                'invoice_id' => 'INV-2023-125',
-                'customer' => [
-                    'name' => 'Bob Johnson',
-                    'email' => 'bob.johnson@example.com',
-                    'phone' => '+8801912345680',
-                    'address' => 'Banani, Dhaka'
-                ],
-                'services' => [
-                    ['name' => 'Super Speed', 'price' => 1200],
-                    ['name' => 'Streaming Plus', 'price' => 150]
-                ],
-                'issue_date' => '2023-12-01',
-                'due_date' => '2023-12-25',
-                'status' => 'overdue',
-                'amount' => 1445
-            ],
-            [
-                'id' => 4,
-                'invoice_id' => 'INV-2023-098',
-                'customer' => [
-                    'name' => 'Carol White',
-                    'email' => 'carol.white@example.com',
-                    'phone' => '+8801612345681',
-                    'address' => 'Dhanmondi, Dhaka'
-                ],
-                'services' => [
-                    ['name' => 'Fast Speed', 'price' => 800]
-                ],
-                'issue_date' => '2023-11-01',
-                'due_date' => '2023-11-05',
-                'status' => 'paid',
-                'amount' => 856
-            ],
-            [
-                'id' => 5,
-                'invoice_id' => 'INV-2023-076',
-                'customer' => [
-                    'name' => 'David Green',
-                    'email' => 'david.green@example.com',
-                    'phone' => '+8801512345682',
-                    'address' => 'Mirpur, Dhaka'
-                ],
-                'services' => [
-                    ['name' => 'Super Speed', 'price' => 1200],
-                    ['name' => 'Family Pack', 'price' => 300]
-                ],
-                'issue_date' => '2023-10-01',
-                'due_date' => '2023-10-05',
-                'status' => 'paid',
-                'amount' => 1605
-            ]
-        ];
+            $stats = [
+                'total_invoices' => Invoice::count(),
+                'pending_invoices' => Invoice::whereIn('status', ['unpaid', 'partial'])->count(),
+                'paid_invoices' => Invoice::where('status', 'paid')->count(),
+                'total_revenue' => Invoice::sum('total_amount'),
+                'total_received' => Invoice::sum('received_amount'),
+                'total_due' => DB::table('invoices')
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->sum(DB::raw('total_amount - COALESCE(received_amount, 0)'))
+            ];
 
-        return view('admin.billing.all-invoices', compact('stats', 'invoices'));
+            return view('admin.billing.all-invoices', compact('stats', 'invoices'));
+
+        } catch (\Exception $e) {
+            Log::error('All invoices error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error loading invoices: ' . $e->getMessage());
+        }
     }
 
     /**
-     * Generate bill for a customer - SHOWS THE GENERATE BILL PAGE
+     * Generate bill for a customer
      */
     public function generateBill($id)
     {
         try {
-            $customer = Customer::with('user')->find($id);
+            $customer = Customer::with(['activePackages'])->findOrFail($id);
             
-            if (!$customer) {
-                $customer = $this->createDemoCustomer($id);
-            }
+            $regularPackages = Package::where('package_type', 'regular')->get();
+            $specialPackages = Package::where('package_type', 'special')->get();
 
-            // Return the generate-bill view
-            return view('admin.billing.generate-bill', compact('customer'));
+            return view('admin.billing.generate-bill', compact(
+                'customer', 
+                'regularPackages', 
+                'specialPackages'
+            ));
 
         } catch (\Exception $e) {
+            Log::error('Generate bill error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error loading generate bill page: ' . $e->getMessage());
         }
     }
 
     /**
-     * View bill details - SHOWS THE VIEW BILL PAGE
+     * Process bill generation
      */
-    public function viewBill($id)
-    {
-        try {
-            $customer = Customer::with('user')->find($id);
-            
-            if (!$customer) {
-                $customer = $this->createDemoCustomer($id);
-            }
-
-            $invoice = [
-                'id' => $id,
-                'invoice_id' => 'INV-2024-00' . $id,
-                'customer' => [
-                    'name' => $customer->user->name ?? 'Demo Customer',
-                    'email' => $customer->user->email ?? 'demo@example.com',
-                    'phone' => $customer->phone ?? '+8801712345678',
-                    'address' => $customer->address ?? 'Demo Address, Dhaka'
-                ],
-                'services' => [
-                    ['name' => 'Basic Speed', 'price' => 500]
-                ],
-                'issue_date' => '2024-01-01',
-                'due_date' => '2024-01-05',
-                'status' => 'paid',
-                'amount' => 535,
-                'breakdown' => [
-                    'service_charge' => 50,
-                    'regular_package' => 500,
-                    'special_packages' => 0,
-                    'vat' => 38.5,
-                    'discount' => 0,
-                    'total' => 535
-                ]
-            ];
-
-            return view('admin.billing.view-bill', compact('invoice', 'customer'));
-
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error loading bill: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * View invoice details - SHOWS THE VIEW INVOICE PAGE
-     */
-    public function viewInvoice($id)
-    {
-        try {
-            $customer = Customer::with('user')->find($id);
-            
-            if (!$customer) {
-                $customer = $this->createDemoCustomer($id);
-            }
-
-            $invoice = [
-                'id' => $id,
-                'invoice_id' => 'INV-2024-00' . $id,
-                'customer' => [
-                    'name' => $customer->user->name ?? 'Demo Customer',
-                    'email' => $customer->user->email ?? 'demo@example.com',
-                    'phone' => $customer->phone ?? '+8801712345678',
-                    'address' => $customer->address ?? 'Demo Address, Dhaka'
-                ],
-                'services' => [
-                    ['name' => 'Basic Speed', 'price' => 500]
-                ],
-                'issue_date' => '2024-01-01',
-                'due_date' => '2024-01-05',
-                'status' => 'paid',
-                'amount' => 535,
-                'breakdown' => [
-                    'service_charge' => 50,
-                    'regular_package' => 500,
-                    'special_packages' => 0,
-                    'vat' => 38.5,
-                    'discount' => 0,
-                    'total' => 535
-                ]
-            ];
-
-            return view('admin.billing.view-invoice', compact('invoice', 'customer'));
-
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error loading invoice: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Process bill generation (form submission)
-     */
-    public function processBillGeneration(Request $request, $id)
+    public function processBillGeneration(Request $request, $customerId)
     {
         $request->validate([
             'billing_month' => 'required|date',
-            'amount' => 'required|numeric|min:0',
-            'due_date' => 'required|date',
+            'regular_packages' => 'required|array',
+            'special_packages' => 'array',
+            'discount' => 'numeric|min:0|max:100',
+            'notes' => 'nullable|string'
         ]);
 
         try {
-            $customer = Customer::with('user')->find($id);
-            
-            if (!$customer) {
-                return redirect()->back()->with('error', 'Customer not found.');
-            }
+            $customer = Customer::findOrFail($customerId);
 
-            // Here you would save the bill to database
-            // For now, we'll just show a success message
+            $regularPackageAmount = $this->calculatePackageAmount($request->regular_packages);
+            $specialPackageAmount = $this->calculatePackageAmount($request->special_packages ?? []);
             
-            return redirect()->route('admin.billing.monthly-bills')
-                ->with('success', 'Bill generated successfully for ' . ($customer->user->name ?? 'Customer'));
-                
+            $serviceCharge = 50.00;
+            $vatPercentage = 5.00;
+            $subtotal = $regularPackageAmount + $specialPackageAmount + $serviceCharge;
+            $vatAmount = $subtotal * ($vatPercentage / 100);
+            $discountAmount = $subtotal * ($request->discount / 100);
+            $totalAmount = $subtotal + $vatAmount - $discountAmount;
+
+            $invoice = Invoice::create([
+                'invoice_number' => $this->generateInvoiceNumber(),
+                'c_id' => $customerId,
+                'issue_date' => Carbon::parse($request->billing_month),
+                'previous_due' => 0.00,
+                'service_charge' => $serviceCharge,
+                'vat_percentage' => $vatPercentage,
+                'vat_amount' => $vatAmount,
+                'subtotal' => $subtotal,
+                'total_amount' => $totalAmount,
+                'received_amount' => 0,
+                'next_due' => $totalAmount,
+                'status' => 'unpaid',
+                'notes' => $request->notes,
+                'created_by' => Auth::id()
+            ]);
+
+            // Attach packages to invoice
+            $this->attachPackagesToInvoice($invoice, $request->regular_packages, $request->special_packages);
+
+            return redirect()->route('admin.billing.view-bill', $invoice->invoice_id)
+                ->with('success', 'Bill generated successfully for ' . $customer->name);
+
         } catch (\Exception $e) {
+            Log::error('Process bill generation error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error generating bill: ' . $e->getMessage());
         }
     }
 
     /**
-     * Create demo customer for testing
+     * Helper method to calculate package amount
      */
-    private function createDemoCustomer($id)
+    private function calculatePackageAmount($packageIds)
     {
-        $demoCustomers = [
-            1 => ['name' => 'John Doe', 'email' => 'john.doe@example.com', 'phone' => '+8801712345678', 'address' => 'Gulshan, Dhaka'],
-            2 => ['name' => 'Alice Smith', 'email' => 'alice.smith@example.com', 'phone' => '+8801812345679', 'address' => 'Uttara, Dhaka'],
-            3 => ['name' => 'Bob Johnson', 'email' => 'bob.johnson@example.com', 'phone' => '+8801912345680', 'address' => 'Banani, Dhaka'],
-            4 => ['name' => 'Carol White', 'email' => 'carol.white@example.com', 'phone' => '+8801612345681', 'address' => 'Dhanmondi, Dhaka'],
-            5 => ['name' => 'David Green', 'email' => 'david.green@example.com', 'phone' => '+8801512345682', 'address' => 'Mirpur, Dhaka'],
-        ];
-
-        $demoData = $demoCustomers[$id] ?? ['name' => 'Demo Customer', 'email' => 'demo@example.com', 'phone' => '+8801700000000', 'address' => 'Demo Address, Dhaka'];
-
-        $customer = new \stdClass();
-        $customer->id = $id;
-        $customer->phone = $demoData['phone'];
-        $customer->address = $demoData['address'];
-        
-        $user = new \stdClass();
-        $user->name = $demoData['name'];
-        $user->email = $demoData['email'];
-        
-        $customer->user = $user;
-
-        return $customer;
+        return Package::whereIn('p_id', $packageIds)->sum('monthly_price');
     }
 
     /**
-     * Create new invoice
+     * Attach packages to invoice
      */
-    public function createInvoice(Request $request)
+    private function attachPackagesToInvoice($invoice, $regularPackages, $specialPackages)
+    {
+        $allPackages = array_merge($regularPackages, $specialPackages);
+        
+        foreach ($allPackages as $packageId) {
+            $package = Package::find($packageId);
+            if ($package) {
+                DB::table('invoice_packages')->insert([
+                    'invoice_id' => $invoice->invoice_id,
+                    'cp_id' => $this->getCustomerPackageId($invoice->c_id, $packageId),
+                    'package_price' => $package->monthly_price,
+                    'billing_cycle_months' => 1,
+                    'total_package_amount' => $package->monthly_price,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Get customer package ID
+     */
+    private function getCustomerPackageId($customerId, $packageId)
+    {
+        $customerPackage = CustomerPackage::where('c_id', $customerId)
+            ->where('p_id', $packageId)
+            ->where('status', 'active')
+            ->where('is_active', true)
+            ->first();
+
+        return $customerPackage ? $customerPackage->cp_id : null;
+    }
+
+    /**
+     * View bill details
+     */
+    public function viewBill($id)
+    {
+        try {
+            $invoice = Invoice::with(['customer', 'invoicePackages.package', 'payments'])
+                            ->findOrFail($id);
+
+            return view('admin.billing.view-bill', compact('invoice'));
+
+        } catch (\Exception $e) {
+            Log::error('View bill error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error loading bill: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Record payment for invoice
+     */
+    public function recordPayment(Request $request, $invoiceId)
     {
         $request->validate([
-            'customer_id' => 'required|exists:customers,id',
-            'issue_date' => 'required|date',
-            'due_date' => 'required|date',
-            'status' => 'required|in:pending,paid,overdue',
-            'regular_package' => 'required|numeric',
-            'special_packages' => 'array',
-            'discount' => 'numeric|min:0|max:100'
+            'amount' => 'required|numeric|min:0',
+            'payment_method' => 'required|string|max:50',
+            'payment_date' => 'required|date',
+            'transaction_id' => 'nullable|string|max:100',
+            'note' => 'nullable|string'
         ]);
 
         try {
-            $serviceCharge = 50;
-            $regularPackageAmount = $request->regular_package;
-            $specialPackagesAmount = array_sum($request->special_packages ?? []);
-            $vatRate = 0.07;
-            $discountRate = $request->discount / 100;
+            $invoice = Invoice::findOrFail($invoiceId);
+
+            $payment = Payment::create([
+                'invoice_id' => $invoiceId,
+                'c_id' => $invoice->c_id,
+                'amount' => $request->amount,
+                'payment_method' => $request->payment_method,
+                'payment_date' => $request->payment_date,
+                'transaction_id' => $request->transaction_id,
+                'note' => $request->note
+            ]);
+
+            // Update invoice status and amounts
+            $newReceivedAmount = $invoice->received_amount + $request->amount;
+            $newDue = max(0, $invoice->total_amount - $newReceivedAmount);
+
+            $status = $newDue <= 0 ? 'paid' : ($newReceivedAmount > 0 ? 'partial' : 'unpaid');
+
+            $invoice->update([
+                'received_amount' => $newReceivedAmount,
+                'next_due' => $newDue,
+                'status' => $status
+            ]);
+
+            // If the request is AJAX, return JSON to the frontend
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment recorded successfully!'
+                ]);
+            }
+            return redirect()->back()->with('success', 'Payment recorded successfully!');
+
+        } catch (\Exception $e) {
+            Log::error('Record payment error: ' . $e->getMessage());
+            // If AJAX request, return JSON so front-end can handle it
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to record payment: ' . $e->getMessage()
+                ], 500);
+            }
+            return redirect()->back()->with('error', 'Failed to record payment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Customer profile page
+     */
+    public function profile($id)
+    {
+        try {
+            $customer = Customer::with([
+                'invoices' => function($query) {
+                    $query->orderBy('issue_date', 'desc')->limit(12);
+                }, 
+                'activePackages.package'
+            ])->findOrFail($id);
+
+            // Get customer's active packages
+            $packageNames = $customer->activePackages->pluck('package.name')->toArray();
+
+            // Calculate monthly bill from active packages
+            $monthlyBill = $customer->activePackages->sum(function($customerPackage) {
+                return $customerPackage->package->monthly_price ?? 0;
+            });
+
+            // Format billing history
+            $billingHistory = $customer->invoices->map(function($invoice) {
+                return [
+                    'month' => $invoice->issue_date->format('F Y'),
+                    'amount' => '৳' . number_format($invoice->total_amount, 2),
+                    'status' => ucfirst($invoice->status),
+                    'due_date' => $invoice->issue_date->format('Y-m-d') // Using issue_date since due_date doesn't exist
+                ];
+            });
+
+            return view('admin.customers.profile', compact('customer', 'packageNames', 'monthlyBill', 'billingHistory'));
+
+        } catch (\Exception $e) {
+            Log::error('Customer profile error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error loading customer profile: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Show individual customer billing details
+     */
+    public function customerBillingDetails($c_id)
+    {
+        try {
+            $customer = Customer::findOrFail($c_id);
+
+            $packages = $customer->customerPackages()
+                ->with('package')
+                ->get();
+
+            $invoices = $customer->invoices()
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return view('admin.billing.customer-billing-details', compact(
+                'customer',
+                'packages',
+                'invoices'
+            ));
+        } catch (\Exception $e) {
+            Log::error("BillingController@customerBillingDetails: " . $e->getMessage());
+            return back()->with('error', 'Failed to load customer billing details.');
+        }
+    }
+
+    /**
+     * Display dynamic billing summary page
+     */
+    public function billingInvoices(Request $request)
+    {
+        try {
+            $year = $request->get('year', date('Y'));
             
-            $subtotal = $serviceCharge + $regularPackageAmount + $specialPackagesAmount;
-            $vatAmount = $subtotal * $vatRate;
-            $discountAmount = $subtotal * $discountRate;
-            $totalAmount = $subtotal + $vatAmount - $discountAmount;
+            // Get statistics using Eloquent
+            $totalActiveCustomers = Customer::active()->count();
+            
+            $currentMonthRevenue = Payment::whereYear('payment_date', now()->year)
+                ->whereMonth('payment_date', now()->month)
+                ->sum('amount');
+                
+            $totalPendingAmount = Invoice::whereIn('status', ['unpaid', 'partial'])
+                ->sum(DB::raw('total_amount - COALESCE(received_amount, 0)'));
+            
+            // Calculate this month bills count
+            $thisMonthBillsCount = $this->calculateThisMonthBillsCount();
+            
+            // Get dynamic monthly summary
+            $monthlySummary = $this->getDynamicMonthlySummary();
+            
+            // Get current month stats
+            $currentMonthStats = $this->calculateCurrentMonthStats();
+            
+            // Get available months for invoice generation
+            $availableMonths = $this->getAvailableBillingMonths();
+            
+            // Get recent payments with relationships
+            $recentPayments = Payment::with(['invoice.customer'])
+                ->orderBy('payment_date', 'desc')
+                ->limit(5)
+                ->get();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Invoice created successfully',
-                'invoice_id' => 'INV-' . date('Y') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT)
+            // Get overdue invoices (invoices with due amounts)
+            $overdueInvoices = Invoice::with('customer')
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->where('next_due', '>', 0)
+                ->orderBy('issue_date', 'asc')
+                ->limit(5)
+                ->get();
+
+            // Check if we have invoices
+            $hasInvoices = Invoice::exists();
+
+            return view('admin.billing.billing-invoices', [
+                'monthlySummary' => $monthlySummary,
+                'currentMonthStats' => $currentMonthStats,
+                'availableMonths' => $availableMonths,
+                'totalActiveCustomers' => $totalActiveCustomers,
+                'currentMonthRevenue' => $currentMonthRevenue,
+                'totalPendingAmount' => $totalPendingAmount,
+                'previousMonthBillsCount' => $thisMonthBillsCount, // Fixed variable name
+                'recentPayments' => $recentPayments,
+                'overdueInvoices' => $overdueInvoices,
+                'hasInvoices' => $hasInvoices,
+                'year' => $year
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create invoice: ' . $e->getMessage()
-            ], 500);
+            Log::error('Billing invoices error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error loading billing data: ' . $e->getMessage());
         }
     }
 
     /**
-     * Update invoice
+     * Calculate this month bills count
      */
-    public function updateInvoice(Request $request, $invoiceId)
+    private function calculateThisMonthBillsCount()
+    {
+        $currentMonth = date('Y-m');
+        $monthDate = Carbon::createFromFormat('Y-m', $currentMonth);
+        
+        $dueCustomers = $this->getDueCustomersForMonth($monthDate);
+        
+        return $dueCustomers->count();
+    }
+
+    /**
+     * Get dynamic monthly summary
+     */
+    private function getDynamicMonthlySummary()
+    {
+        $months = collect();
+        $currentDate = Carbon::now()->startOfMonth();
+        $currentMonth = $currentDate->format('Y-m');
+        
+        // Generate last 12 months + current month
+        for ($i = 12; $i >= 0; $i--) {
+            $monthDate = $currentDate->copy()->subMonths($i);
+            $month = $monthDate->format('Y-m');
+            $displayMonth = $monthDate->format('F Y');
+            
+            $monthData = $this->calculateMonthData($month);
+            
+            // Only include months that have due customers or are current/future
+            if ($monthData['total_customers'] > 0 || $monthDate >= $currentDate) {
+                $months->push((object)[
+                    'id' => $month,
+                    'display_month' => $displayMonth,
+                    'billing_month' => $month,
+                    'total_customers' => $monthData['total_customers'],
+                    'total_amount' => $monthData['total_amount'],
+                    'received_amount' => $monthData['received_amount'],
+                    'due_amount' => $monthData['due_amount'],
+                    'is_current_month' => $month === $currentMonth,
+                    'is_future_month' => $month > $currentMonth,
+                    'is_locked' => $monthDate->lt(Carbon::now()->subMonths(3)),
+                    'is_dynamic' => true,
+                    'status' => $monthData['status'],
+                    'notes' => 'Automatically calculated'
+                ]);
+            }
+        }
+
+        // Add next 3 months for future billing
+        for ($i = 1; $i <= 3; $i++) {
+            $monthDate = $currentDate->copy()->addMonths($i);
+            $month = $monthDate->format('Y-m');
+            $displayMonth = $monthDate->format('F Y');
+            
+            $monthData = $this->calculateMonthData($month);
+            
+            $months->push((object)[
+                'id' => $month,
+                'display_month' => $displayMonth,
+                'billing_month' => $month,
+                'total_customers' => $monthData['total_customers'],
+                'total_amount' => $monthData['total_amount'],
+                'received_amount' => 0,
+                'due_amount' => $monthData['total_amount'],
+                'is_current_month' => false,
+                'is_future_month' => true,
+                'is_locked' => false,
+                'is_dynamic' => true,
+                'status' => 'Pending',
+                'notes' => 'Future billing projection'
+            ]);
+        }
+
+        return $months->sortByDesc('billing_month')->values();
+    }
+
+    /**
+     * Calculate data for a specific month
+     */
+    private function calculateMonthData($month)
+    {
+        $monthDate = Carbon::createFromFormat('Y-m', $month);
+        
+        // Get due customers for this month
+        $dueCustomers = $this->getDueCustomersForMonth($monthDate);
+        
+        // Calculate expected revenue from due customers
+        $totalPackageAmount = $dueCustomers->sum('monthly_price');
+        $serviceCharge = 50 * $dueCustomers->count();
+        $subtotal = $totalPackageAmount + $serviceCharge;
+        $vatAmount = $subtotal * 0.05;
+        $totalAmount = $subtotal + $vatAmount;
+
+        // Get actual payments from invoices for this month
+        $payments = Invoice::whereYear('issue_date', $monthDate->year)
+            ->whereMonth('issue_date', $monthDate->month)
+            ->selectRaw('SUM(total_amount) as total, SUM(received_amount) as received')
+            ->first();
+
+        $receivedAmount = $payments->received ?? 0;
+        $dueAmount = max(0, $totalAmount - $receivedAmount);
+        
+        // Calculate status
+        $status = $this->calculateStatus($totalAmount, $receivedAmount, $dueAmount);
+        
+        return [
+            'total_customers' => $dueCustomers->count(),
+            'total_amount' => $totalAmount,
+            'received_amount' => $receivedAmount,
+            'due_amount' => $dueAmount,
+            'status' => $status
+        ];
+    }
+
+    /**
+     * Calculate status based on amounts
+     */
+    private function calculateStatus($totalAmount, $receivedAmount, $dueAmount)
+    {
+        if ($totalAmount == 0) {
+            return 'All Paid';
+        }
+        
+        if ($dueAmount <= 0) {
+            return 'All Paid';
+        }
+        
+        $collectionRate = ($receivedAmount / $totalAmount) * 100;
+        
+        if ($collectionRate >= 80) {
+            return 'Pending';
+        }
+        
+        return 'Overdue';
+    }
+
+    /**
+     * Get customers due in specific month
+     */
+    private function getDueCustomersForMonth(Carbon $monthDate)
+    {
+        $monthStart = $monthDate->copy()->startOfMonth();
+        $monthEnd = $monthDate->copy()->endOfMonth();
+        
+        return Customer::select(
+                'customers.c_id',
+                'customers.name',
+                'customers.customer_id',
+                'packages.monthly_price'
+            )
+            ->join('customer_to_packages as cp', 'customers.c_id', '=', 'cp.c_id')
+            ->join('packages', 'cp.p_id', '=', 'packages.p_id')
+            ->where('cp.status', 'active')
+            ->where('cp.is_active', 1)
+            ->where('customers.is_active', 1)
+            ->where(function($query) use ($monthStart, $monthEnd) {
+                // Customers whose billing cycle falls in this month
+                $query->where(function($q) use ($monthStart, $monthEnd) {
+                    $q->whereBetween('cp.due_date', [$monthStart, $monthEnd]);
+                })
+                // Monthly billing customers
+                ->orWhere(function($q) use ($monthEnd) {
+                    $q->where('cp.billing_cycle_months', 1)
+                      ->where('cp.assign_date', '<=', $monthEnd);
+                });
+            })
+            ->groupBy('customers.c_id', 'customers.name', 'customers.customer_id', 'packages.monthly_price')
+            ->orderBy('customers.name')
+            ->get();
+    }
+
+    /**
+     * Calculate current month statistics
+     */
+    private function calculateCurrentMonthStats()
+    {
+        $currentMonth = date('Y-m');
+        $monthData = $this->calculateMonthData($currentMonth);
+        
+        return (object)[
+            'total_customers' => $monthData['total_customers'],
+            'total_amount' => $monthData['total_amount'],
+            'received_amount' => $monthData['received_amount'],
+            'due_amount' => $monthData['due_amount']
+        ];
+    }
+
+    /**
+     * Get available billing months
+     */
+    private function getAvailableBillingMonths()
+    {
+        $months = collect();
+        
+        // Add current and future months (up to 6 months ahead)
+        $currentDate = Carbon::now()->startOfMonth();
+        for ($i = 0; $i <= 6; $i++) {
+            $futureMonth = $currentDate->copy()->addMonths($i)->format('Y-m');
+            $months->push($futureMonth);
+        }
+
+        // Add past 3 months for catch-up billing
+        for ($i = 1; $i <= 3; $i++) {
+            $pastMonth = $currentDate->copy()->subMonths($i)->format('Y-m');
+            $months->push($pastMonth);
+        }
+
+        return $months->unique()->sortDesc()->values();
+    }
+
+    /**
+     * Generate invoices for a specific month
+     */
+    public function generateMonthInvoices(Request $request)
     {
         $request->validate([
-            'status' => 'required|in:pending,paid,overdue',
-            'due_date' => 'required|date',
+            'month' => 'required|date_format:Y-m'
         ]);
 
         try {
-            return response()->json([
+            $month = $request->month;
+            $monthDate = Carbon::createFromFormat('Y-m', $month);
+            $displayMonth = $monthDate->format('F Y');
+
+            // Get due customers for the month
+            $dueCustomers = $this->getDueCustomersForMonth($monthDate);
+
+            if ($dueCustomers->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No customers due for billing in ' . $displayMonth
+                ]);
+            }
+
+            $generatedCount = 0;
+            $errors = [];
+
+            foreach ($dueCustomers as $customer) {
+                try {
+                    // Check if invoice already exists
+                    $existingInvoice = Invoice::where('c_id', $customer->c_id)
+                        ->whereYear('issue_date', $monthDate->year)
+                        ->whereMonth('issue_date', $monthDate->month)
+                        ->first();
+
+                    if (!$existingInvoice) {
+                        // Create new invoice
+                        $this->createCustomerInvoice($customer, $monthDate);
+                        $generatedCount++;
+                    }
+                } catch (\Exception $e) {
+                    $errors[] = "Customer {$customer->name}: " . $e->getMessage();
+                    Log::error("Invoice generation failed for customer {$customer->c_id}: " . $e->getMessage());
+                }
+            }
+
+            $response = [
                 'success' => true,
-                'message' => 'Invoice updated successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update invoice: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Delete invoice
-     */
-    public function deleteInvoice($invoiceId)
-    {
-        try {
-            return response()->json([
-                'success' => true,
-                'message' => 'Invoice deleted successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete invoice: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Export invoices
-     */
-    public function exportInvoices(Request $request)
-    {
-        $request->validate([
-            'format' => 'required|in:csv,pdf',
-            'type' => 'required|in:all,paid,pending,overdue'
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Export functionality will be implemented soon'
-        ]);
-    }
-
-    /**
-     * Get invoice data for editing (AJAX)
-     */
-    public function getInvoiceData($invoiceId)
-    {
-        try {
-            $invoice = [
-                'id' => $invoiceId,
-                'customer_id' => 1,
-                'issue_date' => '2024-01-01',
-                'due_date' => '2024-01-05',
-                'status' => 'paid',
-                'regular_package_amount' => 800,
-                'special_packages' => [200],
-                'discount' => 0,
-                'notes' => 'Monthly internet bill'
+                'message' => "Generated $generatedCount invoices for $displayMonth",
+                'generated_count' => $generatedCount
             ];
 
-            return response()->json([
-                'success' => true,
-                'invoice' => $invoice
-            ]);
+            if (!empty($errors)) {
+                $response['warnings'] = $errors;
+            }
+
+            return response()->json($response);
 
         } catch (\Exception $e) {
+            Log::error('Generate month invoices error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Invoice not found'
-            ], 404);
+                'message' => 'Failed to generate invoices: ' . $e->getMessage()
+            ], 500);
         }
+    }
+
+    /**
+     * Create invoice for a customer
+     */
+    private function createCustomerInvoice($customer, Carbon $monthDate)
+    {
+        $serviceCharge = 50.00;
+        $vatPercentage = 5.00;
+
+        // Calculate package amount
+        $packageAmount = $customer->monthly_price;
+        $subtotal = $packageAmount + $serviceCharge;
+        $vatAmount = $subtotal * ($vatPercentage / 100);
+        $totalAmount = $subtotal + $vatAmount;
+
+        $invoice = Invoice::create([
+            'invoice_number' => $this->generateInvoiceNumber(),
+            'c_id' => $customer->c_id,
+            'issue_date' => $monthDate->format('Y-m-d'),
+            'previous_due' => 0.00,
+            'service_charge' => $serviceCharge,
+            'vat_percentage' => $vatPercentage,
+            'vat_amount' => $vatAmount,
+            'subtotal' => $subtotal,
+            'total_amount' => $totalAmount,
+            'received_amount' => 0,
+            'next_due' => $totalAmount,
+            'status' => 'unpaid',
+            'notes' => 'Auto-generated based on package assignment',
+            'created_by' => Auth::id()
+        ]);
+
+        return $invoice;
     }
 
     /**
@@ -504,131 +697,106 @@ class BillingController extends Controller
      */
     private function generateInvoiceNumber()
     {
-        $prefix = 'INV';
         $year = date('Y');
         $lastInvoice = Invoice::whereYear('created_at', $year)->latest()->first();
-        
-        if ($lastInvoice) {
-            $lastNumber = intval(substr($lastInvoice->invoice_number, -3));
-            $newNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
+
+        if ($lastInvoice && preg_match('/-(\d+)$/', $lastInvoice->invoice_number, $matches)) {
+            $lastNumber = intval($matches[1]);
+            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
         } else {
-            $newNumber = '001';
+            $newNumber = '0001';
         }
-        
-        return $prefix . '-' . $year . '-' . $newNumber;
+
+        return "INV-{$year}-{$newNumber}";
     }
-   public function profile($id)
+
+    /**
+     * Store manual monthly billing summary
+     */
+    public function storeMonthly(Request $request)
     {
-         echo "Debug: Profile method called with ID: " . $id . "<br>";
-        // Static customer data for frontend demonstration
-        $customers = [
-            1 => [
-                'id' => 1,
-                'name' => 'John Doe',
-                'email' => 'john.doe@example.com',
-                'phone' => '+8801712345678',
-                'address' => 'Gulshan, Dhaka',
-                'connection_address' => 'House 12, Road 5, Gulshan 1',
-                'join_date' => '2023-01-15',
-                'status' => 'Active',
-                'id_type' => 'nid',
-                'id_number' => '1990123456789',
-                'package' => 'Basic Speed',
-                'monthly_bill' => '৳550',
-                'billing_history' => [
-                    ['month' => 'January 2024', 'amount' => '৳550', 'status' => 'Paid', 'due_date' => '2024-01-05'],
-                    ['month' => 'December 2023', 'amount' => '৳550', 'status' => 'Paid', 'due_date' => '2023-12-05'],
-                    ['month' => 'November 2023', 'amount' => '৳550', 'status' => 'Paid', 'due_date' => '2023-11-05'],
-                ]
-            ],
-            2 => [
-                'id' => 2,
-                'name' => 'Alice Smith',
-                'email' => 'alice.smith@example.com',
-                'phone' => '+8801812345679',
-                'address' => 'Uttara, Dhaka',
-                'connection_address' => 'House 25, Sector 7, Uttara',
-                'join_date' => '2023-02-20',
-                'status' => 'Active',
-                'id_type' => 'passport',
-                'id_number' => 'AB1234567',
-                'package' => 'Fast Speed + Gaming Boost',
-                'monthly_bill' => '৳1,050',
-                'billing_history' => [
-                    ['month' => 'January 2024', 'amount' => '৳1,050', 'status' => 'Pending', 'due_date' => '2024-01-05'],
-                    ['month' => 'December 2023', 'amount' => '৳1,050', 'status' => 'Paid', 'due_date' => '2023-12-05'],
-                ]
-            ],
-            3 => [
-                'id' => 3,
-                'name' => 'Bob Johnson',
-                'email' => 'bob.johnson@example.com',
-                'phone' => '+8801912345680',
-                'address' => 'Banani, Dhaka',
-                'connection_address' => 'House 8, Road 11, Banani',
-                'join_date' => '2023-03-10',
-                'status' => 'Active',
-                'id_type' => 'driving_license',
-                'id_number' => 'DL789456123',
-                'package' => 'Super Speed + Streaming Plus',
-                'monthly_bill' => '৳1,400',
-                'billing_history' => [
-                    ['month' => 'January 2024', 'amount' => '৳1,900', 'status' => 'Overdue', 'due_date' => '2024-01-05'],
-                    ['month' => 'December 2023', 'amount' => '৳1,400', 'status' => 'Paid', 'due_date' => '2023-12-05'],
-                ]
-            ],
-            4 => [
-                'id' => 4,
-                'name' => 'Carol White',
-                'email' => 'carol.white@example.com',
-                'phone' => '+8801612345681',
-                'address' => 'Dhanmondi, Dhaka',
-                'connection_address' => 'House 15, Road 2, Dhanmondi',
-                'join_date' => '2023-04-05',
-                'status' => 'Active',
-                'id_type' => 'nid',
-                'id_number' => '1995123456789',
-                'package' => 'Fast Speed',
-                'monthly_bill' => '৳850',
-                'billing_history' => [
-                    ['month' => 'January 2024', 'amount' => '৳850', 'status' => 'Paid', 'due_date' => '2024-01-05'],
-                    ['month' => 'December 2023', 'amount' => '৳850', 'status' => 'Paid', 'due_date' => '2023-12-05'],
-                ]
-            ],
-            5 => [
-                'id' => 5,
-                'name' => 'David Green',
-                'email' => 'david.green@example.com',
-                'phone' => '+8801512345682',
-                'address' => 'Mirpur, Dhaka',
-                'connection_address' => 'House 30, Section 2, Mirpur',
-                'join_date' => '2023-05-12',
-                'status' => 'Active',
-                'id_type' => 'nid',
-                'id_number' => '1992123456789',
-                'package' => 'Super Speed + Family Pack',
-                'monthly_bill' => '৳1,550',
-                'billing_history' => [
-                    ['month' => 'January 2024', 'amount' => '৳1,550', 'status' => 'Paid', 'due_date' => '2024-01-05'],
-                    ['month' => 'December 2023', 'amount' => '৳1,550', 'status' => 'Paid', 'due_date' => '2023-12-05'],
-                ]
-            ]
-        ];
+        $request->validate([
+            'billing_month' => 'required|date_format:Y-m',
+            'total_customers' => 'required|integer|min:1',
+            'total_amount' => 'required|numeric|min:0',
+            'received_amount' => 'required|numeric|min:0',
+            'due_amount' => 'required|numeric|min:0',
+            'status' => 'required|in:All Paid,Pending,Overdue',
+            'notes' => 'nullable|string'
+        ]);
 
-        // Check if customer exists in our static data
-        if (!isset($customers[$id])) {
-            abort(404, 'Customer not found');
+        try {
+            // Check if already exists
+            $existing = MonthlyBillingSummary::where('billing_month', $request->billing_month)->first();
+            if ($existing) {
+                return redirect()->back()->with('error', 'Billing summary for this month already exists.');
+            }
+
+            MonthlyBillingSummary::create([
+                'billing_month' => $request->billing_month,
+                'display_month' => Carbon::createFromFormat('Y-m', $request->billing_month)->format('F Y'),
+                'total_customers' => $request->total_customers,
+                'total_amount' => $request->total_amount,
+                'received_amount' => $request->received_amount,
+                'due_amount' => $request->due_amount,
+                'status' => $request->status,
+                'notes' => $request->notes,
+                'is_locked' => false,
+                'created_by' => auth()->id()
+            ]);
+
+            return redirect()->route('admin.billing.billing-invoices')
+                ->with('success', 'Monthly billing summary created successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('Store monthly billing error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error creating billing summary: ' . $e->getMessage());
         }
-
-        $customer = $customers[$id];
-
-        // Ensure billing_history is always an array
-        if (!isset($customer['billing_history']) || !is_array($customer['billing_history'])) {
-            $customer['billing_history'] = [];
-        }
-
-        return view('admin.customers.profile', compact('customer'));
     }
 
+    /**
+     * Generate from invoices and packages
+     */
+    public function generateFromInvoices(Request $request)
+    {
+        $request->validate([
+            'billing_month' => 'required|date_format:Y-m'
+        ]);
 
+        try {
+            $month = $request->billing_month;
+            $monthData = $this->calculateMonthData($month);
+
+            // Check if already exists
+            $existing = MonthlyBillingSummary::where('billing_month', $month)->first();
+            if ($existing) {
+                return redirect()->back()->with('error', 'Billing summary for this month already exists.');
+            }
+
+            MonthlyBillingSummary::create([
+                'billing_month' => $month,
+                'display_month' => Carbon::createFromFormat('Y-m', $month)->format('F Y'),
+                'total_customers' => $monthData['total_customers'],
+                'total_amount' => $monthData['total_amount'],
+                'received_amount' => $monthData['received_amount'],
+                'due_amount' => $monthData['due_amount'],
+                'status' => $monthData['status'],
+                'notes' => 'Generated from customer packages and invoices',
+                'is_locked' => false,
+                'created_by' => auth()->id()
+            ]);
+
+            return redirect()->route('admin.billing.billing-invoices')
+                ->with('success', 'Monthly billing summary generated successfully from packages and invoices.');
+
+        } catch (\Exception $e) {
+            Log::error('Generate from invoices error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error generating billing summary: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Display monthly bills for a specific month
+     */
+   
 }

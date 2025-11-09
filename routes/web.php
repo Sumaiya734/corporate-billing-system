@@ -1,10 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use App\Models\Customer;
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Customer\CustomerController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BillingController;
+use App\Http\Controllers\Admin\PackageController;
+use App\Http\Controllers\Admin\CustomerPackageController;
+use App\Http\Controllers\Customer\CustomerController;
+use App\Http\Controllers\Admin\MonthlyBillController;
+use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\InvoiceController;
 
 // Public Routes
 Route::get('/', function () {
@@ -21,39 +28,93 @@ Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('admi
 Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login.submit');
 Route::post('/admin/logout', [AuthController::class, 'logout'])->name('admin.logout');
 
-// Admin Protected Routes
-Route::prefix('admin')->middleware(['auth'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+// Admin Protected Routes - SINGLE CLEAN GROUP
+Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(function () {
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/refresh', [DashboardController::class, 'refreshData'])->name('dashboard.refresh');
     
-    // Customer Management
-    Route::get('/customers', [CustomerController::class, 'index'])->name('admin.customers.index');
-    Route::get('/customers/create', [CustomerController::class, 'create'])->name('admin.customers.create');
-    Route::post('/customers', [CustomerController::class, 'store'])->name('admin.customers.store');
-    Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('admin.customers.show');
-    Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('admin.customers.edit');
-    Route::put('/customers/{customer}', [CustomerController::class, 'update'])->name('admin.customers.update');
-    Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('admin.customers.destroy');
-    
-    // Billing Routes - FIXED: Using consistent parameter names
-    // Provide the expected route name 'admin.billing.invoices' (views reference this)
-    Route::get('/billing/billing-invoices', [BillingController::class, 'billingInvoices'])->name('admin.billing.invoices');
-    Route::get('/billing/monthly-bills', [BillingController::class, 'monthlyBills'])->name('admin.billing.monthly-bills');
-    Route::get('/billing/all-invoices', [BillingController::class, 'allInvoices'])->name('admin.billing.all-invoices');
-    // Customer routes
-    
+    // Package Management
+    Route::get('/packages', [PackageController::class, 'index'])->name('packages.index');
+    Route::post('/packages', [PackageController::class, 'store'])->name('packages.store');
+    Route::get('/packages/{id}', [PackageController::class, 'show'])->name('packages.show');
+    Route::put('/packages/{id}', [PackageController::class, 'update'])->name('packages.update');
+    Route::delete('/packages/{id}', [PackageController::class, 'destroy'])->name('packages.destroy');
+    Route::post('/packages/{id}/toggle-status', [PackageController::class, 'toggleStatus'])->name('packages.toggle-status');
 
-    // Use {id} for all routes for consistency
-    Route::get('/billing/generate-bill/{id}', [BillingController::class, 'generateBill'])->name('admin.billing.generate-bill');
-    Route::get('/billing/view-bill/{id}', [BillingController::class, 'viewBill'])->name('admin.billing.view-bill');
-    Route::get('/billing/view-invoice/{id}', [BillingController::class, 'viewInvoice'])->name('admin.billing.view-invoice');
-    Route::get('/admin/customers/{id}', [CustomerController::class, 'profile'])->name('admin.customers.show');
-Route::get('/admin/billing/view-bill/{id}', [BillingController::class, 'viewBill'])->name('admin.billing.view-bill');
-    // Invoice Management Routes
-    Route::post('/billing/create-invoice', [BillingController::class, 'createInvoice'])->name('admin.billing.create-invoice');
-    Route::put('/billing/update-invoice/{invoiceId}', [BillingController::class, 'updateInvoice'])->name('admin.billing.update-invoice');
-    Route::delete('/billing/delete-invoice/{invoiceId}', [BillingController::class, 'deleteInvoice'])->name('admin.billing.delete-invoice');
-    Route::get('/billing/export-invoices', [BillingController::class, 'exportInvoices'])->name('admin.billing.export-invoices');
-    Route::get('/billing/get-invoice-data/{invoiceId}', [BillingController::class, 'getInvoiceData'])->name('admin.billing.get-invoice-data');
+    // Customer Management
+    Route::resource('customers', CustomerController::class)->parameters([
+        'customers' => 'customer'
+    ]);
+    Route::patch('/customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');
+    Route::get('/customers/{customer}/billing-history', [CustomerController::class, 'billingHistory'])->name('customers.billing-history');
+    Route::get('/customers/{customer}/profile', [CustomerController::class, 'profile'])->name('customers.profile');
+    
+    // Customer search route for package assignment
+    Route::get('/customers/search', [CustomerPackageController::class, 'searchCustomers'])->name('customers.search');
+
+    // Add export route
+    Route::get('/customers/export', [CustomerController::class, 'export'])->name('customers.export');
+
+    // Customer Packages Management
+    Route::get('/customer-to-packages', [CustomerPackageController::class, 'index'])->name('customer-to-packages.index');
+    Route::get('/customer-to-packages/assign', [CustomerPackageController::class, 'assign'])->name('customer-to-packages.assign');
+    Route::post('/customer-to-packages/store', [CustomerPackageController::class, 'store'])->name('customer-to-packages.store'); 
+    Route::get('/customer-to-packages/{id}/edit', [CustomerPackageController::class, 'edit'])->name('customer-to-packages.edit');
+    Route::put('/customer-to-packages/{id}', [CustomerPackageController::class, 'update'])->name('customer-to-packages.update');
+    Route::delete('/customer-to-packages/{id}', [CustomerPackageController::class, 'destroy'])->name('customer-to-packages.destroy');
+    Route::post('/customer-to-packages/{id}/renew', [CustomerPackageController::class, 'renew'])->name('customer-to-packages.renew');
+    
+    // Billing Routes - CLEANED UP AND FIXED
+    Route::prefix('billing')->name('billing.')->group(function () {
+        // Main billing pages
+        Route::get('/', [BillingController::class, 'billingInvoices'])->name('index');
+        Route::get('/billing-invoices', [BillingController::class, 'billingInvoices'])->name('billing-invoices');
+        Route::get('/all-invoices', [BillingController::class, 'allInvoices'])->name('all-invoices');
+        
+        // Monthly billing
+        Route::get('/monthly-bills/{month}', [MonthlyBillController::class, 'monthlyBills'])->name('monthly-bills');
+        Route::post('/monthly-bills/{month}', [MonthlyBillController::class, 'handleMonthlyBills'])->name('monthly-bills.handle');
+        Route::post('/generate-monthly-bills', [MonthlyBillController::class, 'generateMonthlyBills'])->name('generate-monthly-bills');
+        Route::get('/invoice/{invoiceId}/data', [MonthlyBillController::class, 'getInvoiceData'])->name('invoice.data');
+        Route::post('/send-reminder', [MonthlyBillController::class, 'sendReminder'])->name('send-reminder');
+        
+        // Payment Routes - FIXED
+        
+        Route::post('/record-payment/{invoice}', [PaymentController::class, 'recordPayment'])->name('record-payment');
+         Route::get('/invoices/{invoiceId}/payments', [PaymentController::class, 'getInvoicePayments'])->name('invoice-payments');
+        // Monthly billing summary
+        Route::get('/month-details/{month}', [BillingController::class, 'monthDetails'])->name('month-details');
+        
+        // Invoice generation
+        Route::post('/generate-month-invoices', [BillingController::class, 'generateMonthInvoices'])->name('generate-month-invoices');
+        Route::post('/generate-from-invoices', [BillingController::class, 'generateFromInvoices'])->name('generate-from-invoices');
+        
+        // Individual invoice management
+        Route::get('/generate-bill/{customerId}', [BillingController::class, 'generateBill'])->name('generate-bill');
+        Route::post('/process-bill/{customerId}', [BillingController::class, 'processBillGeneration'])->name('process-bill');
+        Route::get('/view-bill/{id}', [BillingController::class, 'viewBill'])->name('view-bill');
+        Route::get('/view-invoice/{invoiceId}', [BillingController::class, 'viewInvoice'])->name('view-invoice');
+        
+        // Invoice details for modal
+        Route::get('/invoice/{invoiceId}/details', [BillingController::class, 'getInvoiceDetails'])->name('invoice-details');
+        
+        // Monthly billing summary management
+        Route::post('/store-monthly', [BillingController::class, 'storeMonthly'])->name('store-monthly');
+        Route::get('/edit-monthly/{id}', [BillingController::class, 'editMonthly'])->name('edit-monthly');
+        Route::put('/update-monthly/{id}', [BillingController::class, 'updateMonthly'])->name('update-monthly');
+        Route::delete('/delete-monthly/{id}', [BillingController::class, 'deleteMonthly'])->name('delete-monthly');
+        Route::post('/toggle-lock/{id}', [BillingController::class, 'toggleLock'])->name('toggle-lock');
+        
+        // Customer billing details
+        Route::get('/customer-billing/{c_id}', [BillingController::class, 'customerBillingDetails'])->name('customer-billing');
+        
+        // Additional invoice routes
+        Route::post('/create-invoice', [BillingController::class, 'createInvoice'])->name('create-invoice');
+        Route::put('/update-invoice/{invoiceId}', [BillingController::class, 'updateInvoice'])->name('update-invoice');
+        Route::delete('/delete-invoice/{invoiceId}', [BillingController::class, 'deleteInvoice'])->name('delete-invoice');
+        Route::get('/get-invoice-data/{invoiceId}', [BillingController::class, 'getInvoiceData'])->name('get-invoice-data');
+    });
 });
 
 // Customer Protected Routes
@@ -138,17 +199,67 @@ Route::get('/debug/check-customer/{id}', function ($id) {
     $allCustomers = \App\Models\Customer::pluck('id')->toArray();
     echo empty($allCustomers) ? "No customers found" : implode(', ', $allCustomers);
 });
+
 Route::get('/debug/routes', function () {
     echo "<h3>Billing Routes:</h3>";
-    $routes = [
-        'admin.billing.monthly-bills' => route('admin.billing.monthly-bills'),
-        'admin.billing.all-invoices' => route('admin.billing.all-invoices'),
-        'admin.billing.generate-bill' => route('admin.billing.generate-bill', ['id' => 1]),
-        'admin.billing.view-bill' => route('admin.billing.view-bill', ['id' => 1]),
-        'admin.billing.view-invoice' => route('admin.billing.view-invoice', ['id' => 1]),
+    $routeNames = [
+        'admin.billing.index',
+        'admin.billing.billing-invoices',
+        'admin.billing.all-invoices',
+        'admin.billing.monthly-bills',
+        'admin.billing.generate-monthly-bills',
+        'admin.billing.add-payment', // may not exist; will be reported as MISSING
+        'admin.billing.send-reminder',
+        'admin.billing.generate-from-invoices',
+        'admin.billing.generate-bill',
+        'admin.billing.view-bill',
+        'admin.billing.store-monthly',
     ];
-    
-    foreach ($routes as $name => $url) {
+
+    foreach ($routeNames as $name) {
+        try {
+            $url = \Illuminate\Support\Facades\Route::has($name) ? route($name, collect(request()->route()?->parameters())->toArray() ?: []) : 'MISSING';
+        } catch (\Exception $ex) {
+            // If generating the route fails for any reason, mark as missing
+            $url = 'MISSING';
+        }
         echo "<strong>{$name}:</strong> {$url}<br>";
+    }
+});
+
+// Debug route for customer packages
+Route::get('/debug/customer-to-packages-routes', function() {
+    echo "<h3>Customer Packages Routes:</h3>";
+    try {
+        echo "admin.customer-to-packages.index: " . route('admin.customer-to-packages.index') . "<br>";
+        echo "✅ Route exists!<br>";
+    } catch (Exception $e) {
+        echo "❌ admin.customer-to-packages.index: " . $e->getMessage() . "<br>";
+    }
+    
+    try {
+        echo "admin.customer-to-packages.assign: " . route('admin.customer-to-packages.assign') . "<br>";
+        echo "✅ Route exists!<br>";
+    } catch (Exception $e) {
+        echo "❌ admin.customer-to-packages.assign: " . $e->getMessage() . "<br>";
+    }
+});
+
+// Debug route to check payment routes
+Route::get('/debug/payment-routes', function() {
+    echo "<h3>Payment Routes Debug:</h3>";
+    
+    try {
+        $url = route('admin.billing.add-payment');
+        echo "✅ admin.billing.add-payment: " . $url . "<br>";
+    } catch (Exception $e) {
+        echo "❌ admin.billing.add-payment: " . $e->getMessage() . "<br>";
+    }
+    
+    try {
+        $url = route('admin.billing.invoice-payments', ['invoiceId' => 1]);
+        echo "✅ admin.billing.invoice-payments: " . $url . "<br>";
+    } catch (Exception $e) {
+        echo "❌ admin.billing.invoice-payments: " . $e->getMessage() . "<br>";
     }
 });

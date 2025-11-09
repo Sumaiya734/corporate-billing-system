@@ -6,20 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up()
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
     {
         Schema::create('packages', function (Blueprint $table) {
-            $table->id();
-            $table->string('name', 191);
-            $table->enum('type', ['regular', 'special']);
-            $table->decimal('price', 10, 2);
+            $table->increments('p_id');
+            $table->string('name', 120);
+            $table->enum('package_type', ['regular', 'special'])->default('regular');
             $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->decimal('monthly_price', 12)->nullable();
             $table->timestamps();
         });
     }
 
-    public function down()
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
     {
         Schema::dropIfExists('packages');
     }

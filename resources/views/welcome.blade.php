@@ -183,33 +183,7 @@
         </div>
     </section>
 
-    <!-- Login Sections -->
-    <section class="py-5 bg-light">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6 mb-4">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <i class="fas fa-user fa-3x text-primary mb-3"></i>
-                            <h4>Customer Login</h4>
-                            <p class="text-muted">Access your account to view bills and make payments</p>
-                            <a href="{{ route('customer.login') }}" class="btn btn-primary">Customer Login</a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 mb-4">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <i class="fas fa-cog fa-3x text-success mb-3"></i>
-                            <h4>Admin Login</h4>
-                            <p class="text-muted">Administrator access for system management</p>
-                            <a href="{{ route('admin.login') }}" class="btn btn-success">Admin Login</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+    
 
     <!-- Footer -->
     <footer class="bg-dark text-white py-4">

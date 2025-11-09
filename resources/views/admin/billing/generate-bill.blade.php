@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Generate Bill - ' . ($customer->user->name ?? 'Customer'))
+@section('title', 'Generate Bill - ' . ($customer->name ?? 'Customer'))
 
 @section('content')
 <div class="container-fluid p-4">
@@ -8,9 +8,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="h3 mb-0 page-title">
-                <i class="fas fa-file-invoice-dollar me-2 text-primary"></i>Generate Bill - {{ $customer->user->name ?? 'Customer' }}
+                <i class="fas fa-file-invoice-dollar me-2 text-primary"></i>Generate Bill - {{ $customer->name ?? 'Customer' }}
             </h2>
-            <p class="text-muted mb-0">Customer ID: {{ $customer->id }} | Showing all monthly bills</p>
+            <p class="text-muted mb-0">Customer ID: {{ $customer->c_id }} | Phone: {{ $customer->phone ?? 'N/A' }}</p>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-outline-primary" id="printBtn">
@@ -37,17 +37,17 @@
                 <div class="col-md-6">
                     <div class="d-flex align-items-center mb-3">
                         <div class="customer-avatar me-3">
-                            {{ strtoupper(substr($customer->user->name ?? 'C', 0, 1)) }}
+                            {{ strtoupper(substr($customer->name ?? 'C', 0, 1)) }}
                         </div>
                         <div>
-                            <h4 class="mb-1">{{ $customer->user->name ?? 'N/A' }}</h4>
-                            <p class="text-muted mb-0">Customer ID: {{ $customer->id }}</p>
+                            <h4 class="mb-1">{{ $customer->name ?? 'N/A' }}</h4>
+                            <p class="text-muted mb-0">Customer ID: {{ $customer->customer_id ?? $customer->c_id }}</p>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-6">
                             <small class="text-muted">Email</small>
-                            <p class="mb-2">{{ $customer->user->email ?? 'N/A' }}</p>
+                            <p class="mb-2">{{ $customer->email ?? 'N/A' }}</p>
                         </div>
                         <div class="col-6">
                             <small class="text-muted">Phone</small>
@@ -60,23 +60,41 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <h6 class="mb-3">Current Subscriptions</h6>
-                    @if($customer->subscriptions && $customer->subscriptions->count() > 0)
-                        @foreach($customer->subscriptions as $subscription)
-                            @if(isset($subscription->package))
-                            <span class="badge bg-primary me-2 mb-2">
-                                {{ $subscription->package->name }} - ৳{{ $subscription->monthly_price }}
+                    <h6 class="mb-3">Current Packages</h6>
+                    @php
+                        $activePackages = DB::table('customer_to_packages as cp')
+                            ->join('packages as p', 'cp.p_id', '=', 'p.p_id')
+                            ->where('cp.c_id', $customer->c_id)
+                            ->where('cp.status', 'active')
+                            ->select('p.name', 'p.package_type', 'cp.package_price', 'cp.billing_cycle_months')
+                            ->get();
+                        
+                        $totalMonthly = $activePackages->sum('package_price');
+                    @endphp
+                    
+                    @if($activePackages->count() > 0)
+                        @foreach($activePackages as $package)
+                            <span class="badge bg-{{ $package->package_type == 'regular' ? 'primary' : 'warning' }} me-2 mb-2">
+                                {{ $package->name }} - ৳{{ number_format($package->package_price, 2) }}
+                                <small>({{ $package->billing_cycle_months }} month cycle)</small>
                             </span>
-                            @endif
                         @endforeach
                     @else
-                        <p class="text-muted">No active subscriptions</p>
+                        <p class="text-muted">No active packages</p>
                     @endif
                     
                     <div class="mt-3">
                         <h6 class="mb-2">Billing Summary</h6>
-                        <p class="mb-1">Total Invoices: {{ $customer->invoices ? $customer->invoices->count() : 0 }}</p>
-                        <p class="mb-0">Pending Amount: ৳{{ $customer->invoices ? $customer->invoices->where('status', 'pending')->sum('total_amount') : 0 }}</p>
+                        @php
+                            $customerInvoices = DB::table('invoices')
+                                ->where('customer_id', $customer->c_id)
+                                ->get();
+                            
+                            $totalInvoices = $customerInvoices->count();
+                            $pendingAmount = $customerInvoices->where('status', 'unpaid')->sum('total_amount') - $customerInvoices->where('status', 'unpaid')->sum('received_amount');
+                        @endphp
+                        <p class="mb-1">Total Invoices: {{ $totalInvoices }}</p>
+                        <p class="mb-0">Pending Amount: ৳{{ number_format($pendingAmount, 2) }}</p>
                     </div>
                 </div>
             </div>
@@ -87,7 +105,7 @@
     <div class="card">
         <div class="card-header">
             <h5 class="card-title mb-0">
-                <i class="fas fa-calculator me-2"></i>Monthly Bills for {{ $customer->user->name ?? 'Customer' }}
+                <i class="fas fa-calculator me-2"></i>Billing History & Invoice Generation for {{ $customer->name ?? 'Customer' }}
             </h5>
         </div>
         <div class="card-body">
@@ -100,7 +118,7 @@
                                 <input type="checkbox" id="selectAll">
                             </th>
                             <th width="120">Month</th>
-                            <th>Services</th>
+                            <th>Services/Packages</th>
                             <th width="120" class="text-end">Bill Amount</th>
                             <th width="120" class="text-end">Previous Due</th>
                             <th width="120" class="text-end">Total</th>
@@ -110,235 +128,260 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Row 1: January 2024 -->
-                        <tr>
-                            <td class="text-center">
-                                <input type="checkbox" class="row-checkbox" data-amount="800" data-month="2024-01" data-invoice="INV-{{ $customer->id }}-2024-001">
-                            </td>
-                            <td>
-                                <div class="month-info">
-                                    <strong class="d-block">January 2024</strong>
-                                    <small class="text-muted d-block">Due: 05 Jan</small>
-                                    <small class="text-muted">INV-{{ $customer->id }}-2024-001</small>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="service-info">
-                                    <strong>Fast Speed Internet</strong>
-                                    <small class="text-muted d-block">Regular Package - 20 Mbps</small>
-                                </div>
-                            </td>
-                            <td class="text-end">
-                                <span class="bill-amount">৳800.00</span>
-                            </td>
-                            <td class="text-end">
-                                <span class="previous-due">৳0.00</span>
-                            </td>
-                            <td class="text-end">
-                                <strong class="total-amount">৳800.00</strong>
-                            </td>
-                            <td class="text-end">
-                                <input type="number" class="form-control form-control-sm received-amount" value="800.00" min="0" step="0.01">
-                            </td>
-                            <td class="text-end">
-                                <span class="next-due text-success">৳0.00</span>
-                            </td>
-                            <td>
-    <span class="badge" style="background-color: #06d6a0; color: white; padding: 6px 12px; border-radius: 20px;">Paid</span>
-</td>
+                        @php
+                            // Get customer's invoices with package information
+                            $customerInvoices = DB::table('invoices as i')
+                                ->leftJoin('customer_to_packages as cp', function($join) {
+                                    $join->on('i.customer_id', '=', 'cp.c_id')
+                                         ->on(DB::raw("DATE_FORMAT(i.issue_date, '%Y-%m')"), '=', DB::raw("DATE_FORMAT(cp.assign_date, '%Y-%m')"));
+                                })
+                                ->leftJoin('packages as p', 'cp.p_id', '=', 'p.p_id')
+                                ->where('i.customer_id', $customer->c_id)
+                                ->select(
+                                    'i.*',
+                                    'p.name as package_name',
+                                    'p.package_type',
+                                    'cp.package_price',
+                                    DB::raw("GROUP_CONCAT(p.name SEPARATOR ', ') as all_packages")
+                                )
+                                ->groupBy('i.id')
+                                ->orderBy('i.issue_date', 'desc')
+                                ->get();
+
+                            // Get due months based on billing cycles for future billing
+                            $dueMonths = DB::table('customer_to_packages as cp')
+                                ->select(
+                                    DB::raw("DATE_FORMAT(
+                                        DATE_ADD(
+                                            cp.assign_date, 
+                                            INTERVAL (FLOOR(DATEDIFF(DATE_FORMAT(NOW(), '%Y-%m-01'), cp.assign_date) / 30 / cp.billing_cycle_months) * cp.billing_cycle_months) MONTH
+                                        ), 
+                                        '%Y-%m'
+                                    ) as due_month"),
+                                    DB::raw('SUM(cp.package_price) as total_amount'),
+                                    DB::raw("GROUP_CONCAT(p.name SEPARATOR ', ') as packages")
+                                )
+                                ->join('packages as p', 'cp.p_id', '=', 'p.p_id')
+                                ->where('cp.c_id', $customer->c_id)
+                                ->where('cp.status', 'active')
+                                ->whereRaw('cp.assign_date <= NOW()')
+                                ->groupBy('due_month')
+                                ->orderBy('due_month', 'desc')
+                                ->get();
+
+                            $allBillingData = collect();
+                            
+                            // Combine existing invoices and future due months
+                            foreach ($dueMonths as $dueMonth) {
+                                $existingInvoice = $customerInvoices->first(function($invoice) use ($dueMonth) {
+                                    return date('Y-m', strtotime($invoice->issue_date)) === $dueMonth->due_month;
+                                });
                                 
-                                <td></td>
-                        </tr>
-                        
-                        <!-- Row 2: February 2024 -->
+                                if ($existingInvoice) {
+                                    $allBillingData->push($existingInvoice);
+                                } else {
+                                    $allBillingData->push((object)[
+                                        'id' => null,
+                                        'invoice_number' => 'PENDING-' . $dueMonth->due_month,
+                                        'issue_date' => $dueMonth->due_month . '-01',
+                                        'due_date' => date('Y-m-d', strtotime($dueMonth->due_month . '-01 +10 days')),
+                                        'billing_month' => date('F Y', strtotime($dueMonth->due_month . '-01')),
+                                        'subtotal' => $dueMonth->total_amount,
+                                        'service_charge' => 50.00,
+                                        'vat_amount' => $dueMonth->total_amount * 0.07,
+                                        'total_amount' => $dueMonth->total_amount + 50 + ($dueMonth->total_amount * 0.07),
+                                        'received_amount' => 0,
+                                        'next_due' => $dueMonth->total_amount + 50 + ($dueMonth->total_amount * 0.07),
+                                        'status' => 'pending',
+                                        'package_name' => $dueMonth->packages,
+                                        'all_packages' => $dueMonth->packages
+                                    ]);
+                                }
+                            }
+
+                            // Add any existing invoices that might not be in due months (for completeness)
+                            foreach ($customerInvoices as $invoice) {
+                                $monthKey = date('Y-m', strtotime($invoice->issue_date));
+                                if (!$allBillingData->contains(function($item) use ($monthKey) {
+                                    return date('Y-m', strtotime($item->issue_date)) === $monthKey;
+                                })) {
+                                    $allBillingData->push($invoice);
+                                }
+                            }
+
+                            $allBillingData = $allBillingData->sortByDesc('issue_date');
+                        @endphp
+
+                        @foreach($allBillingData as $invoice)
+                        @php
+                            $isPending = $invoice->id === null;
+                            $isOverdue = !$isPending && $invoice->status === 'unpaid' && strtotime($invoice->due_date) < time();
+                            $isPaid = !$isPending && ($invoice->status === 'paid' || $invoice->received_amount >= $invoice->total_amount);
+                            $isPartial = !$isPending && !$isPaid && $invoice->received_amount > 0;
+                            
+                            $previousDue = 0; // This would need to be calculated based on previous invoices
+                            $totalAmount = $invoice->total_amount;
+                            $nextDue = $totalAmount - $invoice->received_amount;
+                            
+                            $statusClass = 'badge-pending';
+                            $statusText = 'Pending';
+                            
+                            if ($isPaid) {
+                                $statusClass = 'badge-paid';
+                                $statusText = 'Paid';
+                            } elseif ($isOverdue) {
+                                $statusClass = 'badge-overdue';
+                                $statusText = 'Overdue';
+                            } elseif ($isPartial) {
+                                $statusClass = 'badge-pending';
+                                $statusText = 'Partial';
+                            }
+                        @endphp
                         <tr>
                             <td class="text-center">
-                                <input type="checkbox" class="row-checkbox" data-amount="1000" data-month="2024-02" data-invoice="INV-{{ $customer->id }}-2024-002">
+                                <input type="checkbox" class="row-checkbox" 
+                                       data-amount="{{ $totalAmount }}" 
+                                       data-month="{{ date('Y-m', strtotime($invoice->issue_date)) }}" 
+                                       data-invoice="{{ $invoice->invoice_number }}"
+                                       {{ $isPaid ? 'disabled' : '' }}>
                             </td>
                             <td>
                                 <div class="month-info">
-                                    <strong class="d-block">February 2024</strong>
-                                    <small class="text-muted d-block">Due: 05 Feb</small>
-                                    <small class="text-muted">INV-{{ $customer->id }}-2024-002</small>
+                                    <strong class="d-block">{{ date('F Y', strtotime($invoice->issue_date)) }}</strong>
+                                    <small class="text-muted d-block {{ $isOverdue ? 'text-danger' : '' }}">
+                                        Due: {{ date('d M', strtotime($invoice->due_date)) }}
+                                    </small>
+                                    <small class="text-muted">{{ $invoice->invoice_number }}</small>
                                 </div>
                             </td>
                             <td>
                                 <div class="service-info">
-                                    <strong>Fast Speed + Gaming Boost</strong>
-                                    <small class="text-muted d-block">Regular + Special Package</small>
+                                    <strong>{{ $invoice->all_packages ?? $invoice->package_name ?? 'Package' }}</strong>
+                                    <small class="text-muted d-block">
+                                        @if($invoice->package_type)
+                                            {{ ucfirst($invoice->package_type) }} Package
+                                        @else
+                                            Multiple Packages
+                                        @endif
+                                    </small>
                                 </div>
                             </td>
                             <td class="text-end">
-                                <span class="bill-amount">৳1,000.00</span>
+                                <span class="bill-amount">৳{{ number_format($totalAmount, 2) }}</span>
                             </td>
                             <td class="text-end">
-                                <span class="previous-due">৳0.00</span>
+                                <span class="previous-due">৳{{ number_format($previousDue, 2) }}</span>
                             </td>
                             <td class="text-end">
-                                <strong class="total-amount">৳1,000.00</strong>
+                                <strong class="total-amount">৳{{ number_format($totalAmount + $previousDue, 2) }}</strong>
                             </td>
                             <td class="text-end">
-                                <input type="number" class="form-control form-control-sm received-amount" value="500.00" min="0" step="0.01">
+                                @if($isPending)
+                                    <span class="text-muted">Not Generated</span>
+                                @else
+                                    <input type="number" class="form-control form-control-sm received-amount" 
+                                           value="{{ number_format($invoice->received_amount, 2) }}" 
+                                           min="0" max="{{ $totalAmount + $previousDue }}" 
+                                           step="0.01"
+                                           data-invoice-id="{{ $invoice->id }}">
+                                @endif
                             </td>
                             <td class="text-end">
-                                <span class="next-due text-warning">৳500.00</span>
+                                <span class="next-due 
+                                    @if($nextDue <= 0) text-success
+                                    @elseif($nextDue > 0 && $nextDue <= ($totalAmount * 0.5)) text-warning
+                                    @else text-danger
+                                    @endif">
+                                    ৳{{ number_format($nextDue, 2) }}
+                                </span>
                             </td>
-                             <td>
-    <span class="badge" style="background-color: #ffd166; color: black; padding: 6px 12px; border-radius: 20px;">Pending</span>
-</td>
-                               
-                               
-                        </tr>
-                        
-                        <!-- Row 3: March 2024 -->
-                        <tr>
                             <td class="text-center">
-                                <input type="checkbox" class="row-checkbox" data-amount="1150" data-month="2024-03" data-invoice="INV-{{ $customer->id }}-2024-003">
+                                <span class="badge {{ $statusClass }}">{{ $statusText }}</span>
                             </td>
-                            <td>
-                                <div class="month-info">
-                                    <strong class="d-block">March 2024</strong>
-                                    <small class="text-muted d-block text-danger">Due: 05 Mar</small>
-                                    <small class="text-muted">INV-{{ $customer->id }}-2024-003</small>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="service-info">
-                                    <strong>Fast Speed + Gaming + Streaming</strong>
-                                    <small class="text-muted d-block">Regular + Special Packages</small>
-                                </div>
-                            </td>
-                            <td class="text-end">
-                                <span class="bill-amount">৳1,150.00</span>
-                            </td>
-                            <td class="text-end">
-                                <span class="previous-due">৳500.00</span>
-                            </td>
-                            <td class="text-end">
-                                <strong class="total-amount">৳1,650.00</strong>
-                            </td>
-                            <td class="text-end">
-                                <input type="number" class="form-control form-control-sm received-amount" value="0.00" min="0" step="0.01">
-                            </td>
-                            <td class="text-end">
-                                <span class="next-due text-danger">৳1,650.00</span>
-                            </td>
-                             <td>
-    <span class="badge" style="background-color: #ef476f; color: white; padding: 6px 12px; border-radius: 20px;">Overdue</span>
-</td>
-                               
-                               
                         </tr>
-                        
-                        <!-- Row 4: April 2024 -->
+                        @endforeach
+
+                        @if($allBillingData->count() === 0)
                         <tr>
-                            <td class="text-center">
-                                <input type="checkbox" class="row-checkbox" data-amount="1150" data-month="2024-04" data-invoice="INV-{{ $customer->id }}-2024-004">
+                            <td colspan="9" class="text-center py-4">
+                                <i class="fas fa-file-invoice-dollar fa-2x text-muted mb-3"></i>
+                                <p class="text-muted mb-0">No billing data found for this customer.</p>
+                                <small class="text-muted">Assign packages to generate bills.</small>
                             </td>
-                            <td>
-                                <div class="month-info">
-                                    <strong class="d-block">April 2024</strong>
-                                    <small class="text-muted d-block">Due: 05 Apr</small>
-                                    <small class="text-muted">INV-{{ $customer->id }}-2024-004</small>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="service-info">
-                                    <strong>Fast Speed + Gaming + Streaming</strong>
-                                    <small class="text-muted d-block">Regular + Special Packages</small>
-                                </div>
-                            </td>
-                            <td class="text-end">
-                                <span class="bill-amount">৳1,150.00</span>
-                            </td>
-                            <td class="text-end">
-                                <span class="previous-due">৳1,650.00</span>
-                            </td>
-                            <td class="text-end">
-                                <strong class="total-amount">৳2,800.00</strong>
-                            </td>
-                            <td class="text-end">
-                                <input type="number" class="form-control form-control-sm received-amount" value="0.00" min="0" step="0.01">
-                            </td>
-                            <td class="text-end">
-                                <span class="next-due text-danger">৳2,800.00</span>
-                            </td>
-                             <td>
-    <span class="badge" style="background-color: #ffd166; color: black; padding: 6px 12px; border-radius: 20px;">Pending</span>
-</td>
-                               
-                                <td></td>
                         </tr>
-                        
-                        <!-- Row 5: May 2024 -->
-                        <tr>
-                            <td class="text-center">
-                                <input type="checkbox" class="row-checkbox" data-amount="1150" data-month="2024-05" data-invoice="INV-{{ $customer->id }}-2024-005">
-                            </td>
-                            <td>
-                                <div class="month-info">
-                                    <strong class="d-block">May 2024</strong>
-                                    <small class="text-muted d-block">Due: 05 May</small>
-                                    <small class="text-muted">INV-{{ $customer->id }}-2024-005</small>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="service-info">
-                                    <strong>Fast Speed + Gaming + Streaming</strong>
-                                    <small class="text-muted d-block">Regular + Special Packages</small>
-                                </div>
-                            </td>
-                            <td class="text-end">
-                                <span class="bill-amount">৳1,150.00</span>
-                            </td>
-                            <td class="text-end">
-                                <span class="previous-due">৳2,800.00</span>
-                            </td>
-                            <td class="text-end">
-                                <strong class="total-amount">৳3,950.00</strong>
-                            </td>
-                            <td class="text-end">
-                                <input type="number" class="form-control form-control-sm received-amount" value="0.00" min="0" step="0.01">
-                            </td>
-                            <td class="text-end">
-                                <span class="next-due text-danger">৳3,950.00</span>
-                            </td>
-                           <td>
-    <span class="badge" style="background-color: #ffd166; color: black; padding: 6px 12px; border-radius: 20px;">Pending</span>
-</td>
-                               
-                                
-                        </tr>
+                        @endif
                     </tbody>
                     <tfoot class="table-light">
+                        @php
+                            $totalBillAmount = $allBillingData->sum('total_amount');
+                            $totalReceived = $allBillingData->sum('received_amount');
+                            $totalNextDue = $totalBillAmount - $totalReceived;
+                        @endphp
                         <tr>
                             <td colspan="3" class="text-end"><strong>Grand Total:</strong></td>
-                            <td class="text-end"><strong id="totalBillAmount">৳5,250.00</strong></td>
-                            <td class="text-end"><strong id="totalPreviousDue">৳4,950.00</strong></td>
-                            <td class="text-end"><strong id="totalAmount">৳10,200.00</strong></td>
-                            <td class="text-end"><strong id="totalReceived">৳1,300.00</strong></td>
-                            <td class="text-end"><strong id="totalNextDue" class="text-danger">৳8,900.00</strong></td>
+                            <td class="text-end"><strong id="totalBillAmount">৳{{ number_format($totalBillAmount, 2) }}</strong></td>
+                            <td class="text-end"><strong id="totalPreviousDue">৳0.00</strong></td>
+                            <td class="text-end"><strong id="totalAmount">৳{{ number_format($totalBillAmount, 2) }}</strong></td>
+                            <td class="text-end"><strong id="totalReceived">৳{{ number_format($totalReceived, 2) }}</strong></td>
+                            <td class="text-end"><strong id="totalNextDue" class="{{ $totalNextDue > 0 ? 'text-danger' : 'text-success' }}">৳{{ number_format($totalNextDue, 2) }}</strong></td>
                             <td class="text-center"></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="d-flex justify-content-between align-items-center mt-4">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="sendNotification">
-                    <label class="form-check-label" for="sendNotification">
-                        Send notification to customer
-                    </label>
+            <!-- New Invoice Generation Form -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-plus-circle me-2 text-success"></i>Generate New Invoice
+                    </h6>
                 </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('admin.billing.all-invoices') }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left me-1"></i>Back to Invoices
-                    </a>
-                    <button type="button" class="btn btn-primary" onclick="generateFinalBill()">
-                        <i class="fas fa-file-invoice me-1"></i>Generate Selected Bills
-                    </button>
+                <div class="card-body">
+                    <form action="{{ route('admin.billing.process-bill-generation', $customer->c_id) }}" method="POST">
+                        @csrf
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label class="form-label">Billing Month *</label>
+                                    <input type="month" name="billing_month" class="form-control" required 
+                                           value="{{ date('Y-m') }}"
+                                           min="{{ date('Y-m', strtotime('-1 year')) }}" 
+                                           max="{{ date('Y-m', strtotime('+1 year')) }}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label class="form-label">Due Date *</label>
+                                    <input type="date" name="due_date" class="form-control" required 
+                                           value="{{ date('Y-m-d', strtotime('+10 days')) }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Notes</label>
+                                    <textarea name="notes" class="form-control" rows="1" placeholder="Optional notes for this invoice"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="send_notification" id="sendNotification" checked>
+                                <label class="form-check-label" for="sendNotification">
+                                    Send notification to customer
+                                </label>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                                    <i class="fas fa-arrow-left me-1"></i>Back
+                                </button>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-file-invoice me-1"></i>Generate New Invoice
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -430,21 +473,9 @@
         vertical-align: middle;
     }
 
-    .total-summary {
-        background: #f8f9fa;
-        padding: 10px 15px;
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-    }
-
-    .row-checkbox {
-        transform: scale(0.8);
-        cursor: pointer;
-    }
-
-    #selectAll {
-        transform: scale(0.8);
-        cursor: pointer;
+    .row-checkbox:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 
     /* Status colors for next due */
@@ -468,20 +499,18 @@
     // Initialize variables
     let selectedRows = new Set();
 
-    // Select All Checkbox - COMPLETELY FIXED
+    // Select All Checkbox
     document.getElementById('selectAll').addEventListener('change', function() {
-        const checkboxes = document.querySelectorAll('.row-checkbox');
+        const checkboxes = document.querySelectorAll('.row-checkbox:not(:disabled)');
         const allRows = document.querySelectorAll('tbody tr');
         
         checkboxes.forEach(checkbox => {
             checkbox.checked = this.checked;
             if (this.checked) {
                 selectedRows.add(checkbox);
-                // Add selected class to row
                 checkbox.closest('tr').classList.add('selected');
             } else {
                 selectedRows.delete(checkbox);
-                // Remove selected class from row
                 checkbox.closest('tr').classList.remove('selected');
             }
         });
@@ -490,9 +519,11 @@
         updateActionButtons();
     });
 
-    // Individual Row Checkbox - COMPLETELY FIXED
+    // Individual Row Checkbox
     document.querySelectorAll('.row-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
+            if (this.disabled) return;
+            
             const row = this.closest('tr');
             
             if (this.checked) {
@@ -503,7 +534,6 @@
                 row.classList.remove('selected');
             }
             
-            // Update "Select All" checkbox state
             updateSelectAllCheckbox();
             updateFooterTotals();
             updateActionButtons();
@@ -512,7 +542,7 @@
 
     // Update "Select All" checkbox based on individual checkboxes
     function updateSelectAllCheckbox() {
-        const checkboxes = document.querySelectorAll('.row-checkbox');
+        const checkboxes = document.querySelectorAll('.row-checkbox:not(:disabled)');
         const selectAll = document.getElementById('selectAll');
         
         if (checkboxes.length === 0) {
@@ -567,7 +597,7 @@
         
         // Update text color based on next due
         const nextDueElement = row.querySelector('.next-due');
-        nextDueElement.classList.remove('text-success', 'text-warning', 'text-danger');
+        nextDueElement.className = 'next-due';
         
         if (nextDue === 0) {
             nextDueElement.classList.add('text-success');
@@ -593,10 +623,10 @@
             statusBadge.textContent = 'Paid';
             statusBadge.classList.add('badge-paid');
         } else if (receivedAmount > 0) {
-            statusBadge.textContent = 'Pending';
+            statusBadge.textContent = 'Partial';
             statusBadge.classList.add('badge-pending');
         } else {
-            // Check if due date has passed (simplified logic)
+            // Check if due date has passed
             const dueText = row.querySelector('.month-info .text-danger');
             if (dueText) {
                 statusBadge.textContent = 'Overdue';
@@ -620,7 +650,12 @@
             totalBillAmount += parseFloat(row.querySelector('.bill-amount').textContent.replace('৳', '').replace(',', ''));
             totalPreviousDue += parseFloat(row.querySelector('.previous-due').textContent.replace('৳', '').replace(',', ''));
             totalAmount += parseFloat(row.querySelector('.total-amount').textContent.replace('৳', '').replace(',', ''));
-            totalReceived += parseFloat(row.querySelector('.received-amount').value) || 0;
+            
+            const receivedInput = row.querySelector('.received-amount');
+            if (receivedInput) {
+                totalReceived += parseFloat(receivedInput.value) || 0;
+            }
+            
             totalNextDue += parseFloat(row.querySelector('.next-due').textContent.replace('৳', '').replace(',', ''));
         });
 
@@ -628,7 +663,11 @@
         document.getElementById('totalPreviousDue').textContent = `৳${totalPreviousDue.toFixed(2)}`;
         document.getElementById('totalAmount').textContent = `৳${totalAmount.toFixed(2)}`;
         document.getElementById('totalReceived').textContent = `৳${totalReceived.toFixed(2)}`;
-        document.getElementById('totalNextDue').textContent = `৳${totalNextDue.toFixed(2)}`;
+        
+        const totalNextDueElement = document.getElementById('totalNextDue');
+        totalNextDueElement.textContent = `৳${totalNextDue.toFixed(2)}`;
+        totalNextDueElement.className = 'text-end';
+        totalNextDueElement.classList.add(totalNextDue > 0 ? 'text-danger' : 'text-success');
     }
 
     // Action Buttons
@@ -641,7 +680,6 @@
         const selectedInvoices = Array.from(selectedRows).map(checkbox => checkbox.getAttribute('data-invoice'));
         
         alert(`Printing ${selectedRows.size} selected bills:\nMonths: ${selectedMonths.join(', ')}\nInvoices: ${selectedInvoices.join(', ')}`);
-        // Add actual print functionality here
     });
 
     document.getElementById('saveBtn').addEventListener('click', function() {
@@ -652,7 +690,6 @@
         
         const selectedInvoices = Array.from(selectedRows).map(checkbox => checkbox.getAttribute('data-invoice'));
         alert(`Saving ${selectedRows.size} selected bills as draft:\n${selectedInvoices.join(', ')}`);
-        // Add save functionality here
     });
 
     document.getElementById('confirmPaidBtn').addEventListener('click', function() {
@@ -666,28 +703,9 @@
         
         if (confirm(`Confirm payment of ${totalAmount} for ${selectedRows.size} selected bills?\n\nInvoices:\n${selectedInvoices.join('\n')}`)) {
             alert('Payment confirmed successfully for selected bills!');
-            // Add payment confirmation logic here
+            // Here you would typically make an AJAX call to update the database
         }
     });
-
-    // Generate Final Bill
-    function generateFinalBill() {
-        if (selectedRows.size === 0) {
-            alert('Please select at least one bill to generate.');
-            return;
-        }
-
-        const selectedMonths = Array.from(selectedRows).map(checkbox => checkbox.getAttribute('data-month'));
-        const selectedInvoices = Array.from(selectedRows).map(checkbox => checkbox.getAttribute('data-invoice'));
-        const sendNotification = document.getElementById('sendNotification').checked;
-        
-        alert(`Generating bills for customer {{ $customer->user->name ?? 'Customer' }}:\n\nMonths: ${selectedMonths.join(', ')}\nInvoices: ${selectedInvoices.join(', ')}\n\n${sendNotification ? 'Customer notification will be sent.' : 'No notification will be sent.'}`);
-        
-        // Simulate processing
-        setTimeout(() => {
-            window.location.href = '{{ route("admin.billing.monthly-bills") }}';
-        }, 1500);
-    }
 
     // Initialize calculations on page load
     document.addEventListener('DOMContentLoaded', function() {
@@ -700,12 +718,8 @@
         // Initialize action buttons
         updateActionButtons();
         
-        // Auto-select all rows on page load for convenience
-        document.getElementById('selectAll').checked = true;
-        document.getElementById('selectAll').dispatchEvent(new Event('change'));
-        
-        console.log('Generate Bill page loaded for Customer ID: {{ $customer->id }}');
-        console.log('Customer Name: {{ $customer->user->name ?? "N/A" }}');
+        console.log('Generate Bill page loaded for Customer ID: {{ $customer->c_id }}');
+        console.log('Customer Name: {{ $customer->name ?? "N/A" }}');
     });
 </script>
 @endsection

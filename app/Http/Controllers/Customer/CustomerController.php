@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Customer as CustomerModel;
+use App\Models\Package;
+use App\Models\Invoice;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -17,7 +20,7 @@ class CustomerController extends Controller
     
     public function showLoginForm()
     {
-        if (Auth::guard('customer')->check()) {
+        if (Auth::check() && Auth::user()->role === 'customer') {
             return redirect()->route('customer.dashboard');
         }
         return view('customer.login');
@@ -30,9 +33,18 @@ class CustomerController extends Controller
             'password' => 'required',
         ]);
 
-        if (Auth::guard('customer')->attempt($credentials)) {
-            $request->session()->regenerate();
-            return redirect()->route('customer.dashboard');
+        if (Auth::attempt($credentials)) {
+            $user = Auth::user();
+            
+            if ($user->role === 'customer') {
+                $request->session()->regenerate();
+                return redirect()->route('customer.dashboard');
+            } else {
+                Auth::logout();
+                return back()->withErrors([
+                    'email' => 'Access denied. Customer login only.',
+                ])->withInput();
+            }
         }
 
         return back()->withErrors([
@@ -42,7 +54,7 @@ class CustomerController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::guard('customer')->logout();
+        Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect('/');
@@ -50,37 +62,114 @@ class CustomerController extends Controller
 
     public function dashboard()
     {
-        $customer = Auth::guard('customer')->user();
-        return view('customer.dashboard', compact('customer'));
+        $user = Auth::user();
+        $customer = CustomerModel::where('user_id', $user->id)->first();
+        
+        if (!$customer) {
+            Auth::logout();
+            return redirect()->route('customer.login')->withErrors([
+                'email' => 'Customer profile not found.',
+            ]);
+        }
+
+        // Get customer's latest invoices and payments - FIXED COLUMN NAMES
+        $invoices = Invoice::where('c_id', $customer->c_id)
+            ->latest()
+            ->take(5)
+            ->get();
+
+        $payments = Payment::where('c_id', $customer->c_id)
+            ->latest()
+            ->take(5)
+            ->get();
+
+        $totalDue = Invoice::where('c_id', $customer->c_id)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->sum(DB::raw('total_amount - received_amount'));
+
+        return view('customer.dashboard', compact('customer', 'invoices', 'payments', 'totalDue'));
     }
 
     // ========== ADMIN CUSTOMER MANAGEMENT METHODS ==========
     
-    public function index()
+    public function index(Request $request)
     {
-        $customers = CustomerModel::with('user')
-                    ->latest()
-                    ->get();
-        
-        return view('admin.customers.index', compact('customers'));
+        // Get customers with packages relationship
+        $query = CustomerModel::with(['user', 'invoices', 'customerPackages.package']);
+
+        // Apply filters
+        switch ($request->get('filter')) {
+            case 'active':
+                $query->where('is_active', true);
+                break;
+            case 'inactive':
+                $query->where('is_active', false);
+                break;
+            case 'with_due':
+                $query->whereHas('invoices', function($q) {
+                    $q->whereIn('status', ['unpaid', 'partial']);
+                });
+                break;
+            case 'with_addons':
+                // Filter for customers with special packages
+                $query->whereHas('customerPackages.package', function($q) {
+                    $q->where('package_type', 'special');
+                });
+                break;
+        }
+
+        // Apply search
+        if ($request->has('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('customer_id', 'like', "%{$search}%");
+            });
+        }
+
+        $customers = $query->latest()->paginate(10);
+
+        // Calculate statistics
+        $totalCustomers = CustomerModel::count();
+        $activeCustomers = CustomerModel::where('is_active', true)->count();
+        $inactiveCustomers = CustomerModel::where('is_active', false)->count();
+        $customersWithDue = CustomerModel::whereHas('invoices', function($q) {
+            $q->whereIn('status', ['unpaid', 'partial']);
+        })->count();
+
+        return view('admin.customers.index', compact(
+            'customers',
+            'totalCustomers',
+            'activeCustomers',
+            'inactiveCustomers',
+            'customersWithDue'
+        ));
     }
 
     public function create()
     {
-        return view('admin.customers.create');
+        $regularPackages = Package::where('package_type', 'regular')->get();
+        $specialPackages = Package::where('package_type', 'special')->get();
+        
+        return view('admin.customers.create', compact('regularPackages', 'specialPackages'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'phone' => 'required|string|max:15',
-            'address' => 'required|string|max:500',
-            'connection_address' => 'required|string|max:500',
-            'id_type' => 'required|string|in:nid,passport,driving_license',
-            'id_number' => 'required|string|max:50',
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'phone' => 'required|string|max:30',
+        'address' => 'required|string|max:500',
+        'connection_address' => 'nullable|string|max:500',
+        'id_type' => 'nullable|string|in:NID,Passport,Driving License', 
+        'id_number' => 'nullable|string|max:100', 
+        'regular_package_id' => 'nullable|exists:packages,p_id',
+        'special_package_ids' => 'nullable|array',
+        'special_package_ids.*' => 'exists:packages,p_id',
+        'is_active' => 'sometimes|boolean',
         ]);
 
         try {
@@ -90,27 +179,58 @@ class CustomerController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'user_type' => 'customer',
+                'password' => Hash::make('password'), // Default password
+                'role' => 'customer',
                 'email_verified_at' => now(),
             ]);
 
             // Create Customer profile
-            CustomerModel::create([
+            $customer = CustomerModel::create([
                 'user_id' => $user->id,
+                'customer_id' => CustomerModel::generateCustomerId(),
+                'name' => $request->name,
+                'email' => $request->email,
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'connection_address' => $request->connection_address,
                 'id_type' => $request->id_type,
                 'id_number' => $request->id_number,
-                'status' => 'active',
-                'registration_date' => now(),
+                'is_active' => $request->has('is_active') ? $request->is_active : true,
             ]);
+
+            // Assign Regular Package ONLY if provided
+        if ($request->filled('regular_package_id')) {
+            $regularPkg = Package::find($request->regular_package_id);
+            if ($regularPkg) {
+                $customer->assignPackage(
+                    $regularPkg->p_id,
+                    $regularPkg->monthly_price,
+                    1, // billingCycleMonths
+                    'active'
+                );
+            }
+        }
+
+
+           // Assign Special Packages
+        if ($request->filled('special_package_ids')) {
+            foreach ($request->special_package_ids as $pkgId) {
+                $pkg = Package::find($pkgId);
+                if ($pkg) {
+                    $customer->assignPackage(
+                        $pkg->p_id,
+                        $pkg->monthly_price,
+                        1, // billingCycleMonths
+                        'active'
+                    );
+                }
+            }
+        }
 
             DB::commit();
 
             return redirect()->route('admin.customers.index')
-                ->with('success', 'Customer created successfully! Customer ID: ' . $user->id);
+                ->with('success', 'Customer created successfully! Customer ID: ' . $customer->customer_id);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -122,14 +242,35 @@ class CustomerController extends Controller
 
     public function show($id)
     {
-        $customer = CustomerModel::with('user')->findOrFail($id);
-        return view('admin.customers.profile', compact('customer'));
+        $customer = CustomerModel::with(['user', 'invoices', 'payments', 'customerPackages.package'])->findOrFail($id);
+        
+        // Calculate statistics
+        $totalInvoices = $customer->invoices->count();
+        $totalPaid = $customer->invoices->where('status', 'paid')->sum('total_amount');
+        $totalDue = $customer->invoices->whereIn('status', ['unpaid', 'partial'])
+            ->sum(DB::raw('total_amount - received_amount'));
+        
+        // Get latest invoices and payments
+        $recentInvoices = $customer->invoices()->latest()->take(5)->get();
+        $recentPayments = $customer->payments()->latest()->take(5)->get();
+
+        return view('admin.customers.profile', compact(
+            'customer', 
+            'totalInvoices', 
+            'totalPaid', 
+            'totalDue',
+            'recentInvoices',
+            'recentPayments'
+        ));
     }
 
     public function edit($id)
     {
-        $customer = CustomerModel::with('user')->findOrFail($id);
-        return view('admin.customers.edit', compact('customer'));
+        $customer = CustomerModel::with(['user', 'customerPackages.package'])->findOrFail($id);
+        $regularPackages = Package::where('package_type', 'regular')->get();
+        $specialPackages = Package::where('package_type', 'special')->get();
+        
+        return view('admin.customers.edit', compact('customer', 'regularPackages', 'specialPackages'));
     }
 
     public function update(Request $request, $id)
@@ -137,14 +278,17 @@ class CustomerController extends Controller
         $customer = CustomerModel::with('user')->findOrFail($id);
 
         $request->validate([
-            'name' => 'required|string|max:255|unique:users,name,' . $customer->user_id,
+            'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $customer->user_id,
-            'phone' => 'required|string|max:15',
+            'phone' => 'required|string|max:30',
             'address' => 'required|string|max:500',
-            'connection_address' => 'required|string|max:500',
-            'id_type' => 'required|string|in:nid,passport,driving_license',
-            'id_number' => 'required|string|max:50',
-            'status' => 'required|string|in:active,inactive,suspended',
+            'connection_address' => 'nullable|string|max:500',
+            'id_type' => 'nullable|string|in:nid,passport,driving_license',
+            'id_number' => 'nullable|string|max:100',
+            'regular_package_id' => 'nullable|exists:packages,p_id',
+            'special_package_ids' => 'nullable|array',
+            'special_package_ids.*' => 'exists:packages,p_id',
+            'is_active' => 'sometimes|boolean',
         ]);
 
         try {
@@ -158,13 +302,46 @@ class CustomerController extends Controller
 
             // Update customer
             $customer->update([
+                'name' => $request->name,
+                'email' => $request->email,
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'connection_address' => $request->connection_address,
                 'id_type' => $request->id_type,
                 'id_number' => $request->id_number,
-                'status' => $request->status,
+                'is_active' => $request->has('is_active') ? $request->is_active : $customer->is_active,
             ]);
+
+            // Sync Packages - remove old and add new
+            $customer->customerPackages()->delete();
+
+             // Assign Regular Package ONLY if provided
+        if ($request->filled('regular_package_id')) {
+            $regularPkg = Package::find($request->regular_package_id);
+            if ($regularPkg) {
+                $customer->assignPackage(
+                    $regularPkg->p_id,
+                    $regularPkg->monthly_price,
+                    1, // billingCycleMonths
+                    'active'
+                );
+            }
+        }
+
+        // Assign Special Packages
+        if ($request->filled('special_package_ids')) {
+            foreach ($request->special_package_ids as $pkgId) {
+                $pkg = Package::find($pkgId);
+                if ($pkg) {
+                    $customer->assignPackage(
+                        $pkg->p_id,
+                        $pkg->monthly_price,
+                        1, // billingCycleMonths
+                        'active'
+                    );
+                }
+            }
+        }
 
             DB::commit();
 
@@ -181,11 +358,20 @@ class CustomerController extends Controller
 
     public function destroy($id)
     {
-        $customer = CustomerModel::with('user')->findOrFail($id);
+        $customer = CustomerModel::with(['user', 'invoices', 'payments'])->findOrFail($id);
 
         try {
             DB::beginTransaction();
 
+            // Check if customer has invoices or payments
+            if ($customer->invoices->count() > 0 || $customer->payments->count() > 0) {
+                return redirect()->back()
+                    ->with('error', 'Cannot delete customer with existing invoices or payments. Please delete related records first.');
+            }
+
+            // Remove packages first
+            $customer->customerPackages()->delete();
+            
             // Delete user account first
             if ($customer->user) {
                 $customer->user->delete();
@@ -206,30 +392,131 @@ class CustomerController extends Controller
         }
     }
 
+    // ========== CUSTOMER STATUS MANAGEMENT ==========
+
+    public function toggleStatus($id)
+    {
+        $customer = CustomerModel::findOrFail($id);
+        
+        try {
+            $customer->update(['is_active' => !$customer->is_active]);
+            
+            $status = $customer->is_active ? 'activated' : 'deactivated';
+            return redirect()->back()
+                ->with('success', "Customer {$status} successfully!");
+                
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Error updating customer status: ' . $e->getMessage());
+        }
+    }
+
+    // ========== BILLING HISTORY METHOD ==========
+    
+    public function billingHistory($id)
+    {
+        $customer = CustomerModel::with(['invoices'])->findOrFail($id);
+        $invoices = $customer->invoices()->latest()->paginate(10);
+
+        return view('admin.customers.billing-history', compact('customer', 'invoices'));
+    }
+
+    // ========== CUSTOMER PROFILE (FOR CUSTOMER PORTAL) ==========
+    
+    public function profile()
+    {
+        $user = Auth::user();
+        $customer = CustomerModel::where('user_id', $user->id)
+            ->with(['invoices', 'payments', 'customerPackages.package'])
+            ->firstOrFail();
+
+        // Calculate statistics for customer portal
+        $totalInvoices = $customer->invoices->count();
+        $paidInvoices = $customer->invoices->where('status', 'paid')->count();
+        $pendingInvoices = $customer->invoices->whereIn('status', ['unpaid', 'partial'])->count();
+        $totalDue = $customer->invoices->whereIn('status', ['unpaid', 'partial'])
+            ->sum(DB::raw('total_amount - received_amount'));
+
+        // Get recent activity
+        $recentInvoices = $customer->invoices()->latest()->take(5)->get();
+        $recentPayments = $customer->payments()->latest()->take(5)->get();
+
+        return view('customer.profile', compact(
+            'customer',
+            'totalInvoices',
+            'paidInvoices',
+            'pendingInvoices',
+            'totalDue',
+            'recentInvoices',
+            'recentPayments'
+        ));
+    }
+
+    // ========== PACKAGE MANAGEMENT METHODS ==========
+
+    public function addPackage(Request $request, $id)
+    {
+        $customer = CustomerModel::findOrFail($id);
+        
+        $request->validate([
+            'package_id' => 'required|exists:packages,p_id'
+        ]);
+
+        try {
+            $pkg = Package::findOrFail($request->package_id);
+            $customer->assignPackage(
+                $pkg->p_id,
+                $pkg->monthly_price,
+                1, // billingCycleMonths
+                'active'
+            );
+            return redirect()->back()->with('success', 'Package added successfully!');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error adding package: ' . $e->getMessage());
+        }
+    }
+
+    public function removePackage(Request $request, $id)
+    {
+        $customer = CustomerModel::findOrFail($id);
+        
+        $request->validate([
+            'pivot_id' => 'required|exists:customer_to_packages,cp_id'
+        ]);
+
+        try {
+            DB::table('customer_to_packages')->where('cp_id', $request->pivot_id)->delete();
+            return redirect()->back()->with('success', 'Package removed successfully!');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error removing package: ' . $e->getMessage());
+        }
+    }
+
     // ========== DEBUG METHOD ==========
+    
     public function debug()
     {
         echo "<h3>Debug Customers</h3>";
         
         // Check customers from customers table
-        $customersFromCustomerTable = CustomerModel::with('user')->get();
-        echo "<h4>From Customer Table (used in index):</h4>";
+        $customersFromCustomerTable = CustomerModel::with(['user', 'customerPackages'])->get();
+        echo "<h4>From Customer Table:</h4>";
         
         if ($customersFromCustomerTable->count() === 0) {
             echo "❌ No customers found in customers table!<br>";
         } else {
             foreach ($customersFromCustomerTable as $cust) {
-                echo "Customer ID: " . $cust->id . "<br>";
+                echo "Customer ID: " . $cust->c_id . "<br>";
+                echo "Customer Code: " . ($cust->customer_id ?? 'NULL') . "<br>";
                 echo "User ID: " . $cust->user_id . "<br>";
+                echo "Name: " . $cust->name . "<br>";
+                echo "Email: " . $cust->email . "<br>";
                 echo "Phone: " . ($cust->phone ?? 'NULL') . "<br>";
-                echo "Status: " . ($cust->status ?? 'NULL') . "<br>";
-                echo "Registration Date: " . ($cust->registration_date ?? 'NULL') . "<br>";
+                echo "Packages Count: " . $cust->customerPackages->count() . "<br>";
+                echo "Active: " . ($cust->is_active ? 'YES' : 'NO') . "<br>";
                 echo "User exists: " . ($cust->user ? 'YES' : 'NO') . "<br>";
                 if ($cust->user) {
-                    echo "User Name: " . $cust->user->name . "<br>";
-                    echo "User Email: " . $cust->user->email . "<br>";
-                } else {
-                    echo "❌ User record missing for customer!<br>";
+                    echo "User Role: " . $cust->user->role . "<br>";
                 }
                 echo "<hr>";
             }
@@ -246,110 +533,26 @@ class CustomerController extends Controller
                 echo "User ID: " . $user->id . "<br>";
                 echo "User Name: " . $user->name . "<br>";
                 echo "User Email: " . $user->email . "<br>";
-                echo "User Type: " . ($user->user_type ?? 'NOT SET') . "<br>";
+                echo "User Role: " . ($user->role ?? 'NOT SET') . "<br>";
                 echo "Created: " . $user->created_at . "<br>";
                 echo "<hr>";
             }
         }
+
+        // Check packages
+        $packages = Package::all();
+        echo "<h4>Available Packages:</h4>";
+        
+        if ($packages->count() === 0) {
+            echo "❌ No packages found!<br>";
+        } else {
+            foreach ($packages as $package) {
+                echo "Package ID: " . $package->p_id . "<br>";
+                echo "Package Name: " . $package->name . "<br>";
+                echo "Package Type: " . $package->package_type . "<br>";
+                echo "Monthly Price: ৳" . $package->monthly_price . "<br>";
+                echo "<hr>";
+            }
+        }
     }
-   public function profile($id)
-{
-    // Static customer data - no database needed
-    $customers = [
-        1 => [
-            'id' => 1,
-            'name' => 'Test Customer',
-            'email' => 'customer@netbillbd.com',
-            'phone' => '+8801712345678',
-            'address' => 'Dhaka, Bangladesh',
-            'connection_address' => 'House 123, Road 5, Dhaka',
-            'join_date' => '2024-01-15',
-            'status' => 'Active',
-            'id_type' => 'nid',
-            'id_number' => '1990123456789',
-            'package' => 'Basic Internet Package',
-            'monthly_bill' => '৳850',
-            'bandwidth' => '20 Mbps',
-            'payment_method' => 'Credit Card',
-            'next_billing_date' => 'February 1, 2024'
-        ],
-        2 => [
-            'id' => 2,
-            'name' => 'John Doe',
-            'email' => 'john.doe@example.com',
-            'phone' => '+8801712345678',
-            'address' => 'Gulshan, Dhaka',
-            'connection_address' => 'House 12, Road 5, Gulshan 1',
-            'join_date' => '2023-01-15',
-            'status' => 'Active',
-            'id_type' => 'nid',
-            'id_number' => '1990123456789',
-            'package' => 'Basic Speed',
-            'monthly_bill' => '৳550',
-            'bandwidth' => '10 Mbps',
-            'payment_method' => 'Credit Card',
-            'next_billing_date' => 'February 1, 2024'
-        ],
-        3 => [
-            'id' => 3,
-            'name' => 'Alice Smith',
-            'email' => 'alice.smith@example.com',
-            'phone' => '+8801812345679',
-            'address' => 'Uttara, Dhaka',
-            'connection_address' => 'House 25, Sector 7, Uttara',
-            'join_date' => '2023-02-20',
-            'status' => 'Active',
-            'id_type' => 'passport',
-            'id_number' => 'AB1234567',
-            'package' => 'Fast Speed + Gaming Boost',
-            'monthly_bill' => '৳1,050',
-            'bandwidth' => '25 Mbps',
-            'payment_method' => 'Bank Transfer',
-            'next_billing_date' => 'February 1, 2024'
-        ],
-        4 => [
-            'id' => 4,
-            'name' => 'Bob Johnson',
-            'email' => 'bob.johnson@example.com',
-            'phone' => '+8801912345680',
-            'address' => 'Banani, Dhaka',
-            'connection_address' => 'House 8, Road 11, Banani',
-            'join_date' => '2023-03-10',
-            'status' => 'Active',
-            'id_type' => 'driving_license',
-            'id_number' => 'DL789456123',
-            'package' => 'Super Speed + Streaming Plus',
-            'monthly_bill' => '৳1,400',
-            'bandwidth' => '50 Mbps',
-            'payment_method' => 'Credit Card',
-            'next_billing_date' => 'February 1, 2024'
-        ],
-        5 => [
-            'id' => 5,
-            'name' => 'Carol White',
-            'email' => 'carol.white@example.com',
-            'phone' => '+8801612345681',
-            'address' => 'Dhanmondi, Dhaka',
-            'connection_address' => 'House 15, Road 2, Dhanmondi',
-            'join_date' => '2023-04-05',
-            'status' => 'Active',
-            'id_type' => 'nid',
-            'id_number' => '1995123456789',
-            'package' => 'Fast Speed',
-            'monthly_bill' => '৳850',
-            'bandwidth' => '25 Mbps',
-            'payment_method' => 'Mobile Banking',
-            'next_billing_date' => 'February 1, 2024'
-        ]
-    ];
-
-    // Check if customer exists in our static data
-    if (!isset($customers[$id])) {
-        abort(404, 'Customer not found');
-    }
-
-    $customer = $customers[$id];
-
-    return view('admin.customers.profile', compact('customer'));
-}
 }

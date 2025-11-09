@@ -6,18 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up()
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
     {
         Schema::create('system_settings', function (Blueprint $table) {
-            $table->id();
-            $table->string('key', 100)->unique(); // Reduced length
+            $table->bigIncrements('id');
+            $table->string('key', 100)->unique();
             $table->text('value')->nullable();
             $table->text('description')->nullable();
             $table->timestamps();
         });
     }
 
-    public function down()
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
     {
         Schema::dropIfExists('system_settings');
     }
