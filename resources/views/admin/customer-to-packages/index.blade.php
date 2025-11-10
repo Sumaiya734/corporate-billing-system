@@ -157,7 +157,6 @@
                         <th>Billing Months</th>
                         <th>Total Amount</th>
                         <th>Status</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -231,69 +230,12 @@
                                         </span>
                                     </td>
                                     
-                                    <!-- Individual Actions Column -->
-                                    <td class="text-center">
-                                        <div class="btn-group d-flex justify-content-center gap-1">
-                                            @if($cp->cp_id)
-                                                <!-- Edit Button -->
-                                                <a href="{{ route('admin.customer-to-packages.edit', $cp->cp_id) }}"
-                                                   class="btn btn-sm btn-outline-primary"
-                                                   title="Edit Package">
-                                                   <i class="fas fa-edit"></i>
-                                                </a>
-
-                                                <!-- Renew Button -->
-                                                <form action="{{ route('admin.customer-to-packages.renew', $cp->cp_id) }}" 
-                                                      method="POST" onsubmit="return confirm('Renew this package for customer?');">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Renew Package">
-                                                        <i class="fas fa-sync-alt"></i>
-                                                    </button>
-                                                </form>
-
-                                                @php
-                                                    $isActive = $cp->status === 'active';
-                                                    $newStatus = $isActive ? 'expired' : 'active';
-                                                    $confirmText = $isActive
-                                                        ? 'Are you sure you want to pause this package?'
-                                                        : 'Are you sure you want to activate this package?';
-                                                    $buttonIcon = $isActive ? 'fa-pause' : 'fa-play';
-                                                    $buttonTitle = $isActive ? 'Pause Package' : 'Activate Package';
-                                                @endphp
-
-                                                <!-- Toggle Status Button -->
-                                                <form action="{{ route('admin.customer-to-packages.toggle-status', $cp->cp_id) }}" 
-                                                      method="POST" 
-                                                      onsubmit="return confirm('{{ $confirmText }}');">
-                                                    @csrf
-                                                    <button type="submit" 
-                                                            class="btn btn-sm btn-outline-warning"
-                                                            title="{{ $buttonTitle }}">
-                                                        <i class="fas {{ $buttonIcon }}"></i>
-                                                    </button>
-                                                </form>
-
-                                                <!-- Delete Button -->
-                                                <form action="{{ route('admin.customer-to-packages.destroy', $cp->cp_id) }}" 
-                                                      method="POST" 
-                                                      onsubmit="return confirm('Are you sure you want to remove this package? This cannot be undone.');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Package">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            @else
-                                                <span class="text-muted small">No actions available</span>
-                                            @endif
-                                        </div>
-                                    </td>
                                 </tr>
                             @endforeach
                         @endif
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-4">
+                            <td colspan="7" class="text-center py-4">
                                 <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
                                 <h5>No Customer Packages Found</h5>
                                 <p class="text-muted">

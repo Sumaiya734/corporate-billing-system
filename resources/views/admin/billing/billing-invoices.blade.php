@@ -144,7 +144,7 @@
                             <th>Due Amount</th>
                             <th>Status</th>
                             <th>Monthly Bills</th>
-                            <th>Actions</th>
+                            <!-- <th>Actions</th> -->
                         </tr>
                     </thead>
                     <tbody>
@@ -200,7 +200,7 @@
                                 </a>
                             </td>
                             <td>
-                                <div class="d-flex gap-1">
+                                <!-- <div class="d-flex gap-1">
                                     @if(!$isDynamic)
                                     <a href="{{ route('admin.billing.edit-monthly', $month->id) }}" 
                                        class="btn btn-outline-warning btn-sm" title="Edit">
@@ -232,7 +232,7 @@
                                         </button>
                                     </form>
                                     @endif
-                                </div>
+                                </div> -->
                             </td>
                         </tr>
                         @endif

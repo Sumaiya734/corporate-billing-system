@@ -431,7 +431,7 @@ class MonthlyBillController extends Controller
             'amount' => 'required|numeric|min:0.01',
             'payment_method' => 'required|in:cash,bkash,bank,card,nagad,rocket',
             'payment_date' => 'required|date',
-            'note' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         try {
@@ -451,16 +451,23 @@ class MonthlyBillController extends Controller
             }
 
             // Create payment record
-            $payment = Payment::create([
+            $paymentData = [
                 'invoice_id' => $invoice->invoice_id,
                 'c_id' => $invoice->c_id,
                 'amount' => $amount,
                 'payment_method' => $request->payment_method,
                 'payment_date' => $request->payment_date,
-                'notes' => $request->note,
+                'notes' => $request->notes,  // Fixed: was 'note', now 'notes' to match form field
                 'collected_by' => auth()->id(),
                 'status' => 'completed',
-            ]);
+            ];
+
+            // Add transaction_id if payment method is not cash
+            if ($request->payment_method !== 'cash' && $request->has('transaction_id')) {
+                $paymentData['transaction_id'] = $request->transaction_id;
+            }
+
+            $payment = Payment::create($paymentData);
 
             // Update invoice
             $newReceivedAmount = $invoice->received_amount + $amount;

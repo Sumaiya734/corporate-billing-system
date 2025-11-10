@@ -255,37 +255,57 @@
                                     </span>
                                 @endif
                             </td>
+                            <!--  DYNAMIC ACTION BUTTONS -->
                             <td>
                                 <div class="d-flex flex-column gap-1">
-                                    <button class="btn btn-outline-primary btn-sm" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#viewInvoiceModal"
-                                            onclick="viewInvoice({{ $invoice->invoice_id }})"
-                                            title="View Invoice">
+                                    {{-- View Button: Always available --}}
+                                    <button class="btn btn-outline-primary btn-sm"
+                                         data-bs-toggle="modal" 
+                                        data-bs-target="#viewInvoiceModal"
+                                        onclick="viewInvoice({{ $invoice->invoice_id }})"
+                                        title="View Invoice">
                                         <i class="fas fa-eye"></i> View
                                     </button>
-                                    <button class="btn btn-outline-success btn-sm"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#addPaymentModal"
-                                            data-invoice-id="{{ $invoice->invoice_id }}"
-                                            data-invoice-number="{{ $invoice->invoice_number }}"
-                                            data-customer-name="{{ $invoice->customer->name ?? 'Customer' }}"
-                                            data-total-amount="{{ $invoice->total_amount ?? 0 }}"
-                                            data-due-amount="{{ $invoice->next_due ?? 0 }}"
-                                            title="Add Payment"
-                                            {{ $invoice->status == 'paid' ? 'disabled' : '' }}>
-                                        <i class="fas fa-money-bill-wave"></i> Payment
-                                    </button>
-                                    <button class="btn btn-outline-info btn-sm"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#sendReminderModal"
-                                            data-invoice-id="{{ $invoice->invoice_id }}"
-                                            data-customer-name="{{ $invoice->customer->name ?? 'Customer' }}"
-                                            data-customer-email="{{ $invoice->customer->email ?? '' }}"
-                                            title="Send Reminder"
-                                            {{ $invoice->status == 'paid' ? 'disabled' : '' }}>
-                                        <i class="fas fa-bell"></i> Reminder
-                                    </button>
+
+                                    {{-- Payment Button: Only for unpaid or partial invoices --}}
+                                    @if(in_array($invoice->status, ['unpaid', 'partial']))
+                                        <button class="btn btn-outline-success btn-sm payment-btn"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#addPaymentModal"
+                                                data-invoice-id="{{ $invoice->invoice_id }}"
+                                                data-invoice-number="{{ $invoice->invoice_number }}"
+                                                data-customer-name="{{ e($invoice->customer->name ?? 'Customer') }}"
+                                                data-customer-email="{{ e($invoice->customer->email ?? '') }}"
+                                                data-customer-phone="{{ e($invoice->customer->phone ?? '') }}"
+                                                data-total-amount="{{ $invoice->total_amount ?? 0 }}"
+                                                data-due-amount="{{ $invoice->next_due ?? 0 }}"
+                                                data-received-amount="{{ $invoice->received_amount ?? 0 }}"
+                                                data-status="{{ $invoice->status }}"
+                                                title="Add Payment">
+                                            <i class="fas fa-money-bill-wave"></i> Payment
+                                        </button>
+                                    @else
+                                        <button class="btn btn-outline-success btn-sm" disabled title="Invoice already paid">
+                                            <i class="fas fa-check me-1"></i> Paid
+                                        </button>
+                                    @endif
+
+                                    {{-- Reminder Button: Only for unpaid or partial invoices --}}
+                                    @if(in_array($invoice->status, ['unpaid', 'partial']))
+                                        <button class="btn btn-outline-info btn-sm"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#sendReminderModal"
+                                                data-invoice-id="{{ $invoice->invoice_id }}"
+                                                data-customer-name="{{ e($invoice->customer->name ?? 'Customer') }}"
+                                                data-customer-email="{{ e($invoice->customer->email ?? '') }}"
+                                                title="Send Payment Reminder">
+                                            <i class="fas fa-bell"></i> Reminder
+                                        </button>
+                                    @else
+                                        <button class="btn btn-outline-secondary btn-sm" disabled title="No reminder needed">
+                                            <i class="fas fa-bell-slash me-1"></i> No Reminder
+                                        </button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -578,113 +598,129 @@
     }
 </style>
 @endsection
+
 @section('scripts')
 @vite(['resources/js/app.js'])
 
 <script>
-/* ==============================================================
-   FINAL WORKING PAYMENT MODAL + SUBMISSION
-   ============================================================== */
 document.addEventListener('DOMContentLoaded', function () {
     const $modal = $('#addPaymentModal');
 
     // --------------------------------------------------------------
     // 1. MODAL OPEN → Fill data from button (even if click on <i>)
     // --------------------------------------------------------------
-    $modal.on('show.bs.modal', function (e) {
-        let $btn = $(e.relatedTarget);
-        if (!$btn.hasClass('btn')) {
-            $btn = $btn.closest('[data-invoice-id]');
+  $modal.on('show.bs.modal', function (e) {
+    let $btn = $(e.relatedTarget);
+    if (!$btn.hasClass('btn')) {
+        $btn = $btn.closest('[data-invoice-id]');
+    }
+
+    if (!$btn.length) {
+        showToast('Could not identify invoice. Please try again.', 'danger');
+        return $modal.modal('hide');
+    }
+
+    const invoiceId = $btn.data('invoice-id');
+    if (!invoiceId || isNaN(invoiceId)) {
+        showToast('Invalid invoice ID.', 'danger');
+        return $modal.modal('hide');
+    }
+
+    // Reset UI and show loading state
+    $('#payment_invoice_id').val(invoiceId);
+    // More robust base URL detection
+    let basePath = window.location.origin;
+    // Check if we're in a subdirectory setup
+    if (window.location.pathname.includes('/ik/netbill-bd/')) {
+        if (window.location.pathname.includes('/public/')) {
+            basePath += '/ik/netbill-bd/public';
+        } else {
+            basePath += '/ik/netbill-bd';
+        }
+    }
+    $('#addPaymentForm').attr('action', basePath + '/admin/billing/record-payment/' + invoiceId);
+
+    const placeholders = {
+        number: 'Loading…',
+        customer: 'Loading…',
+        total: '৳ 0.00',
+        due: '৳ 0.00'
+    };
+
+    $('#payment_invoice_number_display').text(placeholders.number);
+    $('#payment_customer_name_display').text(placeholders.customer);
+    $('#payment_total_amount_display').text(placeholders.total);
+    $('#payment_due_amount_display').text(placeholders.due);
+    $('#payment_amount').val('').prop('disabled', true); // disable until data loads
+
+    // Fetch fresh invoice data
+    fetch(basePath + '/admin/billing/invoice/' + invoiceId + '/data', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(json => {
+        if (!json.success || !json.invoice) {
+            throw new Error(json.message || 'Invalid invoice data received.');
         }
 
-        if (!$btn.length) return;
+        const inv = json.invoice;
+        const invoiceNumber = inv.invoice_number || '–';
+        const customerName = inv.customer?.name?.trim() || 'Unknown Customer';
+        const totalAmount = parseFloat(inv.total_amount) || 0;
+        const dueAmount = parseFloat(inv.next_due) || (totalAmount - (parseFloat(inv.received_amount) || 0));
 
-        const invoiceId     = $btn.data('invoice-id');
-        // Put a loading state while we fetch fresh invoice data from server
-        $('#payment_invoice_number_display').text('Loading...');
-        $('#payment_customer_name_display').text('Loading...');
-        $('#payment_total_amount_display').text('Loading...');
-        $('#payment_due_amount_display').text('Loading...');
+        // Update UI with real data
+        $('#payment_invoice_number_display').text(invoiceNumber);
+        $('#payment_customer_name_display').text(customerName);
+        $('#payment_total_amount_display').text(`৳ ${totalAmount.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`);
+        $('#payment_due_amount_display').text(`৳ ${dueAmount.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`);
 
-        // Hidden field (set immediately so server has invoice id if form submitted before fetch returns)
-        $('#payment_invoice_id').val(invoiceId);
-        $('#addPaymentForm').attr('action', `/admin/billing/record-payment/${invoiceId}`);
+        // Configure amount input
+        const $amountInput = $('#payment_amount');
+        $amountInput
+            .val(dueAmount > 0 ? dueAmount.toFixed(2) : '')
+            .attr({
+                'min': '0.01',
+                'max': dueAmount,
+                'step': '0.01'
+            })
+            .prop('disabled', dueAmount <= 0)
+            .removeClass('is-invalid');
 
-        // Try to fetch authoritative invoice data from server; fallback to button dataset if request fails
-        fetch(`/admin/billing/invoice/${invoiceId}/data`, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(r => r.ok ? r.json() : Promise.reject(r))
-        .then(json => {
-            if (json.success && json.invoice) {
-                const inv = json.invoice;
-                const invoiceNumber = inv.invoice_number || '–';
-                const customerName = inv.customer?.name || '–';
-                const totalAmount = parseFloat(inv.total_amount || 0);
-                const dueAmount = parseFloat(inv.next_due ?? (inv.total_amount || 0));
+        if (dueAmount <= 0) {
+            $amountInput.attr('placeholder', 'Invoice already paid');
+        } else {
+            $amountInput.attr('placeholder', 'Enter amount to pay');
+        }
 
-                console.log('Payment Modal Loaded from DB:', {invoiceId, invoiceNumber, customerName, totalAmount, dueAmount});
+        $('#payment_amount_error').hide();
+    })
+    .catch(err => {
+        console.error('Failed to load invoice data:', err);
+        const msg = err.message.includes('404') 
+            ? 'Invoice not found.' 
+            : 'Failed to load invoice. Try again.';
+        
+        showToast(msg, 'danger');
 
-                $('#payment_invoice_number_display').text(invoiceNumber);
-                $('#payment_customer_name_display').text(customerName);
-                $('#payment_total_amount_display').text('৳ ' + totalAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
-                $('#payment_due_amount_display').text('৳ ' + dueAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
-
-                const $amt = $('#payment_amount');
-                $amt.val(dueAmount > 0 ? Number(dueAmount).toFixed(2) : '');
-                $amt.attr('max', dueAmount);
-                $amt.prop('min', 0.01);
-                $amt.removeClass('is-invalid');
-                $('#payment_amount_error').hide();
-            } else {
-                // Fallback to dataset values
-                const invoiceNumber = $btn.data('invoice-number') || '–';
-                const customerName  = $btn.data('customer-name')  || '–';
-                const totalAmount   = parseFloat($btn.data('total-amount') || 0);
-                const dueAmount     = parseFloat($btn.data('due-amount')   || 0);
-
-                console.warn('Falling back to button dataset for payment modal values', {invoiceId});
-
-                $('#payment_invoice_number_display').text(invoiceNumber);
-                $('#payment_customer_name_display').text(customerName);
-                $('#payment_total_amount_display').text('৳ ' + totalAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
-                $('#payment_due_amount_display').text('৳ ' + dueAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
-
-                const $amt = $('#payment_amount');
-                $amt.val(dueAmount > 0 ? dueAmount.toFixed(2) : '');
-                $amt.attr('max', dueAmount);
-                $amt.prop('min', 0.01);
-
-                // Reset validation
-                $amt.removeClass('is-invalid');
-                $('#payment_amount_error').hide();
-            }
-        })
-        .catch(err => {
-            console.error('Error loading invoice data for payment modal:', err);
-            // Fallback to dataset values (same as above)
-            const invoiceNumber = $btn.data('invoice-number') || '–';
-            const customerName  = $btn.data('customer-name')  || '–';
-            const totalAmount   = parseFloat($btn.data('total-amount') || 0);
-            const dueAmount     = parseFloat($btn.data('due-amount')   || 0);
-
-            $('#payment_invoice_number_display').text(invoiceNumber);
-            $('#payment_customer_name_display').text(customerName);
-            $('#payment_total_amount_display').text('৳ ' + totalAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
-            $('#payment_due_amount_display').text('৳ ' + dueAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
-
-            const $amt = $('#payment_amount');
-            $amt.val(dueAmount > 0 ? dueAmount.toFixed(2) : '');
-            $amt.attr('max', dueAmount);
-            $amt.prop('min', 0.01);
-
-            $amt.removeClass('is-invalid');
-            $('#payment_amount_error').hide();
-        });
+        // Fallback UI (safe defaults)
+        $('#payment_invoice_number_display').text('Error');
+        $('#payment_customer_name_display').text('—');
+        $('#payment_total_amount_display').text('৳ 0.00');
+        $('#payment_due_amount_display').text('৳ 0.00');
+        $('#payment_amount').prop('disabled', true).val('');
     });
+});
 
     // --------------------------------------------------------------
     // 2. VALIDATE PAYMENT AMOUNT
@@ -713,7 +749,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const $btn = $form.find('button[type="submit"]');
         const oldHtml = $btn.html();
 
-        // Final validation
         const paid = parseFloat($('#payment_amount').val()) || 0;
         const dueText = $('#payment_due_amount_display').text();
         const due = parseFloat(dueText.replace(/[^\d.]/g, '')) || 0;
@@ -785,6 +820,39 @@ document.addEventListener('DOMContentLoaded', function () {
         $('body').append($t);
         setTimeout(() => $t.alert('close'), 5000);
     }
+
+    // ------------------------------
+    // OPTIONAL: Placeholder for export & view functions
+    // ------------------------------
+    window.exportMonthlyBills = function() {
+        // Implement export logic (e.g., CSV/Excel via AJAX or redirect)
+        alert('Export feature coming soon!');
+    };
+
+    window.viewInvoice = function(invoiceId) {
+        fetch(`/admin/billing/invoice/${invoiceId}/html`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('viewInvoiceContent').innerHTML = html;
+        })
+        .catch(() => {
+            document.getElementById('viewInvoiceContent').innerHTML = '<div class="text-center text-danger py-4">Failed to load invoice.</div>';
+        });
+    };
+
+    window.printInvoice = function() {
+        const printContent = document.getElementById('viewInvoiceContent').innerHTML;
+        const original = document.body.innerHTML;
+        document.body.innerHTML = printContent;
+        window.print();
+        document.body.innerHTML = original;
+        location.reload(); // restore JS event listeners
+    };
 });
 </script>
 @endsection

@@ -11,7 +11,6 @@ use App\Http\Controllers\Admin\CustomerPackageController;
 use App\Http\Controllers\Customer\CustomerController;
 use App\Http\Controllers\Admin\MonthlyBillController;
 use App\Http\Controllers\Admin\PaymentController;
-use App\Http\Controllers\Admin\InvoiceController;
 
 // Public Routes
 Route::get('/', function () {
@@ -66,6 +65,7 @@ Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(funct
     Route::delete('/customer-to-packages/{id}', [CustomerPackageController::class, 'destroy'])->name('customer-to-packages.destroy');
     Route::post('/customer-to-packages/{id}/renew', [CustomerPackageController::class, 'renew'])->name('customer-to-packages.renew');
     Route::post('/customer-to-packages/{id}/toggle-status', [CustomerPackageController::class, 'toggleStatus'])->name('customer-to-packages.toggle-status');
+    
     // Billing Routes - CLEANED UP AND FIXED
     Route::prefix('billing')->name('billing.')->group(function () {
         // Main billing pages
@@ -81,9 +81,9 @@ Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(funct
         Route::post('/send-reminder', [MonthlyBillController::class, 'sendReminder'])->name('send-reminder');
         
         // Payment Routes - FIXED
+        Route::post('/record-payment/{invoiceId}', [MonthlyBillController::class, 'recordPayment'])->name('record-payment');
+        Route::get('/invoices/{invoiceId}/payments', [PaymentController::class, 'getInvoicePayments'])->name('invoice-payments');
         
-        Route::post('/record-payment/{invoice}', [PaymentController::class, 'recordPayment'])->name('record-payment');
-         Route::get('/invoices/{invoiceId}/payments', [PaymentController::class, 'getInvoicePayments'])->name('invoice-payments');
         // Monthly billing summary
         Route::get('/month-details/{month}', [BillingController::class, 'monthDetails'])->name('month-details');
         
@@ -209,7 +209,7 @@ Route::get('/debug/routes', function () {
         'admin.billing.all-invoices',
         'admin.billing.monthly-bills',
         'admin.billing.generate-monthly-bills',
-        'admin.billing.add-payment', // may not exist; will be reported as MISSING
+        'admin.billing.record-payment', // Updated route name
         'admin.billing.send-reminder',
         'admin.billing.generate-from-invoices',
         'admin.billing.generate-bill',
@@ -251,10 +251,10 @@ Route::get('/debug/payment-routes', function() {
     echo "<h3>Payment Routes Debug:</h3>";
     
     try {
-        $url = route('admin.billing.add-payment');
-        echo "✅ admin.billing.add-payment: " . $url . "<br>";
+        $url = route('admin.billing.record-payment', ['invoiceId' => 1]);
+        echo "✅ admin.billing.record-payment: " . $url . "<br>";
     } catch (Exception $e) {
-        echo "❌ admin.billing.add-payment: " . $e->getMessage() . "<br>";
+        echo "❌ admin.billing.record-payment: " . $e->getMessage() . "<br>";
     }
     
     try {
