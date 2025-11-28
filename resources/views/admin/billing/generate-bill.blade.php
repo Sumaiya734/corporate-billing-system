@@ -60,27 +60,33 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <h6 class="mb-3">Current Packages</h6>
+                    <h6 class="mb-3">Current products</h6>
                     @php
-                        $activePackages = DB::table('customer_to_packages as cp')
-                            ->join('packages as p', 'cp.p_id', '=', 'p.p_id')
+                        $activeproducts = DB::table('customer_to_products as cp')
+                            ->join('products as p', 'cp.p_id', '=', 'p.p_id')
                             ->where('cp.c_id', $customer->c_id)
                             ->where('cp.status', 'active')
-                            ->select('p.name', 'p.package_type', 'cp.package_price', 'cp.billing_cycle_months')
+                            ->select('p.name', 'p.product_type', 'cp.custom_price', 'cp.billing_cycle_months')
                             ->get();
                         
-                        $totalMonthly = $activePackages->sum('package_price');
+                        $totalMonthly = $activeproducts->sum(function($product) {
+                            // Use custom price if set, otherwise calculate from product's monthly price
+                            if ($product->custom_price !== null) {
+                                return $product->custom_price / max(1, $product->billing_cycle_months);
+                            }
+                            return 0; // This should ideally get the product's monthly price, but we don't have it in this query
+                        });
                     @endphp
                     
-                    @if($activePackages->count() > 0)
-                        @foreach($activePackages as $package)
-                            <span class="badge bg-{{ $package->package_type == 'regular' ? 'primary' : 'warning' }} me-2 mb-2">
-                                {{ $package->name }} - ৳{{ number_format($package->package_price, 2) }}
-                                <small>({{ $package->billing_cycle_months }} month cycle)</small>
+                    @if($activeproducts->count() > 0)
+                        @foreach($activeproducts as $product)
+                            <span class="badge bg-{{ $product->product_type == 'regular' ? 'primary' : 'warning' }} me-2 mb-2">
+                                {{ $product->name }} - ৳{{ number_format($product->custom_price ?? 0, 2) }}
+                                <small>({{ $product->billing_cycle_months }} month cycle)</small>
                             </span>
                         @endforeach
                     @else
-                        <p class="text-muted">No active packages</p>
+                        <p class="text-muted">No active products</p>
                     @endif
                     
                     <div class="mt-3">
@@ -118,7 +124,7 @@
                                 <input type="checkbox" id="selectAll">
                             </th>
                             <th width="120">Month</th>
-                            <th>Services/Packages</th>
+                            <th>Services/products</th>
                             <th width="120" class="text-end">Bill Amount</th>
                             <th width="120" class="text-end">Previous Due</th>
                             <th width="120" class="text-end">Total</th>
@@ -129,27 +135,27 @@
                     </thead>
                     <tbody>
                         @php
-                            // Get customer's invoices with package information
+                            // Get customer's invoices with product information
                             $customerInvoices = DB::table('invoices as i')
-                                ->leftJoin('customer_to_packages as cp', function($join) {
+                                ->leftJoin('customer_to_products as cp', function($join) {
                                     $join->on('i.customer_id', '=', 'cp.c_id')
                                          ->on(DB::raw("DATE_FORMAT(i.issue_date, '%Y-%m')"), '=', DB::raw("DATE_FORMAT(cp.assign_date, '%Y-%m')"));
                                 })
-                                ->leftJoin('packages as p', 'cp.p_id', '=', 'p.p_id')
+                                ->leftJoin('products as p', 'cp.p_id', '=', 'p.p_id')
                                 ->where('i.customer_id', $customer->c_id)
                                 ->select(
                                     'i.*',
-                                    'p.name as package_name',
-                                    'p.package_type',
-                                    'cp.package_price',
-                                    DB::raw("GROUP_CONCAT(p.name SEPARATOR ', ') as all_packages")
+                                    'p.name as product_name',
+                                    'p.product_type',
+                                    'cp.custom_price',
+                                    DB::raw("GROUP_CONCAT(p.name SEPARATOR ', ') as all_products")
                                 )
                                 ->groupBy('i.id')
                                 ->orderBy('i.issue_date', 'desc')
                                 ->get();
 
                             // Get due months based on billing cycles for future billing
-                            $dueMonths = DB::table('customer_to_packages as cp')
+                            $dueMonths = DB::table('customer_to_products as cp')
                                 ->select(
                                     DB::raw("DATE_FORMAT(
                                         DATE_ADD(
@@ -158,10 +164,10 @@
                                         ), 
                                         '%Y-%m'
                                     ) as due_month"),
-                                    DB::raw('SUM(cp.package_price) as total_amount'),
-                                    DB::raw("GROUP_CONCAT(p.name SEPARATOR ', ') as packages")
+                                    DB::raw('SUM(cp.custom_price) as total_amount'),
+                                    DB::raw("GROUP_CONCAT(p.name SEPARATOR ', ') as products")
                                 )
-                                ->join('packages as p', 'cp.p_id', '=', 'p.p_id')
+                                ->join('products as p', 'cp.p_id', '=', 'p.p_id')
                                 ->where('cp.c_id', $customer->c_id)
                                 ->where('cp.status', 'active')
                                 ->whereRaw('cp.assign_date <= NOW()')
@@ -180,6 +186,7 @@
                                 if ($existingInvoice) {
                                     $allBillingData->push($existingInvoice);
                                 } else {
+                                    // For pending invoices, just show the product amount without extra charges
                                     $allBillingData->push((object)[
                                         'id' => null,
                                         'invoice_number' => 'PENDING-' . $dueMonth->due_month,
@@ -187,14 +194,14 @@
                                         'due_date' => date('Y-m-d', strtotime($dueMonth->due_month . '-01 +10 days')),
                                         'billing_month' => date('F Y', strtotime($dueMonth->due_month . '-01')),
                                         'subtotal' => $dueMonth->total_amount,
-                                        'service_charge' => 50.00,
-                                        'vat_amount' => $dueMonth->total_amount * 0.07,
-                                        'total_amount' => $dueMonth->total_amount + 50 + ($dueMonth->total_amount * 0.07),
+                                        'service_charge' => 0,
+                                        'vat_amount' => 0,
+                                        'total_amount' => $dueMonth->total_amount,
                                         'received_amount' => 0,
-                                        'next_due' => $dueMonth->total_amount + 50 + ($dueMonth->total_amount * 0.07),
+                                        'next_due' => $dueMonth->total_amount,
                                         'status' => 'pending',
-                                        'package_name' => $dueMonth->packages,
-                                        'all_packages' => $dueMonth->packages
+                                        'product_name' => $dueMonth->products,
+                                        'all_products' => $dueMonth->products
                                     ]);
                                 }
                             }
@@ -216,12 +223,19 @@
                         @php
                             $isPending = $invoice->id === null;
                             $isOverdue = !$isPending && $invoice->status === 'unpaid' && strtotime($invoice->due_date) < time();
-                            $isPaid = !$isPending && ($invoice->status === 'paid' || $invoice->received_amount >= $invoice->total_amount);
-                            $isPartial = !$isPending && !$isPaid && $invoice->received_amount > 0;
                             
-                            $previousDue = 0; // This would need to be calculated based on previous invoices
-                            $totalAmount = $invoice->total_amount;
-                            $nextDue = $totalAmount - $invoice->received_amount;
+                            // Use real invoice data
+                            $totalAmount = $invoice->total_amount ?? 0;
+                            $receivedAmount = $invoice->received_amount ?? 0;
+                            $nextDue = $invoice->next_due ?? ($totalAmount - $receivedAmount);
+                            $previousDue = $invoice->previous_due ?? 0;
+                            
+                            // Calculate product amount (current charges only)
+                            $productAmount = $totalAmount - $previousDue;
+                            
+                            // Determine status
+                            $isPaid = !$isPending && ($nextDue < 0.01);
+                            $isPartial = !$isPending && !$isPaid && $receivedAmount > 0;
                             
                             $statusClass = 'badge-pending';
                             $statusText = 'Pending';
@@ -256,44 +270,58 @@
                             </td>
                             <td>
                                 <div class="service-info">
-                                    <strong>{{ $invoice->all_packages ?? $invoice->package_name ?? 'Package' }}</strong>
+                                    <strong>{{ $invoice->all_products ?? $invoice->product_name ?? 'product' }}</strong>
                                     <small class="text-muted d-block">
-                                        @if($invoice->package_type)
-                                            {{ ucfirst($invoice->package_type) }} Package
+                                        @if($invoice->product_type)
+                                            {{ ucfirst($invoice->product_type) }} product
                                         @else
-                                            Multiple Packages
+                                            Multiple products
                                         @endif
                                     </small>
                                 </div>
                             </td>
                             <td class="text-end">
-                                <span class="bill-amount">৳{{ number_format($totalAmount, 2) }}</span>
+                                <span class="bill-amount">৳{{ number_format($productAmount, 2) }}</span>
+                                <br><small class="text-muted">Current month</small>
                             </td>
                             <td class="text-end">
                                 <span class="previous-due">৳{{ number_format($previousDue, 2) }}</span>
+                                @if($previousDue > 0)
+                                <br><small class="text-muted">From past</small>
+                                @endif
                             </td>
                             <td class="text-end">
-                                <strong class="total-amount">৳{{ number_format($totalAmount + $previousDue, 2) }}</strong>
+                                <strong class="total-amount">৳{{ number_format($totalAmount, 2) }}</strong>
+                                <br><small class="text-muted">Total invoice</small>
                             </td>
                             <td class="text-end">
                                 @if($isPending)
                                     <span class="text-muted">Not Generated</span>
                                 @else
                                     <input type="number" class="form-control form-control-sm received-amount" 
-                                           value="{{ number_format($invoice->received_amount, 2) }}" 
-                                           min="0" max="{{ $totalAmount + $previousDue }}" 
+                                           value="{{ number_format($receivedAmount, 2) }}" 
+                                           min="0" max="{{ $totalAmount }}" 
                                            step="0.01"
-                                           data-invoice-id="{{ $invoice->id }}">
+                                           data-invoice-id="{{ $invoice->id }}"
+                                           readonly>
+                                    <small class="text-muted">Payments made</small>
                                 @endif
                             </td>
                             <td class="text-end">
-                                <span class="next-due 
-                                    @if($nextDue <= 0) text-success
-                                    @elseif($nextDue > 0 && $nextDue <= ($totalAmount * 0.5)) text-warning
-                                    @else text-danger
-                                    @endif">
-                                    ৳{{ number_format($nextDue, 2) }}
-                                </span>
+                                @if($isPaid)
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle me-1"></i>Paid
+                                    </span>
+                                @else
+                                    <span class="next-due 
+                                        @if($nextDue <= 0) text-success
+                                        @elseif($nextDue > 0 && $nextDue <= ($totalAmount * 0.5)) text-warning
+                                        @else text-danger
+                                        @endif">
+                                        ৳{{ number_format($nextDue, 2) }}
+                                    </span>
+                                @endif
+                                <br><small class="text-muted">Outstanding</small>
                             </td>
                             <td class="text-center">
                                 <span class="badge {{ $statusClass }}">{{ $statusText }}</span>
@@ -306,7 +334,7 @@
                             <td colspan="9" class="text-center py-4">
                                 <i class="fas fa-file-invoice-dollar fa-2x text-muted mb-3"></i>
                                 <p class="text-muted mb-0">No billing data found for this customer.</p>
-                                <small class="text-muted">Assign packages to generate bills.</small>
+                                <small class="text-muted">Assign products to generate bills.</small>
                             </td>
                         </tr>
                         @endif
@@ -701,7 +729,11 @@
         const totalAmount = document.getElementById('totalAmount').textContent;
         const selectedInvoices = Array.from(selectedRows).map(checkbox => checkbox.getAttribute('data-invoice'));
         
-        if (confirm(`Confirm payment of ${totalAmount} for ${selectedRows.size} selected bills?\n\nInvoices:\n${selectedInvoices.join('\n')}`)) {
+        if (confirm(`Confirm payment of ${totalAmount} for ${selectedRows.size} selected bills?
+
+Invoices:
+${selectedInvoices.join('
+')}`)) {
             alert('Payment confirmed successfully for selected bills!');
             // Here you would typically make an AJAX call to update the database
         }

@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('packages', function (Blueprint $table) {
+        Schema::create('products', function (Blueprint $table) {
             $table->increments('p_id');
             $table->string('name', 120);
-            $table->enum('package_type', ['regular', 'special'])->default('regular');
+            $table->enum('product_type', ['regular', 'special'])->default('regular');
             $table->text('description')->nullable();
             $table->decimal('monthly_price', 12)->nullable();
             $table->timestamps();
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('packages');
+        Schema::dropIfExists('products');
     }
 };

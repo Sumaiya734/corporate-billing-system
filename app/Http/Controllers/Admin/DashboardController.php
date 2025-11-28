@@ -27,8 +27,8 @@ class DashboardController extends Controller
             ->whereIn('status', ['unpaid', 'partial'])
             ->count();
 
-        // Get active packages
-        $activePackages = DB::table('customer_to_packages')
+        // Get active products
+        $activeproducts = DB::table('customer_to_products')
             ->where('is_active', 1)
             ->where('status', 'active')
             ->count();
@@ -62,9 +62,9 @@ class DashboardController extends Controller
             ->orderBy('month')
             ->get();
 
-        // Get package distribution
-        $packageDistribution = DB::table('customer_to_packages as cp')
-            ->join('packages as p', 'cp.p_id', '=', 'p.p_id')
+        // Get product distribution
+        $productDistribution = DB::table('customer_to_products as cp')
+            ->join('products as p', 'cp.p_id', '=', 'p.p_id')
             ->select('p.name', DB::raw('COUNT(*) as count'))
             ->where('cp.is_active', 1)
             ->where('cp.status', 'active')
@@ -73,7 +73,8 @@ class DashboardController extends Controller
 
         // Get recent activity
         $recentActivity = DB::table('invoices as i')
-            ->join('customers as c', 'i.c_id', '=', 'c.c_id')
+            ->join('customer_to_products as cp', 'i.cp_id', '=', 'cp.cp_id')
+            ->join('customers as c', 'cp.c_id', '=', 'c.c_id')
             ->select(
                 'c.name as customer_name',
                 'i.status',
@@ -82,14 +83,14 @@ class DashboardController extends Controller
             )
             ->where('i.issue_date', '>=', now()->subDays(7))
             ->unionAll(
-                DB::table('customer_to_packages as cp')
+                DB::table('customer_to_products as cp')
                     ->join('customers as c', 'cp.c_id', '=', 'c.c_id')
-                    ->join('packages as p', 'cp.p_id', '=', 'p.p_id')
+                    ->join('products as p', 'cp.p_id', '=', 'p.p_id')
                     ->select(
                         'c.name as customer_name',
                         DB::raw("'active' as status"),
                         'cp.created_at as issue_date',
-                        DB::raw("CONCAT('Package: ', p.name) as type")
+                        DB::raw("CONCAT('product: ', p.name) as type")
                     )
                     ->where('cp.created_at', '>=', now()->subDays(7))
             )
@@ -101,12 +102,12 @@ class DashboardController extends Controller
             'totalCustomers',
             'monthlyRevenue',
             'pendingBills',
-            'activePackages',
+            'activeproducts',
             'overdueBills',
             'paidInvoices',
             'newCustomers',
             'revenueData',
-            'packageDistribution',
+            'productDistribution',
             'recentActivity'
         ));
     }
@@ -121,7 +122,7 @@ class DashboardController extends Controller
                 ->where(DB::raw("DATE_FORMAT(issue_date, '%Y-%m')"), now()->format('Y-m'))
                 ->sum('received_amount'),
             'pendingBills' => DB::table('invoices')->whereIn('status', ['unpaid', 'partial'])->count(),
-            'activePackages' => DB::table('customer_to_packages')->where('is_active', 1)->where('status', 'active')->count(),
+            'activeproducts' => DB::table('customer_to_products')->where('is_active', 1)->where('status', 'active')->count(),
         ];
 
         return response()->json($data);

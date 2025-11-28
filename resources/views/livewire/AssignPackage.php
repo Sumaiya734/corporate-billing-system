@@ -4,20 +4,20 @@ namespace App\Http\Livewire;
 
 use Livewire\Component;
 use App\Models\Customer;
-use App\Models\Package;
+use App\Models\product;
 use Illuminate\Support\Facades\DB;
 
-class AssignPackage extends Component
+class Assignproduct extends Component
 {
     public $search = '';
     public $customers = [];
     public $selectedCustomer = null;
 
-    public $packages = [];
+    public $products = [];
     public $rows = [];
     public $totalAmount = 0;
     
-    public $packageSelections = [];
+    public $productSelections = [];
     public $billingMonths = [];
     public $assignDates = [];
 
@@ -25,9 +25,9 @@ class AssignPackage extends Component
 
     public function mount()
     {
-        $this->packages = Package::where('status', 'active')->get();
+        $this->products = product::where('status', 'active')->get();
         $this->rows = [0]; // Start with one row
-        $this->packageSelections[0] = '';
+        $this->productSelections[0] = '';
         $this->billingMonths[0] = '1';
         $this->assignDates[0] = now()->format('Y-m-d');
     }
@@ -70,7 +70,7 @@ class AssignPackage extends Component
     {
         $newIndex = count($this->rows);
         $this->rows[] = $newIndex;
-        $this->packageSelections[$newIndex] = '';
+        $this->productSelections[$newIndex] = '';
         $this->billingMonths[$newIndex] = '1';
         $this->assignDates[$newIndex] = now()->format('Y-m-d');
     }
@@ -79,13 +79,13 @@ class AssignPackage extends Component
     {
         if (count($this->rows) > 1) {
             unset($this->rows[$index]);
-            unset($this->packageSelections[$index]);
+            unset($this->productSelections[$index]);
             unset($this->billingMonths[$index]);
             unset($this->assignDates[$index]);
             
             // Reindex arrays
             $this->rows = array_values($this->rows);
-            $this->packageSelections = array_values($this->packageSelections);
+            $this->productSelections = array_values($this->productSelections);
             $this->billingMonths = array_values($this->billingMonths);
             $this->assignDates = array_values($this->assignDates);
         }
@@ -93,7 +93,7 @@ class AssignPackage extends Component
         $this->calculateTotal();
     }
 
-    public function updatedPackageSelections()
+    public function updatedproductSelections()
     {
         $this->calculateTotal();
     }
@@ -108,23 +108,23 @@ class AssignPackage extends Component
         $this->totalAmount = 0;
         
         foreach ($this->rows as $index) {
-            if (!empty($this->packageSelections[$index])) {
-                $package = Package::find($this->packageSelections[$index]);
-                if ($package) {
+            if (!empty($this->productSelections[$index])) {
+                $product = product::find($this->productSelections[$index]);
+                if ($product) {
                     $months = intval($this->billingMonths[$index] ?? 1);
-                    $this->totalAmount += $package->monthly_price * $months;
+                    $this->totalAmount += $product->monthly_price * $months;
                 }
             }
         }
     }
 
-    public function getPackageAmount($index)
+    public function getproductAmount($index)
     {
-        if (!empty($this->packageSelections[$index])) {
-            $package = Package::find($this->packageSelections[$index]);
-            if ($package) {
+        if (!empty($this->productSelections[$index])) {
+            $product = product::find($this->productSelections[$index]);
+            if ($product) {
                 $months = intval($this->billingMonths[$index] ?? 1);
-                return $package->monthly_price * $months;
+                return $product->monthly_price * $months;
             }
         }
         return 0;
@@ -138,29 +138,29 @@ class AssignPackage extends Component
             return;
         }
 
-        // Validate at least one package is selected
-        $hasPackageSelected = false;
-        foreach ($this->packageSelections as $packageId) {
-            if (!empty($packageId)) {
-                $hasPackageSelected = true;
+        // Validate at least one product is selected
+        $hasproductSelected = false;
+        foreach ($this->productSelections as $productId) {
+            if (!empty($productId)) {
+                $hasproductSelected = true;
                 break;
             }
         }
 
-        if (!$hasPackageSelected) {
-            session()->flash('error', 'Please select at least one package.');
+        if (!$hasproductSelected) {
+            session()->flash('error', 'Please select at least one product.');
             return;
         }
 
-        // Validate no duplicate packages
-        $selectedPackages = [];
-        foreach ($this->packageSelections as $packageId) {
-            if (!empty($packageId)) {
-                if (in_array($packageId, $selectedPackages)) {
-                    session()->flash('error', 'You cannot assign the same package multiple times to the same customer.');
+        // Validate no duplicate products
+        $selectedproducts = [];
+        foreach ($this->productSelections as $productId) {
+            if (!empty($productId)) {
+                if (in_array($productId, $selectedproducts)) {
+                    session()->flash('error', 'You cannot assign the same product multiple times to the same customer.');
                     return;
                 }
-                $selectedPackages[] = $packageId;
+                $selectedproducts[] = $productId;
             }
         }
 
@@ -168,27 +168,27 @@ class AssignPackage extends Component
             DB::beginTransaction();
 
             foreach ($this->rows as $index) {
-                if (!empty($this->packageSelections[$index])) {
-                    $package = Package::find($this->packageSelections[$index]);
+                if (!empty($this->productSelections[$index])) {
+                    $product = product::find($this->productSelections[$index]);
                     
-                    if ($package) {
-                        // Create customer package assignment
-                        $customerPackage = new \App\Models\CustomerPackage();
-                        $customerPackage->customer_id = $this->selectedCustomer->id;
-                        $customerPackage->package_id = $package->id;
-                        $customerPackage->billing_months = $this->billingMonths[$index];
-                        $customerPackage->assign_date = $this->assignDates[$index];
-                        $customerPackage->monthly_price = $package->monthly_price;
-                        $customerPackage->total_amount = $package->monthly_price * $this->billingMonths[$index];
-                        $customerPackage->status = 'active';
-                        $customerPackage->save();
+                    if ($product) {
+                        // Create customer product assignment
+                        $customerproduct = new \App\Models\Customerproduct();
+                        $customerproduct->customer_id = $this->selectedCustomer->id;
+                        $customerproduct->product_id = $product->id;
+                        $customerproduct->billing_months = $this->billingMonths[$index];
+                        $customerproduct->assign_date = $this->assignDates[$index];
+                        $customerproduct->monthly_price = $product->monthly_price;
+                        $customerproduct->total_amount = $product->monthly_price * $this->billingMonths[$index];
+                        $customerproduct->status = 'active';
+                        $customerproduct->save();
                     }
                 }
             }
 
             DB::commit();
 
-            session()->flash('success', 'Packages assigned successfully!');
+            session()->flash('success', 'products assigned successfully!');
             
             // Reset form
             $this->reset();
@@ -196,12 +196,12 @@ class AssignPackage extends Component
 
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', 'Error assigning packages: ' . $e->getMessage());
+            session()->flash('error', 'Error assigning products: ' . $e->getMessage());
         }
     }
 
     public function render()
     {
-        return view('livewire.assign-package');
+        return view('livewire.assign-product');
     }
 }

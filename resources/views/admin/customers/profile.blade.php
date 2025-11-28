@@ -1,66 +1,177 @@
 @extends('layouts.admin')
 
-@section('title', 'Profile')
+@section('title', 'Customer Profile - ' . $customer->name)
 
 @section('content')
-@php 
- $customerId = request()->route('id') ?? 1; 
-  $invoices = [ 1 => [ 'id' => 1, 'invoice_id' => 'INV-2024-001', 'customer' => [ 'name' => 'John Doe', 'email' => 'john.doe@example.com', 'phone' => '+8801712345678', 'address' => 'Gulshan, Dhaka' ], 'services' => [ ['name' => 'Basic Speed Internet', 'price' => 500], ], 'issue_date' => '2024-01-01', 'due_date' => '2024-01-05', 'status' => 'paid', 'amount' => 588.50, 'breakdown' => [ 'service_charge' => 50, 'regular_package' => 500, 'special_packages' => 0, 'vat' => 38.50, 'discount' => 0 ] ], 2 => [ 'id' => 2, 'invoice_id' => 'INV-2024-002', 'customer' => [ 'name' => 'Alice Smith', 'email' => 'alice.smith@example.com', 'phone' => '+8801812345679', 'address' => 'Uttara, Dhaka' ], 'services' => [ ['name' => 'Fast Speed Internet', 'price' => 800], ['name' => 'Gaming Boost', 'price' => 200], ], 'issue_date' => '2024-01-01', 'due_date' => '2024-01-05', 'status' => 'pending', 'amount' => 1151.50, 'breakdown' => [ 'service_charge' => 50, 'regular_package' => 800, 'special_packages' => 200, 'vat' => 73.50, 'discount' => 0 ] ], 3 => [ 'id' => 3, 'invoice_id' => 'INV-2023-125', 'customer' => [ 'name' => 'Bob Johnson', 'email' => 'bob.johnson@example.com', 'phone' => '+8801912345680', 'address' => 'Banani, Dhaka' ], 'services' => [ ['name' => 'Super Speed Internet', 'price' => 1200], ['name' => 'Streaming Plus', 'price' => 150], ], 'issue_date' => '2023-12-01', 'due_date' => '2023-12-25', 'status' => 'overdue', 'amount' => 1500.50, 'breakdown' => [ 'service_charge' => 50, 'regular_package' => 1200, 'special_packages' => 150, 'vat' => 98.00, 'discount' => 0 ] ], 4 => [ 'id' => 4, 'invoice_id' => 'INV-2023-098', 'customer' => [ 'name' => 'Carol White', 'email' => 'carol.white@example.com', 'phone' => '+8801612345681', 'address' => 'Dhanmondi, Dhaka' ], 'services' => [ ['name' => 'Fast Speed Internet', 'price' => 800], ], 'issue_date' => '2023-11-01', 'due_date' => '2023-11-05', 'status' => 'paid', 'amount' => 909.50, 'breakdown' => [ 'service_charge' => 50, 'regular_package' => 800, 'special_packages' => 0, 'vat' => 59.50, 'discount' => 0 ] ], 5 => [ 'id' => 5, 'invoice_id' => 'INV-2023-076', 'customer' => [ 'name' => 'David Green', 'email' => 'david.green@example.com', 'phone' => '+8801512345682', 'address' => 'Mirpur, Dhaka' ], 'services' => [ ['name' => 'Super Speed Internet', 'price' => 1200], ['name' => 'Family Pack', 'price' => 300], ], 'issue_date' => '2023-10-01', 'due_date' => '2023-10-05', 'status' => 'paid', 'amount' => 1657.50, 'breakdown' => [ 'service_charge' => 50, 'regular_package' => 1200, 'special_packages' => 300, 'vat' => 108.50, 'discount' => 0 ] ] ]; 
-   $invoice = $invoices[$customerId] ?? $invoices[1]; $customerName = $invoice['customer']['name'];
- @endphp
-<div class="container-fluid p-4" id="invoicePrintable">
+<div class="container-fluid p-4">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold mb-1">Invoice Details</h2>
-            <div class="text-muted">Invoice #: {{ $invoice['invoice_id'] }}</div>
+            <h2 class="fw-bold mb-1">Customer Profile</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('admin.customers.index') }}">Customers</a></li>
+                    <li class="breadcrumb-item active">{{ $customer->name }}</li>
+                </ol>
+            </nav>
         </div>
-        <div class="d-flex gap-2 no-print">
-            <button class="btn btn-outline-secondary" onclick="window.print()">
-                <i class="fas fa-print me-2"></i>Print
-            </button>
-            <button class="btn btn-outline-primary">
-                <i class="fas fa-download me-2"></i>Download PDF
-            </button>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.customers.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Billing
+            </a>
+            <a href="{{ route('admin.customers.edit', $customer->c_id) }}" class="btn btn-primary">
+                <i class="fas fa-edit me-2"></i>Edit Profile
+            </a>
+            <!--  -->
+            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-success">
+                <i class="fas fa-user-tag me-2"></i>Assign product
+            </a>
+            
+            <form action="{{ route('admin.customers.toggle-status', $customer->c_id) }}" method="POST" class="d-inline">
+                @csrf
+                @method('PATCH')
+                <button type="submit" class="btn btn-{{ $customer->is_active ? 'warning' : 'success' }}">
+                    <i class="fas fa-{{ $customer->is_active ? 'ban' : 'check' }} me-2"></i>
+                    {{ $customer->is_active ? 'Deactivate' : 'Activate' }}
+                </button>
+            </form>
         </div>
     </div>
 
-    <!-- Invoice Info Row -->
+    <!-- Statistics Cards -->
     <div class="row g-4 mb-4">
-        <!-- Invoice Details -->
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-primary bg-opacity-10 text-primary rounded p-3">
+                                <i class="fas fa-file-invoice fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Invoices</h6>
+                            <h3 class="mb-0">{{ $totalInvoices }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-success bg-opacity-10 text-success rounded p-3">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Paid</h6>
+                            <h3 class="mb-0">৳{{ number_format($totalPaid, 2) }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-danger bg-opacity-10 text-danger rounded p-3">
+                                <i class="fas fa-exclamation-circle fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Due</h6>
+                            <h3 class="mb-0">৳{{ number_format($totalDue, 2) }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-info bg-opacity-10 text-info rounded p-3">
+                                <i class="fas fa-box fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Active Products</h6>
+                            <h3 class="mb-0">{{ $customer->customerproducts->where('status', 'active')->count() }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Information -->
+    <div class="row g-4 mb-4">
+        <!-- Personal Information -->
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
-                    <h5 class="fw-bold text-primary mb-3">Invoice Info</h5>
+                    <h5 class="fw-bold text-primary mb-3">
+                        <i class="fas fa-user me-2"></i>Personal Information
+                    </h5>
                     <table class="table table-sm table-borderless mb-0">
                         <tbody>
                             <tr>
-                                <td class="text-muted">Invoice ID:</td>
-                                <td class="fw-semibold">{{ $invoice['invoice_id'] }}</td>
+                                <td class="text-muted" style="width: 40%;">Customer ID:</td>
+                                <td class="fw-semibold">{{ $customer->customer_id }}</td>
                             </tr>
                             <tr>
-                                <td class="text-muted">Issue Date:</td>
-                                <td>{{ \Carbon\Carbon::parse($invoice['issue_date'])->format('M d, Y') }}</td>
+                                <td class="text-muted">Full Name:</td>
+                                <td class="fw-semibold">{{ $customer->name }}</td>
                             </tr>
                             <tr>
-                                <td class="text-muted">Due Date:</td>
-                                <td>{{ \Carbon\Carbon::parse($invoice['due_date'])->format('M d, Y') }}</td>
+                                <td class="text-muted">Email:</td>
+                                <td>{{ $customer->email }}</td>
                             </tr>
+                            <tr>
+                                <td class="text-muted">Phone:</td>
+                                <td>{{ $customer->phone }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Address:</td>
+                                <td>{{ $customer->address }}</td>
+                            </tr>
+                            @if($customer->connection_address)
+                            <tr>
+                                <td class="text-muted">Connection Address:</td>
+                                <td>{{ $customer->connection_address }}</td>
+                            </tr>
+                            @endif
+                            @if($customer->id_type)
+                            <tr>
+                                <td class="text-muted">ID Type:</td>
+                                <td>{{ $customer->id_type }}</td>
+                            </tr>
+                            @endif
+                            @if($customer->id_number)
+                            <tr>
+                                <td class="text-muted">ID Number:</td>
+                                <td>{{ $customer->id_number }}</td>
+                            </tr>
+                            @endif
                             <tr>
                                 <td class="text-muted">Status:</td>
                                 <td>
-                                    @if($invoice['status'] === 'paid')
-                                        <span class="badge bg-success">Paid</span>
-                                    @elseif($invoice['status'] === 'pending')
-                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    @if($customer->is_active)
+                                        <span class="badge bg-success">Active</span>
                                     @else
-                                        <span class="badge bg-danger">Overdue</span>
+                                        <span class="badge bg-danger">Inactive</span>
                                     @endif
                                 </td>
                             </tr>
                             <tr>
-                                <td class="text-muted">Amount Due:</td>
-                                <td class="fw-bold text-primary fs-5">৳ {{ number_format($invoice['amount'], 2) }}</td>
+                                <td class="text-muted">Member Since:</td>
+                                <td>{{ $customer->created_at->format('M d, Y') }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -68,181 +179,210 @@
             </div>
         </div>
 
-        <!-- Billing Details -->
+        <!-- Active Products -->
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
-                    <h5 class="fw-bold text-primary mb-3">Billing Details</h5>
-                    <table class="table table-sm table-borderless mb-0">
-                        <tbody>
-                            <tr>
-                                <td class="text-muted">Customer:</td>
-                                <td class="fw-semibold">{{ $invoice['customer']['name'] }}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted">Email:</td>
-                                <td>{{ $invoice['customer']['email'] }}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted">Phone:</td>
-                                <td>{{ $invoice['customer']['phone'] }}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted">Address:</td>
-                                <td>{{ $invoice['customer']['address'] }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-primary mb-3">
+                            <i class="fas fa-box me-2"></i>Active Products
+                            </h5>
+                            <a href="{{ route('admin.customer-to-products.index', $customer->c_id) }}" class="btn btn-sm btn-outline-primary">
+                                View
+                            </a>   
+                        </div>                                 
+                    @if($customer->customerproducts->count() > 0)
+                        <div class="list-group list-group-flush">
+                            @foreach($customer->customerproducts as $cp)
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">{{ $cp->product->name }}</h6>
+                                            <small class="text-muted d-block">
+                                                <i class="fas fa-tag me-1"></i>{{ ucfirst($cp->product->product_type ?? 'N/A') }}
+                                            </small>
+                                            <small class="text-muted d-block">
+                                                <i class="fas fa-calendar me-1"></i>Billing: 
+                                                {{ match($cp->billing_cycle_months ?? 1) {
+                                                    1 => 'Monthly',
+                                                    3 => 'Quarterly',
+                                                    6 => 'Semi-Annual',
+                                                    12 => 'Annual',
+                                                    default => $cp->billing_cycle_months . ' Months'
+                                                } }}
+                                            </small>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-bold text-primary">৳{{ number_format($cp->product->monthly_price ?? 0, 2) }}/mo</div>
+                                            @if($cp->billing_cycle_months > 1)
+                                                <small class="text-muted d-block">৳{{ number_format(($cp->product->monthly_price ?? 0) * $cp->billing_cycle_months, 2) }}/cycle</small>
+                                            @endif
+                                            <span class="badge bg-{{ $cp->status === 'active' ? 'success' : 'secondary' }} mt-1">
+                                                {{ ucfirst($cp->status) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-box-open fa-3x mb-3 opacity-50"></i>
+                            <p>No products assigned yet</p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Services Table -->
+    <!-- Recent Invoices -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
-            <h5 class="fw-bold text-primary mb-3">Services & Charges</h5>
-            <table class="table table-bordered align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Description</th>
-                        <th class="text-end">Amount (৳)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($invoice['services'] as $service)
-                        <tr>
-                            <td>{{ $service['name'] }}</td>
-                            <td class="text-end">{{ number_format($service['price'], 2) }}</td>
-                        </tr>
-                    @endforeach
-                    <tr>
-                        <td>Service Charge</td>
-                        <td class="text-end">{{ number_format($invoice['breakdown']['service_charge'], 2) }}</td>
-                    </tr>
-                    <tr class="fw-bold">
-                        <td>Subtotal</td>
-                        <td class="text-end">{{ number_format($invoice['breakdown']['regular_package'] + $invoice['breakdown']['special_packages'] + $invoice['breakdown']['service_charge'], 2) }}</td>
-                    </tr>
-                    <tr>
-                        <td>VAT (7%)</td>
-                        <td class="text-end">{{ number_format($invoice['breakdown']['vat'], 2) }}</td>
-                    </tr>
-                    @if($invoice['breakdown']['discount'] > 0)
-                        <tr>
-                            <td>Discount</td>
-                            <td class="text-end text-success">-{{ number_format($invoice['breakdown']['discount'], 2) }}</td>
-                        </tr>
-                    @endif
-                    <tr class="table-primary fw-bold">
-                        <td>Total</td>
-                        <td class="text-end">৳ {{ number_format($invoice['amount'], 2) }}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-primary mb-0">
+                    <i class="fas fa-file-invoice me-2"></i>Recent Invoices
+                </h5>
+                <a href="{{ route('admin.customers.billing-history', $customer->c_id) }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            @if($recentInvoices->count() > 0)
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Invoice ID</th>
+                                <th>Issue Date</th>
+                                <th>Due Date</th>
+                                <th>Amount</th>
+                                <th>Paid</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($recentInvoices as $invoice)
+                                <tr>
+                                    <td class="fw-semibold">{{ $invoice->invoice_id }}</td>
+                                    <td>{{ $invoice->issue_date ? $invoice->issue_date->format('M d, Y') : 'N/A' }}</td>
+                                    <td>{{ $invoice->due_date ? $invoice->due_date->format('M d, Y') : 'N/A' }}</td>
+                                    <td>৳{{ number_format($invoice->total_amount ?? 0, 2) }}</td>
+                                    <td>৳{{ number_format($invoice->received_amount ?? 0, 2) }}</td>
+                                    <td>
+                                        @if($invoice->status === 'paid')
+                                            <span class="badge bg-success">Paid</span>
+                                        @elseif($invoice->status === 'partial')
+                                            <span class="badge bg-warning text-dark">Partial</span>
+                                        @else
+                                            <span class="badge bg-danger">Unpaid</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('admin.customer-to-products.index', $invoice->i_id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-file-invoice fa-3x mb-3 opacity-50"></i>
+                    <p>No invoices found</p>
+                </div>
+            @endif
         </div>
     </div>
 
-    <!-- Notes -->
+    <!-- Recent Payments -->
     <div class="card border-0 shadow-sm">
         <div class="card-body">
-            <h6 class="fw-bold text-primary mb-2">Payment Information</h6>
-            <p class="mb-1">Accepted Methods: Cash, bKash, Nagad, Bank Transfer</p>
-            <p class="mb-1">Account: <strong>NetX Internet Services Ltd.</strong> — 1234567890123 (Prime Bank, Gulshan)</p>
-            <p class="text-muted small mb-0">
-                Thank you for choosing NetX Internet Services. Please ensure payment is made by the due date to avoid service interruption.
-            </p>
+            <h5 class="fw-bold text-primary mb-3">
+                <i class="fas fa-money-bill-wave me-2"></i>Recent Payments
+            </h5>
+            @if($recentPayments->count() > 0)
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Payment ID</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Invoice</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($recentPayments as $payment)
+                                <tr>
+                                    <td class="fw-semibold">{{ $payment->payment_id }}</td>
+                                    <td>{{ $payment->payment_date ? $payment->payment_date->format('M d, Y') : 'N/A' }}</td>
+                                    <td class="text-success fw-bold">৳{{ number_format($payment->amount ?? 0, 2) }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ ucfirst($payment->payment_method ?? 'N/A') }}</span>
+                                    </td>
+                                    <td>
+                                        @if($payment->invoice && $payment->i_id)
+                                            <a href="{{ route('admin.billing.view-invoice', $payment->i_id) }}">
+                                                {{ $payment->invoice->invoice_id }}
+                                            </a>
+                                        @elseif($payment->i_id)
+                                            <span class="text-muted">Invoice #{{ $payment->i_id }}</span>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" disabled title="Payment details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-money-bill-wave fa-3x mb-3 opacity-50"></i>
+                    <p>No payments found</p>
+                </div>
+            @endif
         </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="text-center mt-4 pt-3 border-top small text-muted">
-        <p class="mb-1"><strong>NetX Internet Services Ltd.</strong></p>
-        <p class="mb-0">123 Business Avenue, Dhaka 1212 | billing@netx.com | +880 2 55667788</p>
     </div>
 </div>
 @endsection
 
 @section('styles')
 <style>
-/* --------- Invoice Page Styling --------- */
-#invoicePrintable {
-    max-width: 950px;
-    margin: auto;
-    background: #fff;
-}
 .card {
     border-radius: 10px;
 }
 .table th, .table td {
     vertical-align: middle;
-    padding: 0.65rem 0.75rem;
+    padding: 0.75rem;
 }
 .badge {
     font-size: 0.8rem;
     border-radius: 6px;
+    padding: 0.35em 0.65em;
 }
 h5.text-primary {
     letter-spacing: 0.3px;
 }
-
-/* --------- Print Formatting --------- */
-@media print {
-    @page {
-        size: A4;
-        margin: 1cm;
-    }
-
-    body {
-        background: white;
-        -webkit-print-color-adjust: exact !important;
-        color-adjust: exact !important;
-    }
-
-    #invoicePrintable {
-        width: 100%;
-        margin: 0;
-        box-shadow: none;
-    }
-
-    .no-print,
-    .navbar,
-    .sidebar,
-    footer {
-        display: none !important;
-    }
-
-    .card {
-        border: 1px solid #dee2e6 !important;
-        box-shadow: none !important;
-        page-break-inside: avoid;
-    }
-
-    table, tr, td, th {
-        page-break-inside: avoid !important;
-    }
-
-    .row {
-        margin-bottom: 0.5rem;
-    }
-
-    body {
-        font-size: 13px !important;
-        line-height: 1.4;
-    }
-
-    h2, h5 {
-        margin-bottom: 0.3rem !important;
-    }
-
-    .text-primary {
-        color: #000 !important;
-    }
-
-    .table-primary {
-        background-color: #e9ecef !important;
-        -webkit-print-color-adjust: exact;
-    }
+.list-group-item {
+    border-left: 0;
+    border-right: 0;
+}
+.list-group-item:first-child {
+    border-top: 0;
+}
+.list-group-item:last-child {
+    border-bottom: 0;
 }
 </style>
 @endsection

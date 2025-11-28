@@ -6,15 +6,15 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log; // Add this line
-use App\Models\User; // Add this line
+use Illuminate\Support\Facades\Log;
+use App\Models\User;
 
 class AuthController extends Controller
 {
     public function showLoginForm()
     {
         // Check if already logged in
-        if (Auth::check()) {
+        if (Auth::check() && Auth::user()->role === 'admin') {
             return redirect()->route('admin.dashboard');
         }
         return view('admin.login');
@@ -30,29 +30,23 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // Debug: Check if user exists and password matches
-        $user = User::where('email', $credentials['email'])->first();
-        
-        if ($user) {
-            Log::info('User found:', ['email' => $user->email]);
-            
-            // Check password manually
-            if (Hash::check($credentials['password'], $user->password)) {
-                Log::info('Password matches!');
-            } else {
-                Log::info('Password does NOT match!');
-                Log::info('Input password: ' . $credentials['password']);
-                Log::info('Stored hash: ' . $user->password);
-            }
-        } else {
-            Log::info('User not found with email: ' . $credentials['email']);
-        }
-
         // Attempt authentication
         if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-            Log::info('Authentication successful for: ' . Auth::user()->email);
-            return redirect()->route('admin.dashboard');
+            $user = Auth::user();
+            
+            // Check if the authenticated user is an admin
+            if ($user->role === 'admin') {
+                $request->session()->regenerate();
+                Log::info('Authentication successful for admin: ' . $user->email);
+                return redirect()->route('admin.dashboard');
+            } else {
+                // If not admin, logout and show error
+                Auth::logout();
+                Log::info('Authentication failed - not an admin: ' . $credentials['email']);
+                return back()->withErrors([
+                    'email' => 'Access denied. Admin privileges required.',
+                ])->withInput();
+            }
         }
 
         Log::info('Authentication failed for: ' . $credentials['email']);

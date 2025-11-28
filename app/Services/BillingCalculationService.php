@@ -1,51 +1,34 @@
 <?php
-// app/Services/BillingCalculationService.php
 
 namespace App\Services;
 
-use App\Models\Customer;
-use App\Models\CustomerPackage;
+use App\Models\CustomerProduct;
 use App\Models\Invoice;
-use App\Models\MonthlyBillingSummary;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class BillingCalculationService
 {
-    public function calculateMonthlySummary($year = null)
+    public function getMonthlyBillingSummary($month = null)
     {
-        $year = $year ?? date('Y');
-        $monthlyData = [];
-        
-        // Calculate for last 12 months + current month + next 3 months
-        for ($i = -12; $i <= 3; $i++) {
-            $date = Carbon::create($year, 1, 1)->addMonths($i);
-            $month = $date->format('Y-m');
-            
-            $monthlyData[$month] = $this->calculateMonthData($month);
+        if (!$month) {
+            $month = date('Y-m');
         }
         
-        return collect($monthlyData);
-    }
-    
-    private function calculateMonthData($month)
-    {
         $targetDate = Carbon::createFromFormat('Y-m', $month);
         $displayMonth = $targetDate->format('F Y');
         
-        // Get all active customer packages due in this month
-        $dueCustomerPackages = $this->getCustomerPackagesDueInMonth($month);
+        $dueCustomerProducts = $this->getCustomerProductsDueInMonth($month);
         
         $totalAmount = 0;
         $receivedAmount = 0;
         $customerIds = [];
         
-        foreach ($dueCustomerPackages as $customerPackage) {
-            $customerId = $customerPackage->c_id;
-            $packageAmount = $customerPackage->package_price;
+        foreach ($dueCustomerProducts as $customerProduct) {
+            $customerId = $customerProduct->c_id;
+            $productAmount = $customerProduct->product_price;
             
             // Add to total amount
-            $totalAmount += $packageAmount;
+            $totalAmount += $productAmount;
             
             // Check if invoice exists and is paid for this customer in this month
             $invoice = Invoice::where('customer_id', $customerId)
@@ -81,23 +64,23 @@ class BillingCalculationService
         ];
     }
     
-    private function getCustomerPackagesDueInMonth($month)
+    private function getCustomerProductsDueInMonth($month)
     {
         $targetDate = Carbon::createFromFormat('Y-m', $month);
         
-        return CustomerPackage::with(['customer', 'package'])
+        return CustomerProduct::with(['customer', 'product'])
             ->where('status', 'active')
             ->where('is_active', 1)
             ->get()
-            ->filter(function ($customerPackage) use ($targetDate) {
-                return $this->isCustomerPackageDueInMonth($customerPackage, $targetDate);
+            ->filter(function ($customerProduct) use ($targetDate) {
+                return $this->isCustomerProductDueInMonth($customerProduct, $targetDate);
             });
     }
     
-    private function isCustomerPackageDueInMonth($customerPackage, $targetDate)
+    private function isCustomerProductDueInMonth($customerProduct, $targetDate)
     {
-        $billingCycle = $customerPackage->billing_cycle_months;
-        $startDate = Carbon::parse($customerPackage->assign_date);
+        $billingCycle = $customerProduct->billing_cycle_months;
+        $startDate = Carbon::parse($customerProduct->assign_date);
         
         // If billing cycle is 1, customer pays every month
         if ($billingCycle == 1) {
@@ -139,31 +122,31 @@ class BillingCalculationService
         $targetDate = Carbon::createFromFormat('Y-m', $month);
         $displayMonth = $targetDate->format('F Y');
         
-        $dueCustomerPackages = $this->getCustomerPackagesDueInMonth($month);
+        $dueCustomerProducts = $this->getCustomerProductsDueInMonth($month);
         
         $customersData = [];
         $customerMap = [];
         
-        foreach ($dueCustomerPackages as $customerPackage) {
-            $customerId = $customerPackage->c_id;
+        foreach ($dueCustomerProducts as $customerProduct) {
+            $customerId = $customerProduct->c_id;
             
             if (!isset($customerMap[$customerId])) {
                 $customerMap[$customerId] = [
-                    'customer' => $customerPackage->customer,
-                    'packages' => [],
+                    'customer' => $customerProduct->customer,
+                    'products' => [],
                     'total_amount' => 0,
                     'invoice' => null
                 ];
             }
             
-            // Add package to customer
-            $customerMap[$customerId]['packages'][] = [
-                'package_name' => $customerPackage->package->name ?? 'Unknown Package',
-                'package_price' => $customerPackage->package_price,
-                'billing_cycle' => $customerPackage->billing_cycle_months
+            // Add product to customer
+            $customerMap[$customerId]['products'][] = [
+                'product_name' => $customerProduct->product->name ?? 'Unknown Product',
+                'product_price' => $customerProduct->product_price,
+                'billing_cycle' => $customerProduct->billing_cycle_months
             ];
             
-            $customerMap[$customerId]['total_amount'] += $customerPackage->package_price;
+            $customerMap[$customerId]['total_amount'] += $customerProduct->product_price;
             
             // Get invoice for this customer in this month
             if (!$customerMap[$customerId]['invoice']) {
@@ -214,7 +197,7 @@ class BillingCalculationService
                     'received_amount' => 0,
                     'next_due' => 0,
                     'status' => 'unpaid',
-                    'created_by' => auth()->id()
+                    'created_by' => 1
                 ]);
                 
                 $generatedInvoices[] = $invoice;

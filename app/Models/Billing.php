@@ -16,7 +16,7 @@ class Invoice extends Model
 
     protected $fillable = [
         'invoice_number',
-        'c_id',
+        'cp_id',
         'issue_date',
         'previous_due',
         'service_charge',
@@ -64,14 +64,16 @@ class Invoice extends Model
 
     // ==================== RELATIONSHIPS ====================
 
+    // FIXED: Updated customer relationship to correctly reference customer_to_products
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(Customer::class, 'c_id', 'c_id');
+        return $this->belongsTo(CustomerProduct::class, 'cp_id', 'cp_id')
+            ->join('customers', 'customer_to_products.c_id', '=', 'customers.c_id');
     }
 
-    public function invoicePackages(): HasMany
+    public function invoiceproducts(): HasMany
     {
-        return $this->hasMany(InvoicePackage::class, 'invoice_id', 'invoice_id');
+        return $this->hasMany(Invoiceproduct::class, 'invoice_id', 'invoice_id');
     }
 
     public function payments(): HasMany
@@ -114,7 +116,9 @@ class Invoice extends Model
 
     public function scopeByCustomer(Builder $query, int $customerId): Builder
     {
-        return $query->where('c_id', $customerId);
+        return $query->whereHas('customerProduct', function ($q) use ($customerId) {
+            $q->where('c_id', $customerId);
+        });
     }
 
     public function scopeByStatus(Builder $query, string $status): Builder
@@ -254,7 +258,7 @@ class Invoice extends Model
     public function addPayment(float $amount, string $method = 'cash', string $transactionId = null): Payment
     {
         $payment = $this->payments()->create([
-            'c_id' => $this->c_id,
+            'c_id' => $this->customerProduct->c_id,
             'amount' => $amount,
             'payment_method' => $method,
             'payment_date' => now(),
@@ -299,22 +303,22 @@ class Invoice extends Model
         ]);
     }
 
-    public function getPackageNames(): string
+    public function getProductNames(): string
     {
-        return $this->invoicePackages->map(function ($invoicePackage) {
-            return $invoicePackage->package->name ?? 'Unknown Package';
+        return $this->invoiceProducts->map(function ($invoiceProduct) {
+            return $invoiceProduct->product->name ?? 'Unknown Product';
         })->implode(', ');
     }
 
-    public function getTotalPackageAmount(): float
+    public function getTotalProductAmount(): float
     {
-        return $this->invoicePackages->sum('total_package_amount');
+        return $this->invoiceProducts->sum('total_product_amount');
     }
 
     public function recalculateTotals(): bool
     {
-        $packageTotal = $this->getTotalPackageAmount();
-        $subtotal = $packageTotal + $this->previous_due + $this->service_charge;
+        $productTotal = $this->getTotalProductAmount();
+        $subtotal = $productTotal + $this->previous_due + $this->service_charge;
         $vatAmount = $subtotal * ($this->vat_percentage / 100);
         $totalAmount = $subtotal + $vatAmount;
 

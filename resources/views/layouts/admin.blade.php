@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title') - NetBill BD</title>
+    <meta name="base-url" content="{{ url('/') }}">
+    <title>@yield('title') - Nanosft-Billing</title>
+        <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     @vite(['resources/sass/app.scss', 'resources/css/admin.css', 'resources/js/app.js'])
      <style>
         
@@ -116,6 +121,7 @@
     .sidebar {
         border-right: none;
         border-bottom: 3px solid #2c3e50;
+        min-height: auto;
     }
     
     .sidebar .nav-link {
@@ -127,6 +133,11 @@
     .sidebar .nav-link.active {
         border-left: none;
         border-right: none;
+    }
+    
+    /* Make sidebar collapsible on mobile */
+    .sidebar.collapse:not(.show) {
+        display: none;
     }
 }
 
@@ -207,6 +218,42 @@
     transform: rotate(90deg);
 }
 
+/* Mobile sidebar toggle */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: fixed;
+        top: 56px; /* Height of navbar */
+        left: 0;
+        bottom: 0;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+    }
+    
+    .overlay.show {
+        display: block;
+    }
+}
+
         
     </style>
 </head>
@@ -214,12 +261,13 @@
     <!-- Top Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container-fluid">
-            <button class="btn btn-dark d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar">
+            <button class="btn btn-dark d-md-none" type="button" id="sidebarToggle">
                 <i class="fas fa-bars"></i>
             </button>
-            <a class="navbar-brand" href="{{ route('admin.dashboard') }}">
-                <i class="fas fa-wifi me-2"></i>NetBill BD Admin
-            </a>
+                <a class="navbar-brand" href="{{ route('home') }}">
+                    <i class="fas fa-money-bill-wave"></i>
+                        Nanosoft-Billing
+                </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text text-white me-3">
                     <i class="fas fa-user-circle me-1"></i>Welcome, {{ Auth::user()->name }}
@@ -233,6 +281,9 @@
             </div>
         </div>
     </nav>
+    
+    <!-- Overlay for mobile -->
+    <div class="overlay" id="overlay"></div>
 
     <div class="container-fluid">
         <div class="row">
@@ -248,19 +299,56 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     
+    <!-- Universal Back Button Handler -->
+    <script src="{{ asset('js/back-button.js') }}"></script>
+    
     <!-- Add this script -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Hover dropdown functionality
+        // Mobile sidebar toggle
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('show');
+                overlay.classList.toggle('show');
+            });
+        }
+        
+        // Close sidebar when clicking overlay
+        if (overlay) {
+            overlay.addEventListener('click', function() {
+                sidebar.classList.remove('show');
+                overlay.classList.remove('show');
+            });
+        }
+        
+        // Close sidebar when window is resized to desktop
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 768) {
+                sidebar.classList.remove('show');
+                overlay.classList.remove('show');
+            }
+        });
+
+        // Hover dropdown functionality with null checks
         const dropdowns = document.querySelectorAll('.sidebar .dropdown');
         
         dropdowns.forEach(dropdown => {
             dropdown.addEventListener('mouseenter', function() {
-                this.querySelector('.dropdown-menu').style.display = 'block';
+                const dropdownMenu = this.querySelector('.dropdown-menu');
+                if (dropdownMenu) {
+                    dropdownMenu.style.display = 'block';
+                }
             });
             
             dropdown.addEventListener('mouseleave', function() {
-                this.querySelector('.dropdown-menu').style.display = 'none';
+                const dropdownMenu = this.querySelector('.dropdown-menu');
+                if (dropdownMenu) {
+                    dropdownMenu.style.display = 'none';
+                }
             });
         });
 

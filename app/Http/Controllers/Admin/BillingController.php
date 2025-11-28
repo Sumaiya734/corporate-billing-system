@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Customer;
-use App\Models\Package;
+use App\Models\product;
 use App\Models\Payment;
-use App\Models\CustomerPackage;
+use App\Models\Customerproduct;
 use App\Models\MonthlyBillingSummary;
+use App\Models\BillingPeriod;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,7 @@ class BillingController extends Controller
     public function allInvoices()
     {
         try {
-            $invoices = Invoice::with(['customer', 'invoicePackages'])
+            $invoices = Invoice::with(['customer', 'invoiceproducts'])
                 ->orderBy('issue_date', 'desc')
                 ->paginate(20);
 
@@ -52,20 +53,20 @@ class BillingController extends Controller
     public function generateBill($id)
     {
         try {
-            $customer = Customer::with(['activePackages'])->findOrFail($id);
+            $customer = Customer::with(['activeproducts'])->findOrFail($id);
             
-            $regularPackages = Package::whereHas('type', function($query) {
+            $regularproducts = product::whereHas('type', function($query) {
                 $query->where('name', 'regular');
             })->get();
             
-            $specialPackages = Package::whereHas('type', function($query) {
+            $specialproducts = product::whereHas('type', function($query) {
                 $query->where('name', 'special');
             })->get();
 
             return view('admin.billing.generate-bill', compact(
                 'customer', 
-                'regularPackages', 
-                'specialPackages'
+                'regularproducts', 
+                'specialproducts'
             ));
 
         } catch (\Exception $e) {
@@ -81,8 +82,8 @@ class BillingController extends Controller
     {
         $request->validate([
             'billing_month' => 'required|date',
-            'regular_packages' => 'required|array',
-            'special_packages' => 'array',
+            'regular_products' => 'required|array',
+            'special_products' => 'array',
             'discount' => 'numeric|min:0|max:100',
             'notes' => 'nullable|string'
         ]);
@@ -90,24 +91,22 @@ class BillingController extends Controller
         try {
             $customer = Customer::findOrFail($customerId);
 
-            $regularPackageAmount = $this->calculatePackageAmount($request->regular_packages);
-            $specialPackageAmount = $this->calculatePackageAmount($request->special_packages ?? []);
+            $regularproductAmount = $this->calculateproductAmount($request->regular_products);
+            $specialproductAmount = $this->calculateproductAmount($request->special_products ?? []);
             
-            $serviceCharge = 50.00;
-            $vatPercentage = 5.00;
-            $subtotal = $regularPackageAmount + $specialPackageAmount + $serviceCharge;
-            $vatAmount = $subtotal * ($vatPercentage / 100);
+            // Calculate total without service charge or VAT
+            $subtotal = $regularproductAmount + $specialproductAmount;
             $discountAmount = $subtotal * ($request->discount / 100);
-            $totalAmount = $subtotal + $vatAmount - $discountAmount;
+            $totalAmount = $subtotal - $discountAmount;
 
             $invoice = Invoice::create([
                 'invoice_number' => $this->generateInvoiceNumber(),
                 'c_id' => $customerId,
                 'issue_date' => Carbon::parse($request->billing_month),
                 'previous_due' => 0.00,
-                'service_charge' => $serviceCharge,
-                'vat_percentage' => $vatPercentage,
-                'vat_amount' => $vatAmount,
+                'service_charge' => 0.00,
+                'vat_percentage' => 0.00,
+                'vat_amount' => 0.00,
                 'subtotal' => $subtotal,
                 'total_amount' => $totalAmount,
                 'received_amount' => 0,
@@ -117,8 +116,8 @@ class BillingController extends Controller
                 'created_by' => Auth::id()
             ]);
 
-            // Attach packages to invoice
-            $this->attachPackagesToInvoice($invoice, $request->regular_packages, $request->special_packages);
+            // Attach products to invoice
+            $this->attachproductsToInvoice($invoice, $request->regular_products, $request->special_products);
 
             return redirect()->route('admin.billing.view-bill', $invoice->invoice_id)
                 ->with('success', 'Bill generated successfully for ' . $customer->name);
@@ -130,29 +129,181 @@ class BillingController extends Controller
     }
 
     /**
-     * Helper method to calculate package amount
+     * Get monthly billing details
      */
-    private function calculatePackageAmount($packageIds)
+
+        public function monthlyDetails($month)
+{
+    try {
+        // Parse the month and get date range
+        $startDate = \Carbon\Carbon::parse($month)->startOfMonth();
+        $endDate = \Carbon\Carbon::parse($month)->endOfMonth();
+        
+        // Get all customers active during this month
+        $customers = DB::table('customers as c')
+            ->leftJoin('customer_to_products as cp', 'c.c_id', '=', 'cp.c_id')
+            ->leftJoin('products as p', 'cp.p_id', '=', 'p.p_id')
+            ->leftJoin('product_type as pt', 'p.product_type_id', '=', 'pt.id')
+            ->where('c.is_active', 1)
+            ->where(function($query) use ($startDate, $endDate) {
+                // Customers who were active during this month
+                $query->where('cp.assign_date', '<=', $endDate)
+                      ->where(function($q) use ($startDate) {
+                          $q->where('cp.due_date', '>=', $startDate)
+                            ->orWhereNull('cp.due_date');
+                      });
+            })
+            ->select(
+                'c.c_id',
+                'c.customer_id',
+                'c.name as customer_name',
+                'c.email',
+                'c.phone',
+                'c.address',
+                'c.created_at as customer_created_at',
+                'cp.cp_id',
+                'cp.assign_date',
+                'cp.billing_cycle_months',
+                'cp.due_date',
+                'cp.status as subscription_status',
+                'p.p_id',
+                'p.name as product_name',
+                'p.monthly_price',
+                'pt.name as product_type'
+            )
+            ->orderBy('c.created_at')
+            ->orderBy('c.name')
+            ->get();
+
+        // Group customers and their products
+        $customerData = [];
+        $totalCustomers = 0;
+        $totalProducts = 0;
+        $totalMonthlyRevenue = 0;
+
+        foreach ($customers as $row) {
+            $customerId = $row->c_id;
+            
+            if (!isset($customerData[$customerId])) {
+                $customerData[$customerId] = [
+                    'customer_info' => [
+                        'customer_id' => $row->customer_id,
+                        'name' => $row->customer_name,
+                        'email' => $row->email,
+                        'phone' => $row->phone,
+                        'address' => $row->address,
+                        'created_at' => $row->customer_created_at,
+                        'is_new' => \Carbon\Carbon::parse($row->customer_created_at)->between($startDate, $endDate)
+                    ],
+                    'products' => []
+                ];
+                $totalCustomers++;
+            }
+
+            // Add product if exists
+            if ($row->p_id) {
+                $customerData[$customerId]['products'][] = [
+                    'product_name' => $row->product_name,
+                    'product_type' => $row->product_type,
+                    'monthly_price' => $row->monthly_price,
+                    'assign_date' => $row->assign_date,
+                    'billing_cycle' => $row->billing_cycle_months,
+                    'due_date' => $row->due_date,
+                    'status' => $row->subscription_status
+                ];
+                $totalProducts++;
+                
+                // FIXED: Calculate actual revenue based on billing cycle and assignment date
+                $monthlyPrice = $row->monthly_price;
+                $billingCycle = $row->billing_cycle_months;
+                
+                // Calculate actual monthly revenue contribution
+                if ($billingCycle == 1) {
+                    // Monthly billing - full amount
+                    $monthlyContribution = $monthlyPrice;
+                } else {
+                    // For longer billing cycles, calculate monthly equivalent
+                    $monthlyContribution = $monthlyPrice / $billingCycle;
+                }
+                
+                $totalMonthlyRevenue += $monthlyContribution;
+            }
+        }
+
+        // Get invoices for this month to compare with actual billed amounts
+        $invoices = DB::table('invoices')
+            ->whereYear('issue_date', $startDate->year)
+            ->whereMonth('issue_date', $startDate->month)
+            ->select('invoice_id', 'invoice_number', 'cp_id', 'total_amount', 'received_amount', 'status', 'subtotal')
+            ->get();
+
+        // Calculate actual billed amount from invoices
+        $actualBilledAmount = $invoices->sum('subtotal');
+        $actualReceivedAmount = $invoices->sum('received_amount');
+
+        // Get payments for this month
+        $payments = DB::table('payments as p')
+            ->join('invoices as i', 'p.invoice_id', '=', 'i.invoice_id')
+            ->whereYear('p.payment_date', $startDate->year)
+            ->whereMonth('p.payment_date', $startDate->month)
+            ->select('p.payment_id', 'p.amount', 'p.payment_method', 'p.payment_date', 'i.invoice_number')
+            ->get();
+
+        // Calculate statistics
+        $newCustomers = collect($customerData)->filter(function($customer) {
+            return $customer['customer_info']['is_new'];
+        })->count();
+
+        $existingCustomers = $totalCustomers - $newCustomers;
+
+        return view('admin.billing.monthly-details', compact(
+            'month',
+            'customerData',
+            'totalCustomers',
+            'totalProducts',
+            'totalMonthlyRevenue',
+            'newCustomers',
+            'existingCustomers',
+            'invoices',
+            'payments',
+            'startDate',
+            'endDate',
+            'actualBilledAmount',
+            'actualReceivedAmount'
+        ));
+
+    } catch (\Exception $e) {
+        return redirect()->route('admin.billing.index')
+            ->with('error', 'Error loading monthly details: ' . $e->getMessage());
+    }
+}
+
+
+
+    /**
+     * Helper method to calculate product amount
+     */
+    private function calculateproductAmount($productIds)
     {
-        return Package::whereIn('p_id', $packageIds)->sum('monthly_price');
+        return product::whereIn('p_id', $productIds)->sum('monthly_price');
     }
 
     /**
-     * Attach packages to invoice
+     * Attach products to invoice
      */
-    private function attachPackagesToInvoice($invoice, $regularPackages, $specialPackages)
+    private function attachproductsToInvoice($invoice, $regularproducts, $specialproducts)
     {
-        $allPackages = array_merge($regularPackages, $specialPackages);
+        $allproducts = array_merge($regularproducts, $specialproducts);
         
-        foreach ($allPackages as $packageId) {
-            $package = Package::find($packageId);
-            if ($package) {
-                DB::table('invoice_packages')->insert([
+        foreach ($allproducts as $productId) {
+            $product = product::find($productId);
+            if ($product) {
+                DB::table('invoice_products')->insert([
                     'invoice_id' => $invoice->invoice_id,
-                    'cp_id' => $this->getCustomerPackageId($invoice->c_id, $packageId),
-                    'package_price' => $package->monthly_price,
+                    'cp_id' => $this->getCustomerproductId($invoice->c_id, $productId),
+                    'product_price' => $product->monthly_price,
                     'billing_cycle_months' => 1,
-                    'total_package_amount' => $package->monthly_price,
+                    'total_product_amount' => $product->monthly_price,
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
@@ -161,17 +312,17 @@ class BillingController extends Controller
     }
 
     /**
-     * Get customer package ID
+     * Get customer product ID
      */
-    private function getCustomerPackageId($customerId, $packageId)
+    private function getCustomerproductId($customerId, $productId)
     {
-        $customerPackage = CustomerPackage::where('c_id', $customerId)
-            ->where('p_id', $packageId)
+        $customerproduct = Customerproduct::where('c_id', $customerId)
+            ->where('p_id', $productId)
             ->where('status', 'active')
             ->where('is_active', true)
             ->first();
 
-        return $customerPackage ? $customerPackage->cp_id : null;
+        return $customerproduct ? $customerproduct->cp_id : null;
     }
 
     /**
@@ -180,7 +331,7 @@ class BillingController extends Controller
     public function viewBill($id)
     {
         try {
-            $invoice = Invoice::with(['customer', 'invoicePackages.package', 'payments'])
+            $invoice = Invoice::with(['customer', 'invoiceproducts.product', 'payments'])
                             ->findOrFail($id);
 
             return view('admin.billing.view-bill', compact('invoice'));
@@ -188,6 +339,42 @@ class BillingController extends Controller
         } catch (\Exception $e) {
             Log::error('View bill error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error loading bill: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Edit bill details
+     */
+    public function editBill($id)
+    {
+        try {
+            $invoice = Invoice::with(['customerProduct.customer', 'customerProduct.product', 'payments'])
+                            ->findOrFail($id);
+
+            return view('admin.billing.edit-invoice', compact('invoice'));
+
+        } catch (\Exception $e) {
+            Log::error('Edit bill error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error loading bill for editing: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get invoice HTML for modal display
+     */
+    public function getInvoiceHtml($invoiceId)
+    {
+        try {
+            // Load invoice with customerProduct relationship (which includes customer and product)
+            $invoice = Invoice::with(['customerProduct.customer', 'customerProduct.product', 'payments'])
+                            ->findOrFail($invoiceId);
+
+            return view('admin.billing.invoice-html', compact('invoice'));
+
+        } catch (\Exception $e) {
+            Log::error('Get invoice HTML error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response('<div class="alert alert-danger">Error loading invoice: ' . $e->getMessage() . '</div>', 500);
         }
     }
 
@@ -209,7 +396,7 @@ class BillingController extends Controller
 
             $payment = Payment::create([
                 'invoice_id' => $invoiceId,
-                'c_id' => $invoice->c_id,
+                'c_id' => $invoice->customerProduct->c_id,
                 'amount' => $request->amount,
                 'payment_method' => $request->payment_method,
                 'payment_date' => $request->payment_date,
@@ -221,7 +408,13 @@ class BillingController extends Controller
             $newReceivedAmount = $invoice->received_amount + $request->amount;
             $newDue = max(0, $invoice->total_amount - $newReceivedAmount);
 
-            $status = $newDue <= 0 ? 'paid' : ($newReceivedAmount > 0 ? 'partial' : 'unpaid');
+            // Handle floating point precision - consider amounts less than 0.01 as zero
+            if ($newDue < 0.01) {
+                $newDue = 0;
+                $status = 'paid';
+            } else {
+                $status = $newReceivedAmount > 0 ? 'partial' : 'unpaid';
+            }
 
             $invoice->update([
                 'received_amount' => $newReceivedAmount,
@@ -261,15 +454,15 @@ class BillingController extends Controller
                 'invoices' => function($query) {
                     $query->orderBy('issue_date', 'desc')->limit(12);
                 }, 
-                'activePackages.package'
+                'activeproducts.product'
             ])->findOrFail($id);
 
-            // Get customer's active packages
-            $packageNames = $customer->activePackages->pluck('package.name')->toArray();
+            // Get customer's active products
+            $productNames = $customer->activeproducts->pluck('product.name')->toArray();
 
-            // Calculate monthly bill from active packages
-            $monthlyBill = $customer->activePackages->sum(function($customerPackage) {
-                return $customerPackage->package->monthly_price ?? 0;
+            // Calculate monthly bill from active products
+            $monthlyBill = $customer->activeproducts->sum(function($customerproduct) {
+                return $customerproduct->product->monthly_price ?? 0;
             });
 
             // Format billing history
@@ -282,7 +475,7 @@ class BillingController extends Controller
                 ];
             });
 
-            return view('admin.customers.profile', compact('customer', 'packageNames', 'monthlyBill', 'billingHistory'));
+            return view('admin.customers.profile', compact('customer', 'productNames', 'monthlyBill', 'billingHistory'));
 
         } catch (\Exception $e) {
             Log::error('Customer profile error: ' . $e->getMessage());
@@ -298,8 +491,8 @@ class BillingController extends Controller
         try {
             $customer = Customer::findOrFail($c_id);
 
-            $packages = $customer->customerPackages()
-                ->with('package')
+            $products = $customer->customerproducts()
+                ->with('product')
                 ->get();
 
             $invoices = $customer->invoices()
@@ -308,7 +501,7 @@ class BillingController extends Controller
 
             return view('admin.billing.customer-billing-details', compact(
                 'customer',
-                'packages',
+                'products',
                 'invoices'
             ));
         } catch (\Exception $e) {
@@ -328,15 +521,24 @@ class BillingController extends Controller
             // Get statistics using Eloquent
             $totalActiveCustomers = Customer::active()->count();
             
+            // Current month revenue (payments received this month)
             $currentMonthRevenue = Payment::whereYear('payment_date', now()->year)
                 ->whereMonth('payment_date', now()->month)
                 ->sum('amount');
                 
+            // Total pending amount across all unpaid/partial invoices
             $totalPendingAmount = Invoice::whereIn('status', ['unpaid', 'partial'])
-                ->sum(DB::raw('total_amount - COALESCE(received_amount, 0)'));
+                ->sum(DB::raw('GREATEST(total_amount - COALESCE(received_amount, 0), 0)'));
             
             // Calculate this month bills count
             $thisMonthBillsCount = $this->calculateThisMonthBillsCount();
+            
+            // Additional statistics for better insights
+            $totalInvoicesCount = Invoice::count();
+            $totalPaymentsCount = Payment::count();
+            $totalRevenue = Payment::sum('amount');
+            $totalInvoiceAmount = Invoice::sum('total_amount');
+            $totalReceivedAmount = Invoice::sum('received_amount');
             
             // Get dynamic monthly summary
             $monthlySummary = $this->getDynamicMonthlySummary();
@@ -347,19 +549,17 @@ class BillingController extends Controller
             // Get available months for invoice generation
             $availableMonths = $this->getAvailableBillingMonths();
             
-            // Get recent payments with relationships
+            // Get recent payments with relationships - paginated
             $recentPayments = Payment::with(['invoice.customer'])
                 ->orderBy('payment_date', 'desc')
-                ->limit(5)
-                ->get();
+                ->paginate(20);
 
-            // Get overdue invoices (invoices with due amounts)
+            // Get overdue invoices (invoices with due amounts) - paginated
             $overdueInvoices = Invoice::with('customer')
                 ->whereIn('status', ['unpaid', 'partial'])
                 ->where('next_due', '>', 0)
                 ->orderBy('issue_date', 'asc')
-                ->limit(5)
-                ->get();
+                ->paginate(20);
 
             // Check if we have invoices
             $hasInvoices = Invoice::exists();
@@ -371,11 +571,17 @@ class BillingController extends Controller
                 'totalActiveCustomers' => $totalActiveCustomers,
                 'currentMonthRevenue' => $currentMonthRevenue,
                 'totalPendingAmount' => $totalPendingAmount,
-                'previousMonthBillsCount' => $thisMonthBillsCount, // Fixed variable name
+                'previousMonthBillsCount' => $thisMonthBillsCount,
                 'recentPayments' => $recentPayments,
                 'overdueInvoices' => $overdueInvoices,
                 'hasInvoices' => $hasInvoices,
-                'year' => $year
+                'year' => $year,
+                // Additional statistics
+                'totalInvoicesCount' => $totalInvoicesCount,
+                'totalPaymentsCount' => $totalPaymentsCount,
+                'totalRevenue' => $totalRevenue,
+                'totalInvoiceAmount' => $totalInvoiceAmount,
+                'totalReceivedAmount' => $totalReceivedAmount
             ]);
 
         } catch (\Exception $e) {
@@ -414,8 +620,19 @@ class BillingController extends Controller
             
             $monthData = $this->calculateMonthData($month);
             
-            // Only include months that have due customers or are current/future
-            if ($monthData['total_customers'] > 0 || $monthDate >= $currentDate) {
+            // Include months that have:
+            // 1. Due customers (should be billed)
+            // 2. Invoices (already billed)
+            // 3. Are current or future months
+            $hasInvoices = $monthData['total_amount'] > 0;
+            $hasDueCustomers = $monthData['total_customers'] > 0;
+            $isCurrentOrFuture = $monthDate >= $currentDate;
+            
+            if ($hasDueCustomers || $hasInvoices || $isCurrentOrFuture) {
+                // Check if month is closed
+                $isClosed = BillingPeriod::isMonthClosed($month);
+                $status = $isClosed ? 'Closed' : $monthData['status'];
+                
                 $months->push((object)[
                     'id' => $month,
                     'display_month' => $displayMonth,
@@ -427,9 +644,10 @@ class BillingController extends Controller
                     'is_current_month' => $month === $currentMonth,
                     'is_future_month' => $month > $currentMonth,
                     'is_locked' => $monthDate->lt(Carbon::now()->subMonths(3)),
+                    'is_closed' => $isClosed,
                     'is_dynamic' => true,
-                    'status' => $monthData['status'],
-                    'notes' => 'Automatically calculated'
+                    'status' => $status,
+                    'notes' => $isClosed ? 'Month closed - dues carried forward' : 'Automatically calculated'
                 ]);
             }
         }
@@ -468,31 +686,56 @@ class BillingController extends Controller
     private function calculateMonthData($month)
     {
         $monthDate = Carbon::createFromFormat('Y-m', $month);
+        $startDate = $monthDate->copy()->startOfMonth();
+        $endDate = $monthDate->copy()->endOfMonth();
         
-        // Get due customers for this month
-        $dueCustomers = $this->getDueCustomersForMonth($monthDate);
+        // Get products that are due this month (filtered by billing cycle)
+        $dueProducts = $this->getDueCustomersForMonth($monthDate);
         
-        // Calculate expected revenue from due customers
-        $totalPackageAmount = $dueCustomers->sum('monthly_price');
-        $serviceCharge = 50 * $dueCustomers->count();
-        $subtotal = $totalPackageAmount + $serviceCharge;
-        $vatAmount = $subtotal * 0.05;
-        $totalAmount = $subtotal + $vatAmount;
-
-        // Get actual payments from invoices for this month
-        $payments = Invoice::whereYear('issue_date', $monthDate->year)
+        // Calculate expected revenue from due products
+        // Each product amount = monthly_price × billing_cycle_months
+        $totalProductAmount = $dueProducts->sum(function($product) {
+            return ($product->monthly_price ?? 0) * ($product->billing_cycle_months ?? 1);
+        });
+        
+        // Get unique customers count - SAME LOGIC AS monthlyDetails page
+        // Count all customers who had active products during this month
+        $activeCustomersCount = DB::table('customers as c')
+            ->join('customer_to_products as cp', 'c.c_id', '=', 'cp.c_id')
+            ->where('c.is_active', 1)
+            ->where('cp.status', 'active')
+            ->where('cp.is_active', 1)
+            ->where(function($query) use ($startDate, $endDate) {
+                // Customers who were active during this month
+                $query->where('cp.assign_date', '<=', $endDate)
+                      ->where(function($q) use ($startDate) {
+                          $q->where('cp.due_date', '>=', $startDate)
+                            ->orWhereNull('cp.due_date');
+                      });
+            })
+            ->distinct('c.c_id')
+            ->count('c.c_id');
+        
+        // Get actual invoice total amounts for this month (includes previous due)
+        $invoiceSummary = Invoice::whereYear('issue_date', $monthDate->year)
             ->whereMonth('issue_date', $monthDate->month)
-            ->selectRaw('SUM(total_amount) as total, SUM(received_amount) as received')
+            ->selectRaw('
+                SUM(total_amount) as total, 
+                SUM(COALESCE(received_amount, 0)) as received,
+                SUM(COALESCE(next_due, 0)) as due
+            ')
             ->first();
 
-        $receivedAmount = $payments->received ?? 0;
-        $dueAmount = max(0, $totalAmount - $receivedAmount);
+        // Use actual invoice totals - exactly as monthly-bills does
+        $totalAmount = floatval($invoiceSummary->total ?? 0);
+        $receivedAmount = floatval($invoiceSummary->received ?? 0);
+        $dueAmount = floatval($invoiceSummary->due ?? 0);
         
         // Calculate status
         $status = $this->calculateStatus($totalAmount, $receivedAmount, $dueAmount);
         
         return [
-            'total_customers' => $dueCustomers->count(),
+            'total_customers' => $activeCustomersCount,
             'total_amount' => $totalAmount,
             'received_amount' => $receivedAmount,
             'due_amount' => $dueAmount,
@@ -527,34 +770,62 @@ class BillingController extends Controller
      */
     private function getDueCustomersForMonth(Carbon $monthDate)
     {
-        $monthStart = $monthDate->copy()->startOfMonth();
-        $monthEnd = $monthDate->copy()->endOfMonth();
-        
-        return Customer::select(
-                'customers.c_id',
-                'customers.name',
-                'customers.customer_id',
-                'packages.monthly_price'
-            )
-            ->join('customer_to_packages as cp', 'customers.c_id', '=', 'cp.c_id')
-            ->join('packages', 'cp.p_id', '=', 'packages.p_id')
+        // Get all active customer products
+        $customerProducts = DB::table('customer_to_products as cp')
+            ->join('customers as c', 'cp.c_id', '=', 'c.c_id')
+            ->join('products as p', 'cp.p_id', '=', 'p.p_id')
             ->where('cp.status', 'active')
             ->where('cp.is_active', 1)
-            ->where('customers.is_active', 1)
-            ->where(function($query) use ($monthStart, $monthEnd) {
-                // Customers whose billing cycle falls in this month
-                $query->where(function($q) use ($monthStart, $monthEnd) {
-                    $q->whereBetween('cp.due_date', [$monthStart, $monthEnd]);
-                })
-                // Monthly billing customers
-                ->orWhere(function($q) use ($monthEnd) {
-                    $q->where('cp.billing_cycle_months', 1)
-                      ->where('cp.assign_date', '<=', $monthEnd);
-                });
-            })
-            ->groupBy('customers.c_id', 'customers.name', 'customers.customer_id', 'packages.monthly_price')
-            ->orderBy('customers.name')
+            ->where('c.is_active', 1)
+            ->whereNotNull('cp.assign_date')
+            ->select(
+                'c.c_id',
+                'c.name',
+                'c.customer_id',
+                'p.monthly_price',
+                'cp.billing_cycle_months',
+                'cp.assign_date',
+                'cp.due_date'
+            )
             ->get();
+        
+        // Filter products that are due in this specific month based on billing cycle
+        $dueProducts = $customerProducts->filter(function($cp) use ($monthDate) {
+            $assignDate = Carbon::parse($cp->assign_date);
+            $billingCycle = $cp->billing_cycle_months ?? 1;
+            // Extract day from due_date, fallback to assign_date day if due_date is null
+            $dueDay = $cp->due_date ? Carbon::parse($cp->due_date)->day : $assignDate->day;
+            
+            // Product must be assigned before the billing month
+            if ($assignDate->greaterThan($monthDate->endOfMonth())) {
+                return false;
+            }
+            
+            // Calculate the first due date (next occurrence of due_day after assign_date)
+            $firstDueDate = Carbon::parse($assignDate);
+            
+            // If assign date's day is before or equal to due day in same month, first due is this month
+            if ($assignDate->day <= $dueDay) {
+                $firstDueDate->day($dueDay);
+            } else {
+                // Otherwise, first due is next month
+                $firstDueDate->addMonth()->day($dueDay);
+            }
+            
+            // Product must have had its first due date before or during the billing month
+            if ($firstDueDate->greaterThan($monthDate->endOfMonth())) {
+                return false;
+            }
+            
+            // Calculate months difference from first due date to billing month
+            $monthsDiff = $firstDueDate->diffInMonths($monthDate);
+            
+            // Check if this month is a billing month for this product
+            // Product is due if: months difference is divisible by billing cycle
+            return ($monthsDiff % $billingCycle) === 0;
+        });
+        
+        return $dueProducts;
     }
 
     /**
@@ -668,29 +939,24 @@ class BillingController extends Controller
      */
     private function createCustomerInvoice($customer, Carbon $monthDate)
     {
-        $serviceCharge = 50.00;
-        $vatPercentage = 5.00;
-
-        // Calculate package amount
-        $packageAmount = $customer->monthly_price;
-        $subtotal = $packageAmount + $serviceCharge;
-        $vatAmount = $subtotal * ($vatPercentage / 100);
-        $totalAmount = $subtotal + $vatAmount;
+        // Calculate product amount only (no service charge or VAT)
+        $productAmount = $customer->monthly_price;
+        $totalAmount = $productAmount;
 
         $invoice = Invoice::create([
             'invoice_number' => $this->generateInvoiceNumber(),
             'c_id' => $customer->c_id,
             'issue_date' => $monthDate->format('Y-m-d'),
             'previous_due' => 0.00,
-            'service_charge' => $serviceCharge,
-            'vat_percentage' => $vatPercentage,
-            'vat_amount' => $vatAmount,
-            'subtotal' => $subtotal,
+            'service_charge' => 0.00,
+            'vat_percentage' => 0.00,
+            'vat_amount' => 0.00,
+            'subtotal' => $productAmount,
             'total_amount' => $totalAmount,
             'received_amount' => 0,
             'next_due' => $totalAmount,
             'status' => 'unpaid',
-            'notes' => 'Auto-generated based on package assignment',
+            'notes' => 'Auto-generated based on product assignment',
             'created_by' => Auth::id()
         ]);
 
@@ -760,7 +1026,7 @@ class BillingController extends Controller
     }
 
     /**
-     * Generate from invoices and packages
+     * Generate from invoices and products
      */
     public function generateFromInvoices(Request $request)
     {
@@ -786,13 +1052,13 @@ class BillingController extends Controller
                 'received_amount' => $monthData['received_amount'],
                 'due_amount' => $monthData['due_amount'],
                 'status' => $monthData['status'],
-                'notes' => 'Generated from customer packages and invoices',
+                'notes' => 'Generated from customer products and invoices',
                 'is_locked' => false,
                 'created_by' => Auth::id()
             ]);
 
             return redirect()->route('admin.billing.billing-invoices')
-                ->with('success', 'Monthly billing summary generated successfully from packages and invoices.');
+                ->with('success', 'Monthly billing summary generated successfully from products and invoices.');
 
         } catch (\Exception $e) {
             Log::error('Generate from invoices error: ' . $e->getMessage());
@@ -803,5 +1069,344 @@ class BillingController extends Controller
     /**
      * Display monthly bills for a specific month
      */
-   
+    public function monthlyBills(Request $request, $month)
+    {
+        try {
+            // Validate month format
+            if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+                return redirect()->route('admin.billing.billing-invoices')
+                    ->with('error', 'Invalid month format.');
+            }
+
+            $monthDate = Carbon::createFromFormat('Y-m', $month);
+            
+            // Get all invoices for this month with relationships
+            $invoices = Invoice::with(['customer.customer.customerproducts.product', 'payments'])
+                ->whereYear('issue_date', $monthDate->year)
+                ->whereMonth('issue_date', $monthDate->month)
+                ->orderBy('issue_date', 'desc')
+                ->get();
+
+            // Calculate statistics
+            $totalCustomers = $invoices->unique('c_id')->count();
+            $totalBillingAmount = $invoices->sum('total_amount');
+            $pendingAmount = $invoices->whereIn('status', ['unpaid', 'partial'])->sum('next_due');
+            $paidAmount = $invoices->sum('received_amount');
+
+            // System settings no longer needed (no service charge or VAT)
+            $systemSettings = [];
+
+            return view('admin.billing.monthly-bills', compact(
+                'month',
+                'invoices',
+                'totalCustomers',
+                'totalBillingAmount',
+                'pendingAmount',
+                'paidAmount',
+                'systemSettings'
+            ));
+
+        } catch (\Exception $e) {
+            Log::error('Monthly bills error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return redirect()->route('admin.billing.billing-invoices')
+                ->with('error', 'Error loading monthly bills: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Generate monthly bills for all customers
+     */
+    public function generateMonthlyBills(Request $request)
+    {
+        $request->validate([
+            'month' => 'required|date_format:Y-m'
+        ]);
+
+        try {
+            $month = $request->month;
+            $monthDate = Carbon::createFromFormat('Y-m', $month);
+
+            // Get due customers for the month
+            $dueCustomers = $this->getDueCustomersForMonth($monthDate);
+
+            if ($dueCustomers->isEmpty()) {
+                return redirect()->back()->with('error', 'No customers due for billing in ' . $monthDate->format('F Y'));
+            }
+
+            $generatedCount = 0;
+            $skippedCount = 0;
+
+            foreach ($dueCustomers as $customer) {
+                try {
+                    // Check if invoice already exists
+                    $existingInvoice = Invoice::where('c_id', $customer->c_id)
+                        ->whereYear('issue_date', $monthDate->year)
+                        ->whereMonth('issue_date', $monthDate->month)
+                        ->first();
+
+                    if ($existingInvoice) {
+                        $skippedCount++;
+                        continue;
+                    }
+
+                    // Create invoice
+                    $this->createCustomerInvoice($customer, $monthDate);
+                    $generatedCount++;
+
+                } catch (\Exception $e) {
+                    Log::error("Failed to generate invoice for customer {$customer->c_id}: " . $e->getMessage());
+                }
+            }
+
+            $message = "Generated $generatedCount bills for " . $monthDate->format('F Y');
+            if ($skippedCount > 0) {
+                $message .= " ($skippedCount already existed)";
+            }
+
+            return redirect()->route('admin.billing.monthly-bills', ['month' => $month])
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            Log::error('Generate monthly bills error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error generating bills: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get invoice data for AJAX request
+     */
+    public function getInvoiceData($invoiceId)
+    {
+        try {
+            $invoice = Invoice::with(['customer', 'payments'])
+                ->findOrFail($invoiceId);
+
+            return response()->json([
+                'success' => true,
+                'invoice' => [
+                    'invoice_id' => $invoice->invoice_id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'total_amount' => $invoice->total_amount,
+                    'received_amount' => $invoice->received_amount ?? 0,
+                    'next_due' => $invoice->next_due ?? ($invoice->total_amount - ($invoice->received_amount ?? 0)),
+                    'status' => $invoice->status,
+                    'customer' => [
+                        'name' => $invoice->customer->name ?? 'Unknown',
+                        'email' => $invoice->customer->email ?? 'N/A',
+                        'phone' => $invoice->customer->phone ?? 'N/A'
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get invoice data error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Invoice not found'
+            ], 404);
+        }
+    }
+
+    /**
+     * Get payments for an invoice
+     */
+    public function getInvoicePayments($invoiceId)
+    {
+        try {
+            $invoice = Invoice::with(['customerProduct.customer', 'payments'])
+                ->findOrFail($invoiceId);
+
+            $customer = $invoice->customerProduct ? $invoice->customerProduct->customer : null;
+
+            return response()->json([
+                'success' => true,
+                'invoice_number' => $invoice->invoice_number,
+                'customer_name' => $customer ? $customer->name : 'Unknown',
+                'total_amount' => $invoice->total_amount,
+                'received_amount' => $invoice->received_amount ?? 0,
+                'next_due' => $invoice->next_due ?? 0,
+                'payments' => $invoice->payments->map(function($payment) {
+                    return [
+                        'payment_id' => $payment->payment_id,
+                        'amount' => $payment->amount,
+                        'payment_method' => $payment->payment_method,
+                        'payment_date' => $payment->payment_date,
+                        'note' => $payment->note
+                    ];
+                })
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get invoice payments error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load payments: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a payment
+     */
+    public function deletePayment($paymentId)
+    {
+        try {
+            $payment = Payment::findOrFail($paymentId);
+            $invoice = Invoice::findOrFail($payment->invoice_id);
+
+            // Store payment amount before deleting
+            $paymentAmount = $payment->amount;
+
+            // Delete the payment
+            $payment->delete();
+
+            // Recalculate invoice amounts
+            $newReceivedAmount = $invoice->received_amount - $paymentAmount;
+            $newDue = $invoice->total_amount - $newReceivedAmount;
+
+            // Update status
+            if ($newReceivedAmount <= 0) {
+                $status = 'unpaid';
+            } elseif ($newDue <= 0) {
+                $status = 'paid';
+            } else {
+                $status = 'partial';
+            }
+
+            $invoice->update([
+                'received_amount' => max(0, $newReceivedAmount),
+                'next_due' => max(0, $newDue),
+                'status' => $status
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment deleted successfully. Invoice amounts have been recalculated.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Delete payment error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete payment: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Show the form for editing a payment
+     */
+    public function editPayment($paymentId)
+    {
+        try {
+            $payment = Payment::with(['invoice.customerProduct.customer', 'invoice.customerProduct.product'])
+                ->findOrFail($paymentId);
+            
+            return view('admin.billing.edit-bill', compact('payment'));
+            
+        } catch (\Exception $e) {
+            Log::error('Edit payment error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to load payment for editing: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Update a payment
+     */
+    public function updatePayment(Request $request, $paymentId)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method' => 'required|in:cash,bank_transfer,mobile_banking,card,online',
+            'payment_date' => 'required|date',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+        
+        try {
+            DB::beginTransaction();
+            
+            $payment = Payment::findOrFail($paymentId);
+            $invoice = Invoice::findOrFail($payment->invoice_id);
+            
+            // Store original amount for invoice recalculation
+            $originalAmount = $payment->amount;
+            
+            // Update payment
+            $payment->update([
+                'amount' => $request->amount,
+                'payment_method' => $request->payment_method,
+                'payment_date' => $request->payment_date,
+                'notes' => $request->notes,
+            ]);
+            
+            // Recalculate invoice amounts
+            $amountDifference = $request->amount - $originalAmount;
+            $newReceivedAmount = $invoice->received_amount + $amountDifference;
+            $newDue = max(0, $invoice->total_amount - $newReceivedAmount);
+            
+            // Update status
+            if ($newReceivedAmount <= 0) {
+                $status = 'unpaid';
+            } elseif ($newDue <= 0) {
+                $status = 'paid';
+            } else {
+                $status = 'partial';
+            }
+            
+            $invoice->update([
+                'received_amount' => max(0, $newReceivedAmount),
+                'next_due' => max(0, $newDue),
+                'status' => $status
+            ]);
+            
+            DB::commit();
+            
+            return redirect()
+                ->route('admin.billing.monthly-bills', ['month' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m')])
+                ->with('success', 'Payment updated successfully. Invoice amounts have been recalculated.');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Update payment error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update payment: ' . $e->getMessage())->withInput();
+        }
+    }
+    
+    /**
+     * Update an invoice
+     */
+    public function updateInvoice(Request $request, $invoiceId)
+    {
+        $request->validate([
+            'subtotal' => 'required|numeric|min:0',
+            'previous_due' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
+            'received_amount' => 'required|numeric|min:0',
+            'next_due' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+        
+        try {
+            $invoice = Invoice::findOrFail($invoiceId);
+            
+            // Update invoice
+            $invoice->update([
+                'subtotal' => $request->subtotal,
+                'previous_due' => $request->previous_due,
+                'total_amount' => $request->total_amount,
+                'received_amount' => $request->received_amount,
+                'next_due' => $request->next_due,
+                'notes' => $request->notes,
+            ]);
+            
+            return redirect()
+                ->route('admin.billing.monthly-bills', ['month' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m')])
+                ->with('success', 'Invoice updated successfully.');
+                
+        } catch (\Exception $e) {
+            Log::error('Update invoice error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update invoice: ' . $e->getMessage())->withInput();
+        }
+    }
 }

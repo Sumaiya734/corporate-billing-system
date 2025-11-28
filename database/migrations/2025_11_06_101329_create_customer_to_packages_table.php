@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('customer_to_packages', function (Blueprint $table) {
+        Schema::create('customer_to_products', function (Blueprint $table) {
             $table->bigIncrements('cp_id');
-            $table->unsignedInteger('c_id')->index('fk_customer_packages_customer');
-            $table->unsignedInteger('p_id')->index('fk_customer_packages_package');
+            $table->unsignedInteger('c_id')->index('fk_customer_products_customer');
+            $table->unsignedInteger('p_id')->index('fk_customer_products_product');
             $table->date('assign_date');
             $table->integer('billing_cycle_months')->default(1);
             $table->date('due_date')->nullable()->storedAs('(`assign_date` + interval `billing_cycle_months` month)');
@@ -30,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('customer_to_packages');
+        Schema::dropIfExists('customer_to_products');
     }
 };

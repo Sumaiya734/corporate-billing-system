@@ -77,9 +77,9 @@
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
-                                            <h5 class="card-title">Active Packages</h5>
-                                            <h2 class="mb-0">{{ $activePackages ?? 0 }}</h2>
-                                            <small>Total packages</small>
+                                            <h5 class="card-title">Active products</h5>
+                                            <h2 class="mb-0">{{ $activeproducts ?? 0 }}</h2>
+                                            <small>Total products</small>
                                         </div>
                                         <div class="display-4">
                                             <i class="fas fa-cube"></i>
@@ -151,7 +151,7 @@
                                 <div class="card-body">
                                     <div class="row g-3">
                                         <div class="col-lg-3 col-md-6">
-                                            <a href="#" class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center py-3">
+                                            <a href="{{ route('admin.customers.create') }}" class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center py-3">
                                                 <i class="fas fa-user-plus fa-2x me-3"></i>
                                                 <div class="text-start">
                                                     <strong>Add Customer</strong>
@@ -161,7 +161,7 @@
                                             </a>
                                         </div>
                                         <div class="col-lg-3 col-md-6">
-                                            <a href="#" class="btn btn-outline-success w-100 d-flex align-items-center justify-content-center py-3">
+                                            <a href="{{ route('admin.billing.billing-invoices') }}" class="btn btn-outline-success w-100 d-flex align-items-center justify-content-center py-3">
                                                 <i class="fas fa-file-invoice-dollar fa-2x me-3"></i>
                                                 <div class="text-start">
                                                     <strong>Generate Bills</strong>

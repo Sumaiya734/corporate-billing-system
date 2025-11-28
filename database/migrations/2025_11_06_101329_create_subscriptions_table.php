@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('customer_id')->index('subscriptions_customer_id_foreign');
-            $table->unsignedBigInteger('package_id')->index('subscriptions_package_id_foreign');
+            $table->unsignedBigInteger('product_id')->index('subscriptions_product_id_foreign');
             $table->date('start_date');
             $table->date('end_date')->nullable();
             $table->boolean('is_active')->default(true);

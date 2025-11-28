@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         \App\Console\Commands\AdminPassword::class,
+        \App\Console\Commands\GenerateInvoicesForAllCustomers::class,
     ];
 
     /**

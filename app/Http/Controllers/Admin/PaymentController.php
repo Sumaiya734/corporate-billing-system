@@ -18,7 +18,7 @@ class PaymentController extends Controller
     public function getInvoicePayments($invoiceId)
     {
         try {
-            $payments = Payment::with('collectedBy')
+            $payments = Payment::with('collector')
                 ->where('invoice_id', $invoiceId)
                 ->orderBy('payment_date', 'desc')
                 ->orderBy('created_at', 'desc')
@@ -54,6 +54,14 @@ class PaymentController extends Controller
         try {
             return DB::transaction(function () use ($data) {
                 $invoice = Invoice::lockForUpdate()->where('invoice_id', $data['invoice_id'])->firstOrFail();
+
+                // Check if the invoice's month is closed
+                $invoiceMonth = \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m');
+                $isMonthClosed = \App\Models\BillingPeriod::isMonthClosed($invoiceMonth);
+                
+                if ($isMonthClosed) {
+                    abort(422, 'Cannot add payment. This billing month has been closed. All dues have been carried forward to the next month.');
+                }
 
                 // Ensure the invoice belongs to the same customer
                 if ((int)$invoice->c_id !== (int)$data['c_id']) {
@@ -109,7 +117,7 @@ class PaymentController extends Controller
     public function recordPayment(Request $request, $invoiceId)
     {
         $request->validate([
-            'amount'         => 'required|numeric|min:0.01',
+            'amount'         => 'required|numeric|min:0.01', // Accept any amount >= 0.01
             // Accept the same methods used in the UI and Payment model
             'payment_method' => 'required|in:cash,bank_transfer,mobile_banking,card,online',
             'payment_date'   => 'required|date',
@@ -119,13 +127,22 @@ class PaymentController extends Controller
 
         $invoice = Invoice::findOrFail($invoiceId);
 
-        $amount = $request->amount;
-        $due = $invoice->next_due ?? $invoice->total_amount;
+        // Accept any amount - no rounding
+        $amount = floatval($request->amount);
+        $due = floatval($invoice->next_due ?? $invoice->total_amount);
+
+        // Validate: amount must be between 0.01 and due amount
+        if ($amount < 0.01) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment amount must be at least ৳0.01'
+            ], 422);
+        }
 
         if ($amount > $due) {
             return response()->json([
                 'success' => false,
-                'message' => 'Payment amount cannot exceed due amount.'
+                'message' => 'Payment amount (৳' . number_format($amount, 2) . ') cannot exceed due amount (৳' . number_format($due, 2) . ')'
             ], 422);
         }
 
@@ -146,18 +163,24 @@ class PaymentController extends Controller
             $newReceived = ($invoice->received_amount ?? 0) + $amount;
             $newDue = $invoice->total_amount - $newReceived;
 
-            $status = $newDue <= 0 ? 'paid' : ($newReceived > 0 ? 'partial' : 'unpaid');
+            // Handle floating point precision - consider amounts less than 0.01 as zero
+            if ($newDue < 0.01) {
+                $newDue = 0;
+                $status = 'paid';
+            } else {
+                $status = $newReceived > 0 ? 'partial' : 'unpaid';
+            }
 
             $invoice->update([
                 'received_amount' => $newReceived,
-                'next_due'        => $newDue > 0 ? $newDue : 0,
+                'next_due'        => $newDue,
                 'status'          => $status,
             ]);
         });
 
         return response()->json([
             'success' => true,
-            'message' => 'Payment recorded successfully!'
+            'message' => 'Payment of ৳' . number_format($amount, 2) . ' recorded successfully!'
         ]);
     }
 }

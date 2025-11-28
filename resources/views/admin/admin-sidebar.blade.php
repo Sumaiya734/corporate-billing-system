@@ -1,7 +1,7 @@
 <!-- resources/views/admin/admin-sidebar.blade.php -->
 
 <!-- Sidebar -->
-<div class="col-md-3 col-lg-2 sidebar collapse d-md-block" id="sidebar">
+<div class="col-md-3 col-lg-2 sidebar" id="sidebar">
     <div class="sidebar-brand">
         <h5 class="text-white mb-0"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h5>
     </div>
@@ -14,10 +14,10 @@
 
         <!-- Customer Management -->
         <div class="dropdown">
-            <a class="nav-link dropdown-toggle {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}" href="#" data-bs-toggle="collapse" data-bs-target="#customersMenu">
+            <a class="nav-link dropdown-toggle {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}" href="#" data-bs-toggle="collapse" data-bs-target="#customersMenu" aria-expanded="{{ request()->routeIs('admin.customers.*') ? 'true' : 'false' }}">
                 <i class="fas fa-users me-2"></i>Manage Customers
             </a>
-            <div class="collapse submenu" id="customersMenu">
+            <div class="collapse submenu {{ request()->routeIs('admin.customers.*') ? 'show' : '' }}" id="customersMenu">
                 <a class="dropdown-item {{ request()->routeIs('admin.customers.index') ? 'active' : '' }}" href="{{ route('admin.customers.index') }}">
                     <i class="fas fa-list me-2"></i>All Customers
                 </a>
@@ -29,10 +29,10 @@
 
         <!-- Billing & Invoices -->
         <div class="dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#billingMenu">
+            <a class="nav-link dropdown-toggle {{ request()->routeIs('admin.billing.*') ? 'active' : '' }}" href="#" data-bs-toggle="collapse" data-bs-target="#billingMenu" aria-expanded="{{ request()->routeIs('admin.billing.*') ? 'true' : 'false' }}">
                 <i class="fas fa-file-invoice-dollar me-2"></i>Billings
             </a>
-            <div class="collapse submenu" id="billingMenu">
+            <div class="collapse submenu {{ request()->routeIs('admin.billing.*') ? 'show' : '' }}" id="billingMenu">
                 <a class="dropdown-item {{ request()->routeIs('admin.billing.billing-invoices') ? 'active' : '' }}" href="{{ route('admin.billing.billing-invoices') }}">
                     <i class="fas fa-file-invoice-dollar me-2"></i>All Invoices
                 </a>
@@ -43,34 +43,35 @@
             </div>
         </div>
 
-        <!-- Package Management -->
+        <!-- Product Management -->
         <div class="dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#packageMenu">
-                <i class="fas fa-cube me-2"></i>Package Management
+            <a class="nav-link dropdown-toggle {{ request()->routeIs('admin.products.*') ? 'active' : '' }}" href="#" data-bs-toggle="collapse" data-bs-target="#productMenu" aria-expanded="{{ request()->routeIs('admin.products.*') ? 'true' : 'false' }}">
+                <i class="fas fa-cube me-2"></i>Product Management
             </a>
-            <div class="collapse submenu" id="packageMenu">
-                <a class="dropdown-item {{ request()->routeIs('admin.packages.index') ? 'active' : '' }}" href="{{ route('admin.packages.index') }}">
-                    <i class="fas fa-list me-2"></i>All Packages
+            <div class="collapse submenu {{ request()->routeIs('admin.products.*') ? 'show' : '' }}" id="productMenu">
+                <a class="dropdown-item {{ request()->routeIs('admin.products.index') ? 'active' : '' }}" href="{{ route('admin.products.index') }}">
+                    <i class="fas fa-list me-2"></i>All Products
                 </a>
-                <a class="dropdown-item {{ request()->routeIs('admin.packages.types') ? 'active' : '' }}" href="{{ route('admin.packages.types') }}">
-                    <i class="fas fa-plus me-2"></i>Create Package Type
+                <a class="dropdown-item {{ request()->routeIs('admin.products.types') ? 'active' : '' }}" href="{{ route('admin.products.types') }}">
+                    <i class="fas fa-plus me-2"></i>Create Product Type
                 </a>
-               <a class="dropdown-item {{ request()->routeIs('admin.packages.create') ? 'active' : '' }}" href="{{ route('admin.packages.create') }}">
-                    <i class="fas fa-plus me-2"></i>Create New Package
+                <a class="dropdown-item {{ request()->routeIs('admin.products.create') ? 'active' : '' }}" href="{{ route('admin.products.create') }}">
+                    <i class="fas fa-plus me-2"></i>Create New Product
                 </a>
             </div>
         </div>
 
-        <!-- Customer Packages -->
+        <!-- Customer Products -->
         <div class="nav-item">
-            <a class="nav-link {{ request()->routeIs('admin.customer-to-packages.*') ? 'active' : '' }}" href="{{ route('admin.customer-to-packages.index') }}">
-                <i class="fas fa-box me-2"></i>Customer to Packages
+            <a class="nav-link {{ request()->routeIs('admin.customer-to-products.index') ? 'active' : '' }}" href="{{ route('admin.customer-to-products.index') }}">
+                <i class="fas fa-box me-2"></i>Customer to Products
             </a>
         </div>
 
+        
         <!-- Reports & Analytics -->
         <div class="dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#reportsMenu">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#reportsMenu" aria-expanded="false">
                 <i class="fas fa-chart-bar me-2"></i>Reports & Analytics
             </a>
             <div class="collapse submenu" id="reportsMenu">
@@ -91,13 +92,10 @@
 
         <!-- Notifications -->
         <div class="dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#notificationsMenu">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#notificationsMenu" aria-expanded="false">
                 <i class="fas fa-envelope me-2"></i>Notifications
             </a>
             <div class="collapse submenu" id="notificationsMenu">
-                <a class="dropdown-item" href="#">
-                    <i class="fas fa-bell me-2"></i>Send Reminders
-                </a>
                 <a class="dropdown-item" href="#">
                     <i class="fas fa-bullhorn me-2"></i>Announcements
                 </a>
@@ -109,7 +107,7 @@
 
         <!-- Settings -->
         <div class="dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#settingsMenu">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#settingsMenu" aria-expanded="false">
                 <i class="fas fa-cog me-2"></i>Settings
             </a>
             <div class="collapse submenu" id="settingsMenu">
@@ -177,41 +175,153 @@
     border: none;
     box-shadow: none;
 }
+
+/* Mobile styles */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        bottom: 0;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        overflow-y: auto;
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+}
+
+/* Ensure active states are properly highlighted */
+.sidebar .nav-link.active {
+    background: #3498db !important;
+    color: white !important;
+    border-left: 4px solid #2980b9 !important;
+}
+
+.sidebar .dropdown-item.active {
+    background-color: rgba(52, 152, 219, 0.3) !important;
+    color: #fff !important;
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-close other dropdowns when one is opened
-    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+    // Handle dropdown toggle clicks
+    const dropdownToggles = document.querySelectorAll('.dropdown-toggle[data-bs-toggle="collapse"]');
+    
     dropdownToggles.forEach(toggle => {
         toggle.addEventListener('click', function(e) {
             e.preventDefault();
-            const targetId = this.getAttribute('data-bs-target');
             
-            // Close all other dropdowns
-            dropdownToggles.forEach(otherToggle => {
-                if (otherToggle !== this) {
-                    const otherTargetId = otherToggle.getAttribute('data-bs-target');
-                    const otherTarget = document.querySelector(otherTargetId);
-                    if (otherTarget && otherTarget.classList.contains('show')) {
-                        otherTarget.classList.remove('show');
+            const targetSelector = this.getAttribute('data-bs-target');
+            const target = document.querySelector(targetSelector);
+            
+            if (target) {
+                // Check if this dropdown is currently open
+                const isCurrentlyOpen = target.classList.contains('show');
+                
+                // Close all other dropdowns first
+                document.querySelectorAll('.submenu').forEach(submenu => {
+                    if (submenu !== target) {
+                        submenu.classList.remove('show');
+                        const correspondingToggle = document.querySelector(`[data-bs-target="#${submenu.id}"]`);
+                        if (correspondingToggle) {
+                            correspondingToggle.setAttribute('aria-expanded', 'false');
+                            // Remove active class only if no child items are active
+                            const activeChild = submenu.querySelector('.dropdown-item.active');
+                            if (!activeChild) {
+                                correspondingToggle.classList.remove('active');
+                            }
+                        }
                     }
+                });
+                
+                // Toggle the current dropdown
+                if (isCurrentlyOpen) {
+                    target.classList.remove('show');
+                    this.setAttribute('aria-expanded', 'false');
+                    // Remove active class only if no child items are active
+                    const activeChild = target.querySelector('.dropdown-item.active');
+                    if (!activeChild) {
+                        this.classList.remove('active');
+                    }
+                } else {
+                    target.classList.add('show');
+                    this.setAttribute('aria-expanded', 'true');
+                    this.classList.add('active');
                 }
-            });
+            }
         });
     });
 
-    // Add active class management
-    const navLinks = document.querySelectorAll('.nav-link, .dropdown-item');
+    // Handle navigation link clicks
+    const navLinks = document.querySelectorAll('.nav-link:not(.dropdown-toggle), .dropdown-item');
     
     navLinks.forEach(link => {
-        link.addEventListener('click', function() {
-            // Remove active class from all links
-            navLinks.forEach(l => l.classList.remove('active'));
+        link.addEventListener('click', function(e) {
+            // Remove active class from all main nav links
+            document.querySelectorAll('.nav-link:not(.dropdown-toggle)').forEach(navLink => {
+                navLink.classList.remove('active');
+            });
+            
+            // Remove active class from all dropdown toggles
+            document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+                const submenu = document.querySelector(toggle.getAttribute('data-bs-target'));
+                const activeChild = submenu?.querySelector('.dropdown-item.active');
+                if (!activeChild) {
+                    toggle.classList.remove('active');
+                }
+            });
+            
+            // Remove active class from all dropdown items
+            document.querySelectorAll('.dropdown-item').forEach(item => {
+                item.classList.remove('active');
+            });
             
             // Add active class to clicked link
             this.classList.add('active');
+            
+            // If this is a dropdown item, also mark the parent dropdown toggle as active
+            if (this.classList.contains('dropdown-item')) {
+                const parentDropdown = this.closest('.dropdown');
+                if (parentDropdown) {
+                    const dropdownToggle = parentDropdown.querySelector('.dropdown-toggle');
+                    if (dropdownToggle) {
+                        dropdownToggle.classList.add('active');
+                    }
+                }
+            }
         });
+    });
+    
+    // Handle initial active states based on current URL
+    const currentPath = window.location.pathname;
+    const allLinks = document.querySelectorAll('.nav-link, .dropdown-item');
+    
+    allLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && href !== '#' && currentPath.includes(href)) {
+            link.classList.add('active');
+            
+            // If this is a dropdown item, also mark the parent dropdown as active and show submenu
+            if (link.classList.contains('dropdown-item')) {
+                const parentDropdown = link.closest('.dropdown');
+                if (parentDropdown) {
+                    const dropdownToggle = parentDropdown.querySelector('.dropdown-toggle');
+                    if (dropdownToggle) {
+                        dropdownToggle.classList.add('active');
+                        const submenu = document.querySelector(dropdownToggle.getAttribute('data-bs-target'));
+                        if (submenu) {
+                            submenu.classList.add('show');
+                            dropdownToggle.setAttribute('aria-expanded', 'true');
+                        }
+                    }
+                }
+            }
+        }
     });
 });
 </script>

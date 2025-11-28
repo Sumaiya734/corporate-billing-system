@@ -57,7 +57,7 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <h6 class="mb-3">Current Packages</h6>
+                    <h6 class="mb-3">Current products</h6>
                     <span class="badge bg-primary me-2 mb-2">Fast Speed - ৳800/month</span>
                     <span class="badge bg-success me-2 mb-2">Gaming Boost - ৳200/month</span>
                     
@@ -137,14 +137,14 @@
                                 </td>
                                 <td>
                                     <div class="services-tags">
-                                        <div class="package-line">
-                                            @foreach($bill->packages as $package)
-                                                <span class="badge bg-primary">{{ $package->name }}</span>
+                                        <div class="product-line">
+                                            @foreach($bill->products as $product)
+                                                <span class="badge bg-primary">{{ $product->name }}</span>
                                             @endforeach
                                         </div>
-                                        <div class="package-line">
+                                        <div class="product-line">
                                             <small class="text-muted">
-                                                ৳{{ number_format($bill->package_amount, 2) }} 
+                                                ৳{{ number_format($bill->product_amount, 2) }} 
                                                 @if($bill->addon_amount > 0)
                                                     + ৳{{ number_format($bill->addon_amount, 2) }}
                                                 @endif
@@ -156,7 +156,7 @@
                                     <span class="bill-amount">৳{{ number_format($bill->total_amount, 2) }}</span>
                                     <small class="text-muted d-block">
                                         (Service: ৳{{ number_format($bill->service_charge, 2) }} + 
-                                        Package: ৳{{ number_format($bill->package_amount, 2) }}
+                                        product: ৳{{ number_format($bill->product_amount, 2) }}
                                         @if($bill->addon_amount > 0)
                                             + Add-ons: ৳{{ number_format($bill->addon_amount, 2) }}
                                         @endif
@@ -274,7 +274,7 @@
         font-size: 0.75rem;
     }
 
-    .package-line {
+    .product-line {
         margin-bottom: 4px;
     }
 

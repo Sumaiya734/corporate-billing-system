@@ -20,10 +20,20 @@ class LoginController extends Controller
             'password' => 'required',
         ]);
 
-        // FIX: Add role check for admin
-        if (Auth::attempt(['email' => $request->email, 'password' => $request->password, 'role' => 'admin'])) {
-            $request->session()->regenerate();
-            return redirect()->route('admin.dashboard');
+        // Attempt authentication first
+        if (Auth::attempt($credentials)) {
+            // Check if the authenticated user is an admin
+            $user = Auth::user();
+            if ($user->role === 'admin') {
+                $request->session()->regenerate();
+                return redirect()->route('admin.dashboard');
+            } else {
+                // If not admin, logout and show error
+                Auth::logout();
+                return back()->withErrors([
+                    'email' => 'Access denied. Admin privileges required.',
+                ])->withInput($request->only('email'));
+            }
         }
 
         return back()->withErrors([

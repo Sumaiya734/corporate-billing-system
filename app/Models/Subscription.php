@@ -9,7 +9,7 @@ class Subscription extends Model
     use HasFactory;
 
     protected $fillable = [
-        'customer_id', 'package_id', 'start_date', 'end_date', 'is_active'
+        'customer_id', 'product_id', 'start_date', 'end_date', 'is_active'
     ];
 
     public function customer()
@@ -17,8 +17,8 @@ class Subscription extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function package()
+    public function product()
     {
-        return $this->belongsTo(Package::class);
+        return $this->belongsTo(Product::class);
     }
 }

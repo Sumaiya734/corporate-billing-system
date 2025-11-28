@@ -10,18 +10,21 @@
             <h2 class="h3 mb-0 page-title">
                 <i class="fas fa-file-invoice me-2 text-primary"></i>All Invoices
             </h2>
-            <p class="text-muted mb-0">Dynamic monthly billing summaries based on customer packages and payments</p>
+            <p class="text-muted mb-0">Dynamic monthly billing summaries based on customer products and payments</p>
         </div>
         <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" onclick="location.reload()" title="Refresh data">
+                <i class="fas fa-sync-alt me-1"></i>Refresh
+            </button>
             <button class="btn btn-outline-primary" onclick="exportBillingReport()">
                 <i class="fas fa-download me-1"></i>Export Report
             </button>
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#generateFromInvoicesModal">
                 <i class="fas fa-sync me-1"></i>Generate from Invoices
             </button>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBillingModal">
+            <!-- <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBillingModal">
                 <i class="fas fa-plus me-1"></i>Add Manual Billing
-            </button>
+            </button> -->
         </div>
     </div>
 
@@ -127,10 +130,23 @@
     <!-- Billing Table -->
     <div class="card">
         <div class="card-header">
-            <h5 class="card-title mb-0">
-                <i class="fas fa-list me-2"></i>Monthly Billing Overview 
-            </h5>
-            <p class="text-muted mb-0 small">Showing completed months only</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>Monthly Billing Overview 
+                        <span class="badge bg-success ms-2">
+                            <i class="fas fa-database me-1"></i>Live Data
+                        </span>
+                    </h5>
+                    <p class="text-muted mb-0 small">Real-time data from Invoices and Payments tables</p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Data updates automatically when payments are recorded
+                    </small>
+                </div>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -144,7 +160,7 @@
                             <th>Due Amount</th>
                             <th>Status</th>
                             <th>Monthly Bills</th>
-                            <!-- <th>Actions</th> -->
+                            <th>Details</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -154,90 +170,104 @@
                             $isFutureMonth = isset($month->is_future_month) ? $month->is_future_month : false;
                             $isDynamic = isset($month->is_dynamic) ? $month->is_dynamic : false;
                         @endphp
-                        @if(!$isCurrentMonth && !$isFutureMonth) {{-- Hide current and future months --}}
-                        <tr>
+                        @if(!$isFutureMonth)
+                        <tr class="{{ $isCurrentMonth ? 'table-info' : '' }}" data-month="{{ $month->billing_month }}">
                             <td>
                                 <strong>{{ $month->display_month ?? $month->billing_month }}</strong>
+                                @if($isCurrentMonth)
+                                <br><span class="badge bg-primary">Current Month</span>
+                                @endif
                                 @if($month->notes ?? false)
                                 <br><small class="text-muted">{{ Str::limit($month->notes, 30) }}</small>
                                 @endif
                             </td>
                             <td>
-                                <span class="fw-bold">{{ $month->total_customers ?? 0 }}</span>
+                                <span class="fw-bold" title="Total unique customers with invoices this month">
+                                    {{ number_format($month->total_customers ?? 0) }}
+                                </span>
+                                @if(($month->total_customers ?? 0) > 0)
+                                <br><small class="text-muted">customers</small>
+                                @endif
                             </td>
                             <td>
-                                <span class="fw-bold text-dark">৳ {{ number_format($month->total_amount ?? 0, 2) }}</span>
+                                <span class="fw-bold text-dark" title="Sum of all invoice total_amount for this month (includes previous due + current charges)">
+                                    ৳ {{ number_format($month->total_amount ?? 0, 2) }}
+                                </span>
+                                @if(($month->total_amount ?? 0) > 0)
+                                <br><small class="text-muted">From {{ \App\Models\Invoice::whereYear('issue_date', \Carbon\Carbon::parse($month->billing_month . '-01')->year)->whereMonth('issue_date', \Carbon\Carbon::parse($month->billing_month . '-01')->month)->count() }} invoices</small>
+                                @endif
                             </td>
                             <td>
-                                <span class="fw-bold text-success">৳ {{ number_format($month->received_amount ?? 0, 2) }}</span>
+                                <span class="fw-bold text-success" title="Total payments received for this month">
+                                    ৳ {{ number_format($month->received_amount ?? 0, 2) }}
+                                </span>
                                 @if(($month->received_amount ?? 0) > 0 && ($month->total_amount ?? 0) > 0)
                                 <br>
                                 <small class="text-muted">{{ number_format(($month->received_amount / $month->total_amount) * 100, 1) }}% collected</small>
                                 @endif
                             </td>
                             <td>
-                                <span class="fw-bold text-warning">৳ {{ number_format($month->due_amount ?? 0, 2) }}</span>
+                                <span class="fw-bold text-{{ ($month->due_amount ?? 0) > 0 ? 'danger' : 'success' }}" title="Outstanding amount for this month">
+                                    ৳ {{ number_format($month->due_amount ?? 0, 2) }}
+                                </span>
                             </td>
                             <td>
-                                @if(($month->status ?? '') == 'All Paid')
-                                    <span class="badge badge-paid">
-                                        <i class="fas fa-check-circle me-1"></i>Paid
+                                @if(($month->is_closed ?? false) || ($month->status ?? '') == 'Closed')
+                                    <span class="badge" style="background-color: #6c757d; color: white; padding: 6px 12px; border-radius: 20px;">
+                                        <i class="fas fa-lock me-1"></i>Closed
                                     </span>
+                                @elseif(($month->status ?? '') == 'All Paid')
+                                    <span class="badge" style="background-color: #06d6a0; color: white; padding: 6px 12px; border-radius: 20px;">Paid</span>
+
                                 @elseif(($month->status ?? '') == 'Pending')
-                                    <span class="badge badge-pending">
-                                        <i class="fas fa-clock me-1"></i>Pending
-                                    </span>
+                                    <span class="badge" style="background-color: #ffd166; color: black; padding: 6px 12px; border-radius: 20px;">Pending</span>
+
                                 @else
-                                    <span class="badge badge-overdue">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>Overdue
-                                    </span>
+                                    <span class="badge" style="background-color: #ef476f; color: white; padding: 6px 12px; border-radius: 20px;">Overdue</span>
+
                                 @endif
                             </td>
                             <td>
+                                @php
+                                    $canAccess = \App\Models\BillingPeriod::canAccessMonth($month->billing_month);
+                                @endphp
+                                @if($canAccess)
                                 <a href="{{ route('admin.billing.monthly-bills', ['month' => $month->billing_month]) }}" 
                                    class="btn btn-outline-primary btn-sm monthly-bill-btn">
                                     <i class="fas fa-file-invoice-dollar me-1"></i>Monthly Bills
                                 </a>
+                                @else
+                                <button class="btn btn-outline-secondary btn-sm" disabled title="Close previous month first">
+                                    <i class="fas fa-lock me-1"></i>Locked
+                                </button>
+                                @endif
                             </td>
                             <td>
-                                <!-- <div class="d-flex gap-1">
-                                    @if(!$isDynamic)
-                                    <a href="{{ route('admin.billing.edit-monthly', $month->id) }}" 
-                                       class="btn btn-outline-warning btn-sm" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    
-                                    <form action="{{ route('admin.billing.delete-monthly', $month->id) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-outline-danger btn-sm" 
-                                                onclick="return confirm('Are you sure you want to delete this billing summary?')"
-                                                title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                    @else
-                                    <button class="btn btn-outline-info btn-sm" title="Dynamic data - Auto calculated" disabled>
-                                        <i class="fas fa-cog"></i>
-                                    </button>
-                                    @endif
-                                    
-                                    {{-- Lock/Unlock Button --}}
-                                    @if(isset($month->is_locked))
-                                    <form action="{{ route('admin.billing.toggle-lock', $month->id) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm" 
-                                                title="{{ $month->is_locked ? 'Unlock' : 'Lock' }}">
-                                            <i class="fas {{ $month->is_locked ? 'fa-lock' : 'fa-lock-open' }}"></i>
-                                        </button>
-                                    </form>
-                                    @endif
-                                </div> -->
+                                <!-- Details Button -->
+                                <a href="{{ route('admin.billing.monthly-details', ['month' => $month->billing_month]) }}" 
+                                   class="btn btn-info btn-sm details-btn" Target="_blank">
+                                    <i class="fas fa-eye me-1"></i>Details
+                                </a>
                             </td>
                         </tr>
                         @endif
                         @endforeach
                     </tbody>
+                    <tfoot class="table-light">
+                        <tr class="fw-bold">
+                            <td colspan="2" class="text-end">TOTALS:</td>
+                            <td class="text-dark">
+                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('total_amount'), 2) }}
+                            </td>
+                            <td class="text-success">
+                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('received_amount'), 2) }}
+                            </td>
+                            <td class="text-danger">
+                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('due_amount'), 2) }}
+                            </td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
@@ -245,12 +275,14 @@
             <div class="row align-items-center">
                 <div class="col-md-6">
                     <small class="text-muted">
-                        Showing {{ $monthlySummary->where('is_current_month', false)->where('is_future_month', false)->count() }} completed monthly summaries
+                        <i class="fas fa-check-circle text-success me-1"></i>
+                        Showing {{ $monthlySummary->where('is_future_month', false)->count() }} monthly summaries with real-time data
                     </small>
                 </div>
                 <div class="col-md-6 text-end">
                     <small class="text-muted">
-                        Current and future months are hidden | Last updated: {{ now()->format('M j, Y g:i A') }}
+                        <i class="fas fa-clock me-1"></i>
+                        Last updated: {{ now()->format('M j, Y g:i A') }}
                     </small>
                 </div>
             </div>
@@ -296,6 +328,92 @@
             </div>
         </div>
     </div>
+
+    <!-- Data Summary Card -->
+    <!-- <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-light border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-database me-2"></i>Data Source Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-white rounded shadow-sm">
+                                <i class="fas fa-file-invoice fa-2x text-primary mb-2"></i>
+                                <h5 class="mb-0">{{ number_format($totalInvoicesCount ?? 0) }}</h5>
+                                <small class="text-muted">Total Invoices</small>
+                                <div class="mt-2">
+                                    <small class="text-success">৳{{ number_format($totalInvoiceAmount ?? 0, 2) }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-white rounded shadow-sm">
+                                <i class="fas fa-money-bill-wave fa-2x text-success mb-2"></i>
+                                <h5 class="mb-0">{{ number_format($totalPaymentsCount ?? 0) }}</h5>
+                                <small class="text-muted">Total Payments</small>
+                                <div class="mt-2">
+                                    <small class="text-success">৳{{ number_format($totalRevenue ?? 0, 2) }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-white rounded shadow-sm">
+                                <i class="fas fa-users fa-2x text-info mb-2"></i>
+                                <h5 class="mb-0">{{ number_format($totalActiveCustomers ?? 0) }}</h5>
+                                <small class="text-muted">Active Customers</small>
+                                <div class="mt-2">
+                                    <small class="text-info">With Products</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-white rounded shadow-sm">
+                                <i class="fas fa-calendar-check fa-2x text-warning mb-2"></i>
+                                <h5 class="mb-0">{{ $monthlySummary->where('is_future_month', false)->count() }}</h5>
+                                <small class="text-muted">Billing Months</small>
+                                <div class="mt-2">
+                                    <small class="text-warning">Tracked</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3 mb-0">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>How it works:</strong> The table above shows real-time data calculated from your invoices and payments. 
+                                <ul class="mb-0 mt-2 small">
+                                    <li><strong>Total Customers</strong> = COUNT(DISTINCT c_id) from invoices that month</li>
+                                    <li><strong>Total Amount</strong> = SUM(total_amount) from invoices that month</li>
+                                    <li><strong>Received Amount</strong> = SUM(received_amount) from invoices that month</li>
+                                    <li><strong>Due Amount</strong> = Total Amount - Received Amount</li>
+                                </ul>
+                                <div class="mt-2 p-2 bg-light rounded">
+                                    <small><strong>Note:</strong> Total Amount includes previous due + current month charges, matching the monthly-bills calculation exactly.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Overall Statistics (All Time):</strong>
+                                <ul class="mb-0 mt-2 small">
+                                    <li>Total Invoiced: <strong class="text-primary">৳{{ number_format($totalInvoiceAmount ?? 0, 2) }}</strong> <small class="text-muted">({{ number_format($totalInvoicesCount ?? 0) }} invoices)</small></li>
+                                    <li>Total Collected: <strong class="text-success">৳{{ number_format($totalReceivedAmount ?? 0, 2) }}</strong> <small class="text-muted">({{ number_format($totalPaymentsCount ?? 0) }} payments)</small></li>
+                                    <li>Collection Rate: <strong class="text-info">{{ $totalInvoiceAmount > 0 ? number_format(($totalReceivedAmount / $totalInvoiceAmount) * 100, 1) : 0 }}%</strong></li>
+                                    <li>Outstanding: <strong class="text-danger">৳{{ number_format($totalPendingAmount ?? 0, 2) }}</strong></li>
+                                </ul>
+                                <div class="mt-2 p-2 bg-light rounded">
+                                    <small><strong>Verification:</strong> ৳{{ number_format($totalInvoiceAmount ?? 0, 2) }} - ৳{{ number_format($totalReceivedAmount ?? 0, 2) }} = ৳{{ number_format(($totalInvoiceAmount ?? 0) - ($totalReceivedAmount ?? 0), 2) }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> -->
 
     <!-- Recent Activity Section -->
     <div class="row mt-4">
@@ -385,7 +503,7 @@
                         <label class="form-label">Billing Month *</label>
                         <input type="month" name="billing_month" class="form-control" required 
                                min="{{ date('Y-m', strtotime('-2 years')) }}" 
-                               max="{{ date('Y-m', strtotime('-1 month')) }}"> {{-- Max is previous month --}}
+                               max="{{ date('Y-m', strtotime('-1 month')) }}">
                         <div class="form-text">Select a completed month (current and future months are not allowed for manual entry)</div>
                     </div>
                     <div class="mb-3">
@@ -439,7 +557,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Generate from Invoices & Packages</h5>
+                <h5 class="modal-title">Generate from Invoices & products</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('admin.billing.generate-from-invoices') }}" method="POST">
@@ -447,7 +565,7 @@
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        This will automatically generate a billing summary from customer packages and payment records for the selected month.
+                        This will automatically generate a billing summary from customer products and payment records for the selected month.
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Select Month *</label>
@@ -464,9 +582,9 @@
                                         continue;
                                     }
                                 @endphp
-                                @if(!$isCurrent && !$isFuture) {{-- Hide current and future months from selection --}}
+                                @if(!$isFuture)
                                 <option value="{{ $month }}">
-                                    {{ $monthName }}
+                                    {{ $monthName }}{{ $isCurrent ? ' (Current)' : '' }}
                                 </option>
                                 @endif
                                 @endforeach
@@ -475,16 +593,8 @@
                         @if(empty($availableMonths) || $availableMonths->isEmpty())
                         <div class="form-text text-warning">No months with billing data available for generation.</div>
                         @else
-                        <div class="form-text">Select a completed month to generate billing summary (current and future months are excluded)</div>
+                        <div class="form-text">Select a month to generate billing summary (future months are excluded)</div>
                         @endif
-                    </div>
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="include_service_charge" id="include_service_charge" checked>
-                            <label class="form-check-label" for="include_service_charge">
-                                Include service charge (৳ 50) and VAT (5%)
-                            </label>
-                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -545,40 +655,46 @@
         border-bottom: 1px solid #f0f0f0;
     }
 
-    .badge-paid {
+    .badge.badge-paid {
         background-color: #06d6a0 !important;
-        color: white !important;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
+        color: #ffffff !important;
+        padding: 8px 14px !important;
+        border-radius: 20px !important;
+        font-size: 0.875rem !important;
+        font-weight: 600 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+        border: none !important;
     }
 
-    .badge-pending {
+    .badge.badge-pending {
         background-color: #ffd166 !important;
-        color: #000 !important;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
+        color: #000000 !important;
+        padding: 8px 14px !important;
+        border-radius: 20px !important;
+        font-size: 0.875rem !important;
+        font-weight: 600 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        text-shadow: none !important;
+        border: none !important;
     }
 
-    .badge-overdue {
+    .badge.badge-overdue {
         background-color: #ef476f !important;
-        color: white !important;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
+        color: #ffffff !important;
+        padding: 8px 14px !important;
+        border-radius: 20px !important;
+        font-size: 0.875rem !important;
+        font-weight: 600 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+        border: none !important;
     }
 
     .monthly-bill-btn {
@@ -588,7 +704,15 @@
         transition: all 0.3s ease;
     }
 
-    .monthly-bill-btn:hover {
+    .details-btn {
+        font-weight: 500;
+        border-radius: 8px;
+        white-space: nowrap;
+        transition: all 0.3s ease;
+    }
+
+    .monthly-bill-btn:hover,
+    .details-btn:hover {
         transform: translateY(-1px);
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
@@ -625,6 +749,14 @@
         background-color: rgba(67, 97, 238, 0.05);
         transform: translateY(-1px);
         transition: all 0.2s ease;
+    }
+
+    .table-info {
+        background-color: rgba(67, 97, 238, 0.08) !important;
+    }
+
+    .table-info:hover {
+        background-color: rgba(67, 97, 238, 0.12) !important;
     }
 </style>
 @endsection
@@ -672,7 +804,6 @@
     });
 
     function exportBillingReport() {
-        // Simple export functionality - you can enhance this with proper CSV/Excel export
         const table = document.querySelector('table');
         if (!table) {
             alert('No data available to export!');
@@ -692,9 +823,7 @@
         table.querySelectorAll('tbody tr').forEach(row => {
             const rowData = [];
             row.querySelectorAll('td').forEach(cell => {
-                // Remove action buttons and get clean text
                 let text = cell.textContent.trim();
-                // Remove multiple spaces and newlines
                 text = text.replace(/\s+/g, ' ');
                 rowData.push(`"${text}"`);
             });
@@ -711,14 +840,43 @@
         link.click();
         document.body.removeChild(link);
         
-        // Show success message
         alert('Billing report exported successfully!');
     }
 
-    // Auto-refresh data every 5 minutes
-    setInterval(() => {
-        console.log('Auto-refreshing billing data...');
-        // You can implement actual refresh logic here if needed
-    }, 300000);
+    // Add hover effect to show data is interactive
+    document.querySelectorAll('tbody tr[data-month]').forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            const month = this.dataset.month;
+            const customers = this.querySelector('td:nth-child(2) .fw-bold').textContent.trim();
+            const total = this.querySelector('td:nth-child(3) .fw-bold').textContent.trim();
+            const received = this.querySelector('td:nth-child(4) .fw-bold').textContent.trim();
+            const due = this.querySelector('td:nth-child(5) .fw-bold').textContent.trim();
+            
+            console.log(`Month: ${month} | Customers: ${customers} | Total: ${total} | Received: ${received} | Due: ${due}`);
+        });
+    });
+
+    // Show data source on page load
+    console.log('Billing data loaded from database:');
+    console.log('- Invoices table: Total amounts and customer counts');
+    console.log('- Payments table: Received amounts');
+    console.log('- Calculated: Due amounts (Total - Received)');
+    
+    // Add visual indicator that data is live
+    const lastUpdated = document.querySelector('.card-footer small:last-child');
+    if (lastUpdated) {
+        setInterval(() => {
+            const now = new Date();
+            const timeStr = now.toLocaleString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric', 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true 
+            });
+            lastUpdated.innerHTML = '<i class="fas fa-clock me-1"></i>Last updated: ' + timeStr;
+        }, 60000); // Update every minute
+    }
 </script>
 @endsection

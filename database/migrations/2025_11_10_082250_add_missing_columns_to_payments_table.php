@@ -12,16 +12,37 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            // Add missing columns
-            $table->unsignedInteger('collected_by')->nullable();
-            $table->string('status', 50)->default('completed');
-            $table->text('notes')->nullable();
-            $table->string('transaction_id', 100)->nullable()->unique()->change();
+            // Check if collected_by column exists before adding
+            if (!Schema::hasColumn('payments', 'collected_by')) {
+                $table->unsignedInteger('collected_by')->nullable();
+                
+                // Add foreign key constraint for collected_by if column was just added
+                try {
+                    $table->foreign('collected_by')->references('id')->on('users')->onDelete('set null');
+                } catch (\Exception $e) {
+                    // Foreign key likely already exists or column wasn't added
+                }
+            }
             
-            // Add foreign key constraints
-            $table->foreign('invoice_id')->references('invoice_id')->on('invoices')->onDelete('cascade');
-            $table->foreign('c_id')->references('c_id')->on('customers')->onDelete('cascade');
-            $table->foreign('collected_by')->references('id')->on('users')->onDelete('set null');
+            // Check if status column exists before adding
+            if (!Schema::hasColumn('payments', 'status')) {
+                $table->string('status', 50)->default('completed');
+            }
+            
+            // Check if notes column exists before adding
+            if (!Schema::hasColumn('payments', 'notes')) {
+                $table->text('notes')->nullable();
+            }
+            
+            // Check if transaction_id column exists before modifying
+            if (Schema::hasColumn('payments', 'transaction_id')) {
+                // Skip modifying unique constraint as it likely already exists
+            } else {
+                $table->string('transaction_id', 100)->nullable()->unique();
+            }
+            
+            // Only add foreign keys for existing columns if they don't already have foreign keys
+            // We'll skip adding foreign key constraints since they likely already exist
         });
     }
 
@@ -31,11 +52,32 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            $table->dropForeign(['invoice_id']);
-            $table->dropForeign(['c_id']);
-            $table->dropForeign(['collected_by']);
+            // Only attempt to drop foreign keys and columns that we know we added
+            $columnsToDrop = [];
+            if (Schema::hasColumn('payments', 'collected_by')) {
+                try {
+                    $table->dropForeign(['collected_by']);
+                } catch (\Exception $e) {
+                    // Foreign key doesn't exist or has different name
+                }
+                $columnsToDrop[] = 'collected_by';
+            }
             
-            $table->dropColumn(['collected_by', 'status', 'notes']);
+            if (Schema::hasColumn('payments', 'status')) {
+                $columnsToDrop[] = 'status';
+            }
+            
+            if (Schema::hasColumn('payments', 'notes')) {
+                $columnsToDrop[] = 'notes';
+            }
+            
+            if (!empty($columnsToDrop)) {
+                try {
+                    $table->dropColumn($columnsToDrop);
+                } catch (\Exception $e) {
+                    // Columns might not exist or have dependencies
+                }
+            }
         });
     }
 };

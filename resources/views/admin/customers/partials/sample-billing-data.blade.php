@@ -19,11 +19,11 @@
         </td>
         <td>
             <div class="services-tags">
-                <div class="package-line">
+                <div class="product-line">
                     <span class="badge bg-primary">Fast Speed</span>
                     <span class="badge bg-success">Gaming Boost</span>
                 </div>
-                <div class="package-line">
+                <div class="product-line">
                     <small class="text-muted">৳800 + ৳200</small>
                 </div>
             </div>

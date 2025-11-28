@@ -177,13 +177,13 @@
                         </a>
                         <div class="dropdown-menu">
                             <a class="dropdown-item" href="#">
-                                <i class="fas fa-rocket me-2"></i>Current Packages
+                                <i class="fas fa-rocket me-2"></i>Current products
                             </a>
                             <a class="dropdown-item" href="#">
-                                <i class="fas fa-sync me-2"></i>Change Package
+                                <i class="fas fa-sync me-2"></i>Change product
                             </a>
                             <a class="dropdown-item" href="#">
-                                <i class="fas fa-plus me-2"></i>Add Special Packages
+                                <i class="fas fa-plus me-2"></i>Add Special products
                             </a>
                         </div>
                     </div>
@@ -278,7 +278,7 @@
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
-                                            <h6 class="card-title text-muted">Active Packages</h6>
+                                            <h6 class="card-title text-muted">Active products</h6>
                                             <h3 class="text-success">1</h3>
                                             <small class="text-muted">Services active</small>
                                         </div>
@@ -395,7 +395,7 @@
                                                 <div class="text-start">
                                                     <strong>My Services</strong>
                                                     <br>
-                                                    <small>Manage packages</small>
+                                                    <small>Manage products</small>
                                                 </div>
                                             </a>
                                         </div>

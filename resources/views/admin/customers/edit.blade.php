@@ -61,7 +61,7 @@
                                 <div>
                                     <strong>Customer ID:</strong> 
                                     <span class="fw-bold text-dark">{{ $customer->customer_id }}</span>
-                                    <small class="text-muted ms-2">(This cannot be changed)</small>
+                                
                                 </div>
                             </div>
                         </div>

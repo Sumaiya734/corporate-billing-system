@@ -23,8 +23,8 @@
             ],
             'breakdown' => [
                 'service_charge' => 50.00,
-                'regular_package' => 1500.00,
-                'special_packages' => 0.00,
+                'regular_product' => 1500.00,
+                'special_products' => 0.00,
                 'vat' => 108.50
             ]
         ],
@@ -45,8 +45,8 @@
             ],
             'breakdown' => [
                 'service_charge' => 50.00,
-                'regular_package' => 2000.00,
-                'special_packages' => 0.00,
+                'regular_product' => 2000.00,
+                'special_products' => 0.00,
                 'vat' => 143.50
             ]
         ]
@@ -137,7 +137,7 @@
                             <tbody>
                                 <tr><td>Basic Speed Internet</td><td class="text-end">{{ number_format($invoice['services'][0]['price'],2) }}</td></tr>
                                 <tr><td>Service Charge</td><td class="text-end">50.00</td></tr>
-                                <tr class="table-light"><td><strong>Subtotal</strong></td><td class="text-end"><strong>{{ number_format($invoice['breakdown']['service_charge']+$invoice['breakdown']['regular_package']+$invoice['breakdown']['special_packages'],2) }}</strong></td></tr>
+                                <tr class="table-light"><td><strong>Subtotal</strong></td><td class="text-end"><strong>{{ number_format($invoice['breakdown']['service_charge']+$invoice['breakdown']['regular_product']+$invoice['breakdown']['special_products'],2) }}</strong></td></tr>
                                 <tr><td>VAT (7%)</td><td class="text-end">{{ number_format($invoice['breakdown']['vat'],2) }}</td></tr>
                             </tbody>
                             <tfoot class="table-light">

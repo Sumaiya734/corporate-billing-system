@@ -16,7 +16,7 @@ class Invoice extends Model
 
     protected $fillable = [
         'invoice_number',
-        'c_id',
+        'cp_id', // Links to customer_to_products (each invoice is for one product)
         'issue_date',
         'previous_due',
         'service_charge',
@@ -27,6 +27,9 @@ class Invoice extends Model
         'received_amount',
         'next_due',
         'status',
+        'is_closed',
+        'closed_at',
+        'closed_by',
         'notes',
         'created_by'
     ];
@@ -34,13 +37,12 @@ class Invoice extends Model
     protected $casts = [
         'issue_date' => 'date',
         'previous_due' => 'decimal:2',
-        'service_charge' => 'decimal:2',
-        'vat_percentage' => 'decimal:2',
-        'vat_amount' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'received_amount' => 'decimal:2',
         'next_due' => 'decimal:2',
+        'is_closed' => 'boolean',
+        'closed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -64,14 +66,22 @@ class Invoice extends Model
 
     // ==================== RELATIONSHIPS ====================
 
+    // FIXED: Updated customer relationship to correctly reference customer_to_products
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(Customer::class, 'c_id', 'c_id');
+        return $this->belongsTo(CustomerProduct::class, 'cp_id', 'cp_id')
+            ->join('customers', 'customer_to_products.c_id', '=', 'customers.c_id');
     }
 
-    public function invoicePackages(): HasMany
+    // FIXED: Added relationship to customer_to_products
+    public function customerProduct(): BelongsTo
     {
-        return $this->hasMany(InvoicePackage::class, 'invoice_id', 'invoice_id');
+        return $this->belongsTo(CustomerProduct::class, 'cp_id', 'cp_id');
+    }
+
+    public function invoiceProducts(): HasMany
+    {
+        return $this->hasMany(InvoiceProduct::class, 'invoice_id', 'invoice_id');
     }
 
     public function payments(): HasMany
@@ -112,9 +122,12 @@ class Invoice extends Model
                     ->where('total_amount', '>', DB::raw('COALESCE(received_amount, 0)'));
     }
 
+    // FIXED: Updated scope to use cp_id
     public function scopeByCustomer(Builder $query, int $customerId): Builder
     {
-        return $query->where('c_id', $customerId);
+        return $query->whereHas('customerProduct', function ($q) use ($customerId) {
+            $q->where('c_id', $customerId);
+        });
     }
 
     public function scopeByStatus(Builder $query, string $status): Builder
@@ -254,7 +267,7 @@ class Invoice extends Model
     public function addPayment(float $amount, string $method = 'cash', string $transactionId = null): Payment
     {
         $payment = $this->payments()->create([
-            'c_id' => $this->c_id,
+            'c_id' => $this->customerProduct->c_id ?? null,
             'amount' => $amount,
             'payment_method' => $method,
             'payment_date' => now(),
@@ -302,22 +315,22 @@ class Invoice extends Model
         ]);
     }
 
-    public function getPackageNames(): string
+    public function getProductNames(): string
     {
-        return $this->invoicePackages->map(function ($invoicePackage) {
-            return $invoicePackage->package->name ?? 'Unknown Package';
+        return $this->invoiceProducts->map(function ($invoiceProduct) {
+            return $invoiceProduct->product->name ?? 'Unknown Product';
         })->implode(', ');
     }
 
-    public function getTotalPackageAmount(): float
+    public function getTotalProductAmount(): float
     {
-        return $this->invoicePackages->sum('total_package_amount');
+        return $this->invoiceProducts->sum('total_product_amount');
     }
 
     public function recalculateTotals(): bool
     {
-        $packageTotal = $this->getTotalPackageAmount();
-        $subtotal = $packageTotal + $this->previous_due + $this->service_charge;
+        $productTotal = $this->getTotalProductAmount();
+        $subtotal = $productTotal + $this->previous_due + $this->service_charge;
         $vatAmount = $subtotal * ($this->vat_percentage / 100);
         $totalAmount = $subtotal + $vatAmount;
 
@@ -332,16 +345,29 @@ class Invoice extends Model
 
     // ==================== STATIC METHODS ====================
 
-    public static function generateInvoiceNumber(): string
+    public static function generateInvoiceNumber($issueDate = null): string
     {
-        $prefix = 'INV-' . date('Y-');
+        // Use provided date or current date
+        $date = $issueDate ? \Carbon\Carbon::parse($issueDate) : \Carbon\Carbon::now();
+        
+        // Format: INV-YY-MM-XXXX (e.g., INV-25-01-0001)
+        $year = $date->format('y'); // 2-digit year
+        $month = $date->format('m'); // 2-digit month
+        $prefix = 'INV-' . $year . '-' . $month . '-';
+        
+        // Find the highest invoice number for this month
         $lastInvoice = self::where('invoice_number', 'like', $prefix . '%')
-                          ->orderBy('invoice_id', 'desc')
+                          ->orderBy('invoice_number', 'desc')
                           ->first();
 
-        $nextNumber = $lastInvoice 
-            ? (int) str_replace($prefix, '', $lastInvoice->invoice_number) + 1
-            : 1;
+        if ($lastInvoice) {
+            // Extract the numeric part and increment
+            $lastNumber = (int) substr($lastInvoice->invoice_number, strlen($prefix));
+            $nextNumber = $lastNumber + 1;
+        } else {
+            // Start from 1 for this month
+            $nextNumber = 1;
+        }
 
         return $prefix . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
     }
@@ -371,21 +397,14 @@ class Invoice extends Model
         parent::boot();
 
         static::creating(function ($invoice) {
-            if (empty($invoice->invoice_number)) {
-                $invoice->invoice_number = self::generateInvoiceNumber();
-            }
-
+            // Set issue_date first if not set
             if (empty($invoice->issue_date)) {
                 $invoice->issue_date = now()->toDateString();
             }
-
-            // Set default values
-            if (empty($invoice->service_charge)) {
-                $invoice->service_charge = 50.00;
-            }
-
-            if (empty($invoice->vat_percentage)) {
-                $invoice->vat_percentage = 5.00;
+            
+            // Generate invoice number based on issue_date
+            if (empty($invoice->invoice_number)) {
+                $invoice->invoice_number = self::generateInvoiceNumber($invoice->issue_date);
             }
 
             // Initialize amounts if not set

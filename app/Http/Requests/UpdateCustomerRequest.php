@@ -6,12 +6,12 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateCustomerRequest extends FormRequest
 {
-    public function authorize()
+    public function authorize(): bool
     {
         return auth()->check();
     }
 
-    public function rules()
+    public function rules(): array
     {
         $customerId = $this->route('customer') ? $this->route('customer')->id : null;
 
@@ -23,7 +23,7 @@ class UpdateCustomerRequest extends FormRequest
             'connection_address' => 'nullable|string',
             'id_type' => 'nullable|string|max:60',
             'id_number' => 'nullable|string|max:100',
-            'package_id' => 'nullable|integer|exists:packages,id',
+            'product_id' => 'nullable|integer|exists:products,id',
             'is_active' => 'nullable|boolean',
             'password' => 'nullable|string|min:6|confirmed'
         ];

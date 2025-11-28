@@ -65,7 +65,7 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <h6 class="mb-3">Current Packages</h6>
+                    <h6 class="mb-3">Current products</h6>
                     <span class="badge bg-primary me-2 mb-2">Fast Speed - ৳800/month</span>
                     <span class="badge bg-success me-2 mb-2">Gaming Boost - ৳200/month</span>
                     
@@ -139,11 +139,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -177,11 +177,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -215,11 +215,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -253,11 +253,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -291,11 +291,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -329,11 +329,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -367,11 +367,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -405,11 +405,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -443,11 +443,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -481,11 +481,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -519,11 +519,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -557,11 +557,11 @@
                             </td>
                             <td>
                                 <div class="services-tags">
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <span class="badge bg-primary">Fast Speed</span>
                                         <span class="badge bg-success">Gaming Boost</span>
                                     </div>
-                                    <div class="package-line">
+                                    <div class="product-line">
                                         <small class="text-muted">৳800 + ৳200 </small>
                                     </div>
                                 </div>
@@ -682,7 +682,7 @@
         font-size: 0.75rem;
     }
 
-    .package-line {
+    .product-line {
         margin-bottom: 4px;
     }
 

@@ -318,17 +318,40 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-generate customer ID based on name and phone
+    // Auto-generate customer ID in format: C-YY-XXXX
     const nameInput = document.getElementById('name');
     const phoneInput = document.getElementById('phone');
     const customerIdInput = document.getElementById('customer_id');
 
-    function generateCustomerId() {
-        if (nameInput.value && phoneInput.value && !customerIdInput.value) {
-            const namePart = nameInput.value.split(' ')[0].toUpperCase();
-            const phonePart = phoneInput.value.slice(-4);
-            const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-            customerIdInput.value = `CUST${namePart}${phonePart}${randomPart}`;
+    async function generateCustomerId() {
+        if ((nameInput.value || phoneInput.value) && !customerIdInput.value) {
+            try {
+                // Get current year's last 2 digits
+                const year = new Date().getFullYear().toString().slice(-2);
+                
+                // Fetch the next available customer number from server
+                const response = await fetch('{{ route("admin.customers.next-id") }}', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    customerIdInput.value = `C-${year}-${data.next_number}`;
+                } else {
+                    // Fallback to random number if server request fails
+                    const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+                    customerIdInput.value = `C-${year}-${randomNum}`;
+                }
+            } catch (error) {
+                console.error('Error generating customer ID:', error);
+                // Fallback to random number
+                const year = new Date().getFullYear().toString().slice(-2);
+                const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+                customerIdInput.value = `C-${year}-${randomNum}`;
+            }
         }
     }
 

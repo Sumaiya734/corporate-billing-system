@@ -1,6 +1,7 @@
 // Payment Modal Functions
 class PaymentModal {
     constructor() {
+        this.isSubmitting = false;
         this.init();
     }
 
@@ -74,7 +75,9 @@ class PaymentModal {
     }
 
     async fetchInvoiceData(invoiceId) {
-        const response = await fetch(`/admin/billing/invoice/${invoiceId}/data`);
+        // Get the base URL from the current page
+        const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
+        const response = await fetch(`${baseUrl}/admin/billing/invoice/${invoiceId}/data`);
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
@@ -92,29 +95,42 @@ class PaymentModal {
         const customerName = button.data('customer-name');
         const customerEmail = button.data('customer-email');
         const customerPhone = button.data('customer-phone');
+        const subtotal = button.data('subtotal');
+        const previousDue = button.data('previous-due');
         const totalAmount = button.data('total-amount');
         const dueAmount = button.data('due-amount');
         const receivedAmount = button.data('received-amount');
+        // Get product-specific data
+        const productName = button.data('product-name');
+        const productPrice = button.data('product-price');
+        const billingCycle = button.data('billing-cycle');
+        
+        // Display the specific product instead of fetching all products
+        if (productName) {
+            this.displaySpecificProduct(productName, productPrice, billingCycle);
+        } else if (invoiceId) {
+            // Fallback to fetching all products if specific product data is not available
+            this.fetchAndDisplayProducts(invoiceId);
+        }
+        
         const status = button.data('status');
         
         console.log('Populating from button data:', {
             invoiceId, invoiceNumber, customerName, customerEmail, customerPhone,
-            totalAmount, dueAmount, receivedAmount, status
+            totalAmount, dueAmount, receivedAmount, status, productName, productPrice, billingCycle
         });
         
         // Set form action and invoice ID
         if (invoiceId) {
-            // More robust base URL detection
-            let basePath = window.location.origin;
-            // Check if we're in a subdirectory setup
-            if (window.location.pathname.includes('/ik/netbill-bd/')) {
-                if (window.location.pathname.includes('/public/')) {
-                    basePath += '/ik/netbill-bd/public';
-                } else {
-                    basePath += '/ik/netbill-bd';
-                }
-            }
-            $('#addPaymentForm').attr('action', `${basePath}/admin/billing/record-payment/${invoiceId}`);
+            // Get the base URL from meta tag or current origin
+            const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
+            
+            // Ensure we have the correct path without duplication
+            let fullPath = `${baseUrl}/admin/billing/record-payment/${invoiceId}`;
+            // Remove any duplicate paths
+            fullPath = fullPath.replace(/(\/netbill-bd\/public){2,}/g, '/netbill-bd/public');
+            
+            $('#addPaymentForm').attr('action', fullPath);
             $('#payment_invoice_id').val(invoiceId);
         }
         
@@ -123,6 +139,8 @@ class PaymentModal {
         $('#payment_customer_name_display').text(customerName || 'N/A');
         $('#payment_customer_email_display').text(customerEmail || 'N/A');
         $('#payment_customer_phone_display').text(customerPhone || 'N/A');
+        $('#payment_subtotal_display').text('৳ ' + (parseFloat(subtotal) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2}));
+        $('#payment_previous_due_display').text('৳ ' + (parseFloat(previousDue) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2}));
         $('#payment_total_amount_display').text('৳ ' + (parseFloat(totalAmount) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2}));
         $('#payment_due_amount_display').text('৳ ' + (parseFloat(dueAmount) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2}));
         $('#payment_received_amount_display').text('৳ ' + (parseFloat(receivedAmount) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2}));
@@ -147,39 +165,46 @@ class PaymentModal {
                 statusDisplay.addClass('bg-secondary');
         }
         
-        // Set payment amount to due amount by default
+        // Set payment amount to total amount by default (not due amount)
         const paymentAmountField = $('#payment_amount');
+        const totalAmt = parseFloat(totalAmount) || 0;
         const dueAmt = parseFloat(dueAmount) || 0;
-        paymentAmountField.val(dueAmt.toFixed(2));
-        paymentAmountField.attr('max', dueAmt);
+        paymentAmountField.val(totalAmt.toFixed(2));
+        paymentAmountField.attr('max', totalAmt);
         paymentAmountField.attr('min', 0.01);
         
         // Update max amount display
-        $('#payment_max_amount').text('৳ ' + dueAmt.toLocaleString('en-BD', {minimumFractionDigits: 2}));
+        $('#payment_max_amount').text('৳ ' + totalAmt.toLocaleString('en-BD', {minimumFractionDigits: 2}));
         
         // Reset validation
         paymentAmountField.removeClass('is-invalid');
         $('#payment_amount_error').hide();
+        
+        // Calculate initial received amount and next due
+        // Use setTimeout to ensure DOM is fully updated before calculating
+        setTimeout(() => {
+            this.calculateReceivedAndDue();
+        }, 0);
         
         console.log('Payment modal populated from button data');
     }
 
     populateModal(invoiceId, invoice) {
         // Set the form action with invoice ID
-        // More robust base URL detection
-        let basePath = window.location.origin;
-        // Check if we're in a subdirectory setup
-        if (window.location.pathname.includes('/ik/netbill-bd/')) {
-            if (window.location.pathname.includes('/public/')) {
-                basePath += '/ik/netbill-bd/public';
-            } else {
-                basePath += '/ik/netbill-bd';
-            }
-        }
-        $('#addPaymentForm').attr('action', `${basePath}/admin/billing/record-payment/${invoiceId}`);
+        // Get the base URL from meta tag or current origin
+        const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
+        
+        // Ensure we have the correct path without duplication
+        let fullPath = `${baseUrl}/admin/billing/record-payment/${invoiceId}`;
+        // Remove any duplicate paths
+        fullPath = fullPath.replace(/(\/netbill-bd\/public){2,}/g, '/netbill-bd/public');
+        
+        $('#addPaymentForm').attr('action', fullPath);
         $('#payment_invoice_id').val(invoiceId);
 
         // Format currency values
+        const subtotal = parseFloat(invoice.subtotal) || 0;
+        const previousDue = parseFloat(invoice.previous_due) || 0;
         const totalAmount = parseFloat(invoice.total_amount) || 0;
         const dueAmount = parseFloat(invoice.next_due) || 0;
         const receivedAmount = parseFloat(invoice.received_amount) || 0;
@@ -189,6 +214,8 @@ class PaymentModal {
         $('#payment_customer_name_display').text(invoice.customer.name || 'N/A');
         $('#payment_customer_email_display').text(invoice.customer.email || 'N/A');
         $('#payment_customer_phone_display').text(invoice.customer.phone || 'N/A');
+        $('#payment_subtotal_display').text('৳ ' + subtotal.toLocaleString('en-BD', {minimumFractionDigits: 2}));
+        $('#payment_previous_due_display').text('৳ ' + previousDue.toLocaleString('en-BD', {minimumFractionDigits: 2}));
         $('#payment_total_amount_display').text('৳ ' + totalAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
         $('#payment_due_amount_display').text('৳ ' + dueAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
         $('#payment_received_amount_display').text('৳ ' + receivedAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
@@ -213,21 +240,28 @@ class PaymentModal {
                 statusDisplay.addClass('bg-secondary');
         }
         
-        // Set payment amount to due amount by default
+        // Set payment amount to total amount by default (not due amount)
         const paymentAmountField = $('#payment_amount');
-        paymentAmountField.val(dueAmount.toFixed(2));
-        paymentAmountField.attr('max', dueAmount);
+        paymentAmountField.val(totalAmount.toFixed(2));
+        paymentAmountField.attr('max', totalAmount);
         paymentAmountField.attr('min', 0.01);
         
         // Update max amount display
-        $('#payment_max_amount').text('৳ ' + dueAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
+        $('#payment_max_amount').text('৳ ' + totalAmount.toLocaleString('en-BD', {minimumFractionDigits: 2}));
         
         // Reset validation
         paymentAmountField.removeClass('is-invalid');
         $('#payment_amount_error').hide();
         
         // Calculate initial received amount and next due
-        this.calculateReceivedAndDue();
+        // Use setTimeout to ensure DOM is fully updated before calculating
+        setTimeout(() => {
+            this.calculateReceivedAndDue();
+        }, 0);
+        
+        // Display products - now we'll show a message that this is for all products
+        // since we don't know which specific product when loading from database
+        this.displayAllProductsMessage(invoice);
         
         console.log('Payment modal populated with database data');
     }
@@ -248,6 +282,119 @@ class PaymentModal {
             $(input).removeClass('is-invalid');
             $('#payment_amount_error').hide();
         }
+    }
+
+    async fetchAndDisplayProducts(invoiceId) {
+        const productsContainer = $('#payment_products_display');
+        productsContainer.html('<div class="text-center"><div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading...</span></div> Loading products...</div>');
+        
+        try {
+            const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
+            const response = await fetch(`${baseUrl}/admin/billing/invoice/${invoiceId}/data`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch invoice data');
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.invoice) {
+                this.displayProducts(data.invoice);
+            } else {
+                productsContainer.html('<p class="text-muted mb-0"><i class="fas fa-info-circle me-1"></i>No product information available</p>');
+            }
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            productsContainer.html('<p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-1"></i>Could not load products</p>');
+        }
+    }
+
+    displayProducts(invoice) {
+        const productsContainer = $('#payment_products_display');
+        
+        // Check if invoice has customer with products
+        if (invoice.customer && invoice.customer.customer && invoice.customer.customer.customerproducts && invoice.customer.customer.customerproducts.length > 0) {
+            let productsHtml = '<div class="row g-2">';
+            
+            invoice.customer.customer.customerproducts.forEach((customerProduct, index) => {
+                if (customerProduct.product) {
+                    const product = customerProduct.product;
+                    const monthlyPrice = parseFloat(product.monthly_price) || 0;
+                    const billingCycle = customerProduct.billing_cycle_months || 1;
+                    const totalPrice = monthlyPrice * billingCycle;
+                    
+                    productsHtml += `
+                        <div class="col-12 col-md-6">
+                            <div class="product-item p-2 border rounded bg-light">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1 text-dark">
+                                            <i class="fas fa-box-open me-1 text-primary"></i>
+                                            ${product.name || 'Unknown Product'}
+                                        </h6>
+                                        <div class="text-muted small">
+                                            <div>৳${monthlyPrice.toLocaleString('en-BD', {minimumFractionDigits: 2})}/month</div>
+                                            ${billingCycle > 1 ? `<div><span class="badge bg-info text-white">×${billingCycle} months cycle</span></div>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <strong class="text-success">৳${totalPrice.toLocaleString('en-BD', {minimumFractionDigits: 2})}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            productsHtml += '</div>';
+            productsContainer.html(productsHtml);
+        } else {
+            productsContainer.html('<p class="text-muted mb-0"><i class="fas fa-info-circle me-1"></i>No products assigned to this invoice</p>');
+        }
+    }
+
+    displaySpecificProduct(productName, productPrice, billingCycle) {
+        const productsContainer = $('#payment_products_display');
+        
+        if (productName) {
+            const monthlyPrice = parseFloat(productPrice) || 0;
+            const cycleMonths = parseInt(billingCycle) || 1;
+            const totalPrice = monthlyPrice * cycleMonths;
+            
+            const productHtml = `
+                <div class="row g-2">
+                    <div class="col-12">
+                        <div class="product-item p-2 border rounded bg-light">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 text-dark">
+                                        <i class="fas fa-box-open me-1 text-primary"></i>
+                                        ${productName}
+                                    </h6>
+                                    <div class="text-muted small">
+                                        <div>৳${monthlyPrice.toLocaleString('en-BD', {minimumFractionDigits: 2})}/month</div>
+                                        ${cycleMonths > 1 ? `<div><span class="badge bg-info text-white">×${cycleMonths} months cycle</span></div>` : ''}
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <strong class="text-success">৳${totalPrice.toLocaleString('en-BD', {minimumFractionDigits: 2})}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            productsContainer.html(productHtml);
+        } else {
+            productsContainer.html('<p class="text-muted mb-0"><i class="fas fa-info-circle me-1"></i>No product information available</p>');
+        }
+    }
+
+    displayAllProductsMessage(invoice) {
+        const productsContainer = $('#payment_products_display');
+        productsContainer.html('<p class="text-muted mb-0"><i class="fas fa-info-circle me-1"></i>This payment will be applied to the invoice which includes all customer products.</p>');
     }
 
     calculateReceivedAndDue() {
@@ -288,9 +435,21 @@ class PaymentModal {
     async handlePaymentSubmit(e) {
         e.preventDefault();
         
+        // Prevent duplicate submissions
+        if (this.isSubmitting) {
+            console.log('Form already submitting, ignoring duplicate submission');
+            return;
+        }
+        
         const form = e.target;
-        const formData = new FormData(form);
         const submitBtn = $(form).find('button[type="submit"]');
+        
+        // Double-check button state
+        if (submitBtn.prop('disabled')) {
+            return;
+        }
+        
+        const formData = new FormData(form);
         const originalText = submitBtn.html();
         
         // Validate amount
@@ -298,7 +457,8 @@ class PaymentModal {
             return;
         }
 
-        // Show loading
+        // Set submission flag and disable button immediately
+        this.isSubmitting = true;
         submitBtn.html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Processing...');
         submitBtn.prop('disabled', true);
         
@@ -325,12 +485,14 @@ class PaymentModal {
                 setTimeout(() => location.reload(), 1500);
             } else {
                 this.showToast(data.message || 'Error recording payment!', 'error');
+                this.isSubmitting = false;
                 submitBtn.html(originalText);
                 submitBtn.prop('disabled', false);
             }
         } catch (error) {
             console.error('Error:', error);
             this.showToast('Error processing payment. Please try again.', 'error');
+            this.isSubmitting = false;
             submitBtn.html(originalText);
             submitBtn.prop('disabled', false);
         }
@@ -341,13 +503,24 @@ class PaymentModal {
         form.trigger('reset');
         form.attr('action', '');
         
+        // Reset submission flag
+        this.isSubmitting = false;
+        
+        // Re-enable submit button
+        const submitBtn = form.find('button[type="submit"]');
+        submitBtn.prop('disabled', false);
+        submitBtn.html('<i class="fas fa-check me-1"></i>Record Payment');
+        
         // Clear display fields
         $('#payment_invoice_number_display').text('-');
         $('#payment_customer_name_display').text('-');
         $('#payment_customer_email_display').text('-');
         $('#payment_customer_phone_display').text('-');
+        $('#payment_subtotal_display').text('৳ 0.00');
+        $('#payment_previous_due_display').text('৳ 0.00');
         $('#payment_total_amount_display').text('৳ 0.00');
         $('#payment_due_amount_display').text('৳ 0.00');
+        $('#payment_products_display').html('<p class="text-muted mb-0">No products</p>');
         $('#payment_received_amount_display').text('৳ 0.00');
         $('#payment_status_display').text('-');
         $('#payment_status_display').removeClass().addClass('badge bg-secondary');

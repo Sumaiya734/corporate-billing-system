@@ -10,14 +10,14 @@
             <h2 class="h3 mb-1 text-dark">
                 <i class="fas fa-users me-2 text-primary"></i>Customer Management
             </h2>
-            <p class="text-muted mb-0">Manage all customer accounts, packages, and billing information</p>
+            <p class="text-muted mb-0">Manage all customer accounts, products, and billing information</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('admin.customers.create') }}" class="btn btn-primary">
                 <i class="fas fa-user-plus me-2"></i>Add Customer
             </a>
-            <a href="{{ route('admin.customer-to-packages.assign') }}" class="btn btn-success">
-                <i class="fas fa-user-tag me-2"></i>Assign Package
+            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-success">
+                <i class="fas fa-user-tag me-2"></i>Assign product
             </a>
             <div class="dropdown">
                 <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -230,7 +230,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th class="ps-4">Customer</th>
-                                <th>Packages</th>
+                                <th>products</th>
                                 <th class="text-center">Monthly Bill</th>
                                 <th class="text-center">Status</th>
                                 <th class="text-center">Registration</th>
@@ -240,28 +240,53 @@
                         <tbody>
                             @foreach($customers as $customer)
                             @php
-                                // Use Eloquent relationships for clean data access
-                                $activePackages = $customer->customerPackages()
-                                    ->with('package')
+                                // Get active products with relationships
+                                $activeproducts = $customer->customerproducts
                                     ->where('status', 'active')
                                     ->where('is_active', 1)
-                                    ->get();
+                                    ->filter(function($cp) {
+                                        return $cp->product !== null; // Only include products that exist
+                                    });
 
-                                $regularPackage = $activePackages->firstWhere('package.package_type', 'regular');
-                                $specialPackages = $activePackages->where('package.package_type', 'special');
+                                $regularproduct = null;
+                                $specialproducts = collect();
                                 
-                                $hasRegularPackage = (bool) $regularPackage;
-                                $hasSpecialPackages = $specialPackages->count() > 0;
-                                $monthlyTotal = $activePackages->sum('package_price');
+                                foreach($activeproducts as $cp) {
+                                    // Check product_type_id: 1 = regular, 2 = special (or use product_type field if it exists)
+                                    $productType = $cp->product->product_type ?? null;
+                                    
+                                    if ($productType === 'regular' || $cp->product->product_type_id == 1) {
+                                        $regularproduct = $cp;
+                                    } elseif ($productType === 'special' || $cp->product->product_type_id == 2) {
+                                        $specialproducts->push($cp);
+                                    } else {
+                                        // If no type is set, treat first product as regular
+                                        if (!$regularproduct) {
+                                            $regularproduct = $cp;
+                                        } else {
+                                            $specialproducts->push($cp);
+                                        }
+                                    }
+                                }
+                                
+                                $hasRegularproduct = (bool) $regularproduct;
+                                $hasSpecialproducts = $specialproducts->count() > 0;
+                                
+                                // Calculate monthly total using custom price if available
+                                $monthlyTotal = $activeproducts->sum(function($cp) {
+                                    // Use custom price if set, otherwise use product's monthly price
+                                    $price = $cp->product_price ?? $cp->product->monthly_price ?? 0;
+                                    return $price;
+                                });
                                 
                                 // Check for due payments
                                 $hasDue = $customer->invoices()
-                                    ->whereIn('status', ['unpaid', 'partial'])
+                                    ->whereIn('invoices.status', ['unpaid', 'partial'])
                                     ->exists();
                                 
                                 $totalDue = $customer->invoices()
-                                    ->whereIn('status', ['unpaid', 'partial'])
-                                    ->sum(DB::raw('total_amount - received_amount'));
+                                    ->whereIn('invoices.status', ['unpaid', 'partial'])
+                                    ->sum(DB::raw('invoices.total_amount - invoices.received_amount'));
                                 
                                 $isNew = $customer->created_at->gt(now()->subDays(7));
                                 
@@ -277,7 +302,7 @@
                             <tr class="{{ $rowClass }}" 
                                 data-customer-id="{{ $customer->c_id }}" 
                                 data-status="{{ $customer->is_active ? 'active' : 'inactive' }}" 
-                                data-has-addons="{{ $hasSpecialPackages ? 'yes' : 'no' }}"
+                                data-has-addons="{{ $hasSpecialproducts ? 'yes' : 'no' }}"
                                 data-has-due="{{ $hasDue ? 'yes' : 'no' }}"
                                 data-is-new="{{ $isNew ? 'yes' : 'no' }}">
                                 
@@ -296,7 +321,9 @@
                                         </div>
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center mb-1">
-                                                <strong class="me-2">{{ $customer->name }}</strong>
+                                                <a href="{{ route('admin.customers.show', $customer->c_id) }}" class="text-decoration-none" Target="_blank">
+                                                    <strong class="me-2 text-dark">{{ $customer->name }}</strong>
+                                                </a>
                                                 @if(!$customer->is_active)
                                                     <span class="badge bg-secondary badge-sm">Inactive</span>
                                                 @endif
@@ -319,55 +346,91 @@
                                     </div>
                                 </td>
 
-                                <!-- Packages Column -->
+                                <!-- products Column -->
                                 <td>
-                                    @if($hasRegularPackage)
-                                        <!-- Main Package -->
-                                        <div class="main-package-card mb-2">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <div class="d-flex align-items-center">
-                                                    <i class="fas fa-wifi text-primary me-2"></i>
-                                                    <div>
-                                                        <div class="package-name fw-semibold text-dark">
-                                                            {{ $regularPackage->package->name ?? 'Unknown Package' }}
-                                                        </div>
-                                                        <div class="package-price text-success small">
-                                                            ৳{{ number_format($regularPackage->package_price, 2) }}/month
+                                    @if($activeproducts->count() > 0)
+                                        @if($hasRegularproduct)
+                                            <!-- Main product -->
+                                            <div class="main-product-card mb-2">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-wifi text-primary me-2"></i>
+                                                        <div>
+                                                            <div class="product-name fw-semibold text-dark">
+                                                                {{ $regularproduct->product->name ?? 'Unknown product' }}
+                                                            </div>
+                                                            <div class="product-price text-success small">
+                                                                @php
+                                                                    $price = $regularproduct->product_price ?? $regularproduct->product->monthly_price ?? 0;
+                                                                    $isCustomPrice = $regularproduct->product_price && $regularproduct->product_price != $regularproduct->product->monthly_price;
+                                                                @endphp
+                                                                ৳{{ number_format($price, 2) }}/month
+                                                                @if($isCustomPrice)
+                                                                    <span class="badge bg-info" style="font-size: 0.65rem;">Custom</span>
+                                                                @endif
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                    <span class="badge bg-primary badge-sm">Main</span>
                                                 </div>
-                                                <span class="badge bg-primary badge-sm">Main</span>
                                             </div>
-                                        </div>
 
-                                        <!-- Add-on Packages -->
-                                        @if($hasSpecialPackages)
-                                            <div class="addons-section">
-                                                <div class="addons-header small text-muted mb-1">
-                                                    <i class="fas fa-bolt me-1"></i>Add-ons ({{ $specialPackages->count() }})
+                                            <!-- Add-on products -->
+                                            @if($hasSpecialproducts)
+                                                <div class="addons-section">
+                                                    <div class="addons-header small text-muted mb-1">
+                                                        <i class="fas fa-bolt me-1"></i>Add-ons ({{ $specialproducts->count() }})
+                                                    </div>
+                                                    <div class="addons-list">
+                                                        @foreach($specialproducts as $specialproduct)
+                                                        <div class="addon-item">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <span class="addon-name small">
+                                                                    {{ $specialproduct->product->name ?? 'Unknown Add-on' }}
+                                                                </span>
+                                                                <span class="addon-price text-warning small fw-semibold">
+                                                                    @php
+                                                                        $addonPrice = $specialproduct->product_price ?? $specialproduct->product->monthly_price ?? 0;
+                                                                    @endphp
+                                                                    +৳{{ number_format($addonPrice, 2) }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        @endforeach
+                                                    </div>
                                                 </div>
-                                                <div class="addons-list">
-                                                    @foreach($specialPackages as $specialPackage)
-                                                    <div class="addon-item">
+                                            @endif
+                                        @else
+                                            <!-- Show all products if no regular product is identified -->
+                                            <div class="products-list">
+                                                @foreach($activeproducts as $cp)
+                                                    <div class="product-item mb-2">
                                                         <div class="d-flex align-items-center justify-content-between">
-                                                            <span class="addon-name small">
-                                                                {{ $specialPackage->package->name ?? 'Unknown Add-on' }}
-                                                            </span>
-                                                            <span class="addon-price text-warning small fw-semibold">
-                                                                +৳{{ number_format($specialPackage->package_price, 2) }}
-                                                            </span>
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="fas fa-box text-primary me-2"></i>
+                                                                <div>
+                                                                    <div class="product-name fw-semibold text-dark small">
+                                                                        {{ $cp->product->name ?? 'Unknown product' }}
+                                                                    </div>
+                                                                    <div class="product-price text-success small">
+                                                                        @php
+                                                                            $price = $cp->product_price ?? $cp->product->monthly_price ?? 0;
+                                                                        @endphp
+                                                                        ৳{{ number_format($price, 2) }}/month
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    @endforeach
-                                                </div>
+                                                @endforeach
                                             </div>
                                         @endif
                                     @else
-                                        <div class="no-package text-center py-2">
+                                        <div class="no-product text-center py-2">
                                             <i class="fas fa-exclamation-triangle text-warning fa-lg mb-2"></i>
-                                            <div class="text-muted small">No Active Package</div>
-                                            <a href="{{ route('admin.customer-to-packages.assign') }}" class="btn btn-sm btn-outline-primary mt-1">
-                                                Assign Package
+                                            <div class="text-muted small">No Active product</div>
+                                            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-sm btn-outline-primary mt-1">
+                                                Assign product
                                             </a>
                                         </div>
                                     @endif
@@ -432,7 +495,7 @@
         <a href="{{ route('admin.customers.show', $customer->c_id) }}" 
            class="btn btn-sm btn-outline-info action-btn" 
            title="View Details"
-           data-bs-toggle="tooltip">
+           data-bs-toggle="tooltip" Target="_blank">
             <i class="fas fa-eye"></i>
         </a>
 
@@ -539,7 +602,7 @@
                 </div>
                 <p class="mt-3 mb-0">
                     Are you sure you want to delete <strong id="deleteCustomerName" class="text-danger"></strong>?
-                    All associated invoices, payments, and package assignments will be permanently removed.
+                    All associated invoices, payments, and product assignments will be permanently removed.
                 </p>
             </div>
             <div class="modal-footer border-top-0">
@@ -592,20 +655,26 @@
     position: relative;
 }
 
-/* Package Card Styling */
-.main-package-card {
+/* Customer Name Link Styling */
+.flex-grow-1 a:hover strong {
+    color: #0d6efd !important;
+    text-decoration: underline !important;
+}
+
+/* product Card Styling */
+.main-product-card {
     background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
     border: 1px solid #e3e8ff;
     border-radius: 8px;
     padding: 0.75rem;
 }
 
-.package-name {
+.product-name {
     font-size: 0.875rem;
     line-height: 1.3;
 }
 
-.package-price {
+.product-price {
     font-size: 0.8rem;
     font-weight: 500;
 }
