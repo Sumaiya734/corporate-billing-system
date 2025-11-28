@@ -131,6 +131,9 @@
         </div>
     </div>
 </div>
+
+<!-- Include Delete Confirmation Modal -->
+<x-delete-confirmation-modal />
 @endsection
 
 @section('styles')
@@ -344,53 +347,19 @@
             console.error('product type form not found');
         }
 
-        // DELETE: product type
+        // DELETE: product type with modal confirmation
         document.body.addEventListener('click', function(e) {
             const delBtn = e.target.closest('.delete-product-type');
             if (!delBtn) return;
             const typeId = delBtn.getAttribute('data-id');
             const typeName = delBtn.getAttribute('data-name');
             
-            if (confirm(`Are you sure you want to delete the product type "${typeName}" and all associated products? This action cannot be undone.`)) {
-                deleteproductType(typeId, typeName);
-            }
+            const message = `Are you sure you want to delete the product type <strong>"${typeName}"</strong>?<br><small class="text-danger">This action cannot be undone and will affect all associated products.</small>`;
+            const action = `/admin/products/delete-type/${typeId}`;
+            const row = document.querySelector(`[data-id="${typeId}"]`).closest('.col-md-12');
+            
+            showDeleteModal(message, action, row);
         });
-
-        async function deleteproductType(typeId, typeName) {
-            try {
-                const response = await fetch(`/admin/products/delete-type/${typeId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    }
-                });
-
-                const jsonResponse = await response.json();
-
-                if (!response.ok) {
-                    const errorMessage = jsonResponse.message || 'Failed to delete product type';
-                    showToast('Error: ' + errorMessage, 'error');
-                    return;
-                }
-
-                if (jsonResponse.success) {
-                    showToast(jsonResponse.message || 'Product type deleted successfully!', 'success');
-                    // Instead of reloading the page, remove the element dynamically
-                    const productTypeElement = document.querySelector(`[data-id="${typeId}"]`).closest('.col-md-12');
-                    if (productTypeElement) {
-                        productTypeElement.remove();
-                    }
-                    // Remove the page reload that was causing navigation
-                } else {
-                    const errorMessage = jsonResponse.message || 'Failed to delete product type';
-                    showToast('Error: ' + errorMessage, 'error');
-                }
-            } catch (err) {
-                console.error('Network error:', err);
-                showToast('Error: Network error occurred while deleting product type', 'error');
-            }
-        }
 
     });
 </script>

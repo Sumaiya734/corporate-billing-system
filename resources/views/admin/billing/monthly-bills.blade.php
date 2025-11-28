@@ -57,20 +57,43 @@
         <div class="col-xl-3 col-md-6">
             <div class="card bg-primary text-white mb-4">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <div class="text-xs font-weight-bold text-uppercase mb-1">Total Invoices</div>
-                            <div class="h5 mb-0">{{ $invoices->total() ?? 0 }}</div>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 opacity-75">
+                                <i class="fas fa-users me-1"></i>Customer Overview
+                            </div>
+                            <div class="h5 mb-2 fw-bold">{{ $invoices->total() ?? 0 }} Invoices</div>
                             @if(isset($customersWithDue) && isset($fullyPaidCustomers))
-                            <div class="small">
-                                <i class="fas fa-exclamation-circle me-1"></i>{{ $customersWithDue }} Customers have a due
-                                <br>
-                                <i class="fas fa-check-circle me-1"></i>{{ $fullyPaidCustomers }} Customers Fully Paid
+                            @php
+                                $totalCustomers = $customersWithDue + $fullyPaidCustomers;
+                                $paidPercentage = $totalCustomers > 0 ? round(($fullyPaidCustomers / $totalCustomers) * 100) : 0;
+                            @endphp
+                            <div class="small mt-2 pt-2 border-top border-white border-opacity-25">
+                                <div class="mb-2">
+                                    <strong><i class="fas fa-chart-pie me-1"></i>Payment Status:</strong>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-1 p-1 rounded" style="background: rgba(255,255,255,0.1);">
+                                    <span><i class="fas fa-exclamation-circle me-1"></i>With Due</span>
+                                    <span class="badge bg-warning text-dark fw-bold">{{ $customersWithDue }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center p-1 rounded" style="background: rgba(255,255,255,0.1);">
+                                    <span><i class="fas fa-check-circle me-1"></i>Fully Paid</span>
+                                    <span class="badge bg-success fw-bold">{{ $fullyPaidCustomers }}</span>
+                                </div>
+                                <div class="mt-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="opacity-75">Payment Rate</small>
+                                        <small class="fw-bold">{{ $paidPercentage }}%</small>
+                                    </div>
+                                    <div class="progress" style="height: 5px; background: rgba(255,255,255,0.2);">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ $paidPercentage }}%" aria-valuenow="{{ $paidPercentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
                             </div>
                             @endif
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-file-invoice fa-2x text-white-300"></i>
+                        <div class="ms-3">
+                            <i class="fas fa-users fa-2x opacity-50"></i>
                         </div>
                     </div>
                 </div>
@@ -416,11 +439,25 @@
                                                 @endif
                                             @elseif($hasPartialPayment)
                                                 {{-- Partial Payment: Show Edit Payment + View --}}
-                                                <a href="{{ route('admin.billing.edit-bill', $invoice->invoice_id) }}" 
-                                                   class="btn btn-warning btn-sm"
-                                                   title="Edit Invoice">
+                                                <button class="btn btn-warning btn-sm payment-btn"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#addPaymentModal"
+                                                        data-invoice-id="{{ $invoice->invoice_id }}"
+                                                        data-cp-id="{{ $customerProduct->cp_id }}"
+                                                        data-invoice-number="{{ $invoice->invoice_number }}"
+                                                        data-customer-name="{{ e($customer->name ?? 'Customer') }}"
+                                                        data-customer-email="{{ e($customer->email ?? 'N/A') }}"
+                                                        data-customer-phone="{{ e($customer->phone ?? 'N/A') }}"
+                                                        data-subtotal="{{ $invoice->subtotal ?? 0 }}"
+                                                        data-previous-due="{{ $invoice->previous_due ?? 0 }}"
+                                                        data-total-amount="{{ $totalAmount }}"
+                                                        data-due-amount="{{ $nextDue }}"
+                                                        data-received-amount="{{ $receivedAmount }}"
+                                                        data-status="{{ $invoice->status }}"
+                                                        data-product-name="{{ e($product->name ?? 'Unknown Product') }}"
+                                                        title="Edit Payments">
                                                     <i class="fas fa-edit"></i> Edit
-                                                </a>
+                                                </button>
                                                 <button class="btn btn-outline-info btn-sm view-invoice-btn" data-invoice-id="{{ $invoice->invoice_id }}" data-bs-toggle="modal" data-bs-target="#viewInvoiceModal" title="View Invoice">
                                                     <i class="fas fa-eye"></i> View
                                                 </button>
@@ -788,6 +825,60 @@
 
 <!-- Include Separate Payment Modal -->
 @include('admin.billing.payment-modal')
+
+<!-- Confirm User Payment Modal -->
+<div class="modal fade" id="confirmUserPaymentModal" tabindex="-1" aria-labelledby="confirmUserPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle me-2"></i>Confirm User Payment
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>This will close the billing month for this customer</strong>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Customer</label>
+                    <div class="p-2 bg-light rounded" id="confirm_customer_name">-</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Product</label>
+                    <div class="p-2 bg-light rounded" id="confirm_product_name">-</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Remaining Amount to Carry Forward</label>
+                    <div class="p-3 bg-warning bg-opacity-10 rounded text-center">
+                        <h4 class="mb-0 text-warning" id="confirm_next_due">৳ 0.00</h4>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning mb-0">
+                    <strong><i class="fas fa-exclamation-triangle me-2"></i>What happens next?</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>The remaining amount will be carried forward to next month</li>
+                        <li>This customer's billing for this month will be marked as confirmed</li>
+                        <li>No further payments can be added for this month</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-warning" id="confirmUserPaymentBtn" onclick="executeConfirmUserPayment()">
+                    <i class="fas fa-check me-1"></i>Confirm & Carry Forward
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @endsection
 
@@ -1418,9 +1509,41 @@ window.showToast = function(msg, type = 'info', details = null) {
     }, 6000);
 };
 
-// Function to confirm user payment and close their month
+// Store confirmation data globally
+let confirmPaymentData = {};
+
+// Function to show confirm user payment modal
 function confirmUserPayment(invoiceId, cpId, customerName, productName, nextDue) {
-    // Show loading state
+    // Store data for later use
+    confirmPaymentData = {
+        invoiceId: invoiceId,
+        cpId: cpId,
+        customerName: customerName,
+        productName: productName,
+        nextDue: nextDue
+    };
+    
+    // Update modal content
+    document.getElementById('confirm_customer_name').textContent = customerName;
+    document.getElementById('confirm_product_name').textContent = productName;
+    document.getElementById('confirm_next_due').textContent = `৳ ${parseFloat(nextDue).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('confirmUserPaymentModal'));
+    modal.show();
+}
+
+// Function to execute the confirmation
+window.executeConfirmUserPayment = function() {
+    const { invoiceId, cpId, customerName, productName, nextDue } = confirmPaymentData;
+    
+    // Show loading state on button
+    const confirmBtn = document.getElementById('confirmUserPaymentBtn');
+    const originalBtnHtml = confirmBtn.innerHTML;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+    confirmBtn.disabled = true;
+    
+    // Also update the table button
     const buttons = document.querySelectorAll(`.confirm-user-btn[data-invoice-id="${invoiceId}"]`);
     buttons.forEach(btn => {
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
@@ -1443,7 +1566,17 @@ function confirmUserPayment(invoiceId, cpId, customerName, productName, nextDue)
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast('Success', `Confirmed ${customerName}'s payment. ৳${nextDue} carried forward to next month.`, 'success');
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('confirmUserPaymentModal'));
+            modal.hide();
+            
+            // Show success toast
+            const details = `
+                <div><strong>Customer:</strong> ${customerName}</div>
+                <div><strong>Product:</strong> ${productName}</div>
+                <div><strong>Carried Forward:</strong> ৳${parseFloat(nextDue).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            `;
+            showToast('Payment Confirmed Successfully!', 'success', details);
             
             // Update UI to reflect confirmation
             buttons.forEach(btn => {
@@ -1456,7 +1589,9 @@ function confirmUserPayment(invoiceId, cpId, customerName, productName, nextDue)
             });
         } else {
             showToast('Error', data.message || 'Failed to confirm user payment', 'danger');
-            // Restore button
+            // Restore buttons
+            confirmBtn.innerHTML = originalBtnHtml;
+            confirmBtn.disabled = false;
             buttons.forEach(btn => {
                 btn.innerHTML = '<i class="fas fa-check"></i> Confirm';
                 btn.disabled = false;
@@ -1466,13 +1601,15 @@ function confirmUserPayment(invoiceId, cpId, customerName, productName, nextDue)
     .catch(error => {
         console.error('Error:', error);
         showToast('Error', 'Network error occurred', 'danger');
-        // Restore button
+        // Restore buttons
+        confirmBtn.innerHTML = originalBtnHtml;
+        confirmBtn.disabled = false;
         buttons.forEach(btn => {
             btn.innerHTML = '<i class="fas fa-check"></i> Confirm';
             btn.disabled = false;
         });
     });
-}
+};
 
 // Table Filtering Function
 window.filterTableByStatus = function() {
@@ -1563,13 +1700,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!$btn.length) {
             showToast('Could not identify invoice. Please try again.', 'danger');
-            return $modal.modal('hide');
+            e.preventDefault();
+            return false;
         }
 
         const invoiceId = $btn.data('invoice-id');
         if (!invoiceId || isNaN(invoiceId)) {
             showToast('Invalid invoice ID.', 'danger');
-            return $modal.modal('hide');
+            e.preventDefault();
+            return false;
         }
 
         const cpId = $btn.data('cp-id');
@@ -1620,8 +1759,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 $statusBadge.addClass('bg-secondary').text(status);
         }
 
-        // Load existing payments for this invoice
-        loadExistingPayments(invoiceId);
+        // Note: Existing payments are loaded by payment-modal.js automatically
 
         // Configure amount input
         const $amountInput = $('#payment_amount');
@@ -1712,7 +1850,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 showToast('Payment Recorded Successfully!', 'success', details);
                 
-                $modal.modal('hide');
+                // Hide modal - close button click will trigger Bootstrap's hide
+                $modal.find('.btn-close').trigger('click');
                 
                 // Show loading overlay
                 document.body.insertAdjacentHTML('beforeend', '<div class="loading-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;"><div class="spinner-border text-light" style="width:3rem;height:3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>');
@@ -1824,11 +1963,23 @@ document.addEventListener('DOMContentLoaded', function () {
             const productName = this.getAttribute('data-product-name');
             const nextDue = this.getAttribute('data-next-due');
             
-            if (confirm(`Are you sure you want to confirm and close ${customerName}'s billing for this month?\n\nAny remaining amount of ৳${nextDue} will be carried forward to the next month.`)) {
-                confirmUserPayment(invoiceId, cpId, customerName, productName, nextDue);
-            }
+            // Show confirmation modal instead of browser alert
+            confirmUserPayment(invoiceId, cpId, customerName, productName, nextDue);
         });
     });
+
+    // Reset confirm modal on close
+    const confirmUserPaymentModal = document.getElementById('confirmUserPaymentModal');
+    if (confirmUserPaymentModal) {
+        confirmUserPaymentModal.addEventListener('hidden.bs.modal', function() {
+            const confirmBtn = document.getElementById('confirmUserPaymentBtn');
+            if (confirmBtn) {
+                confirmBtn.innerHTML = '<i class="fas fa-check me-1"></i>Confirm & Carry Forward';
+                confirmBtn.disabled = false;
+            }
+            confirmPaymentData = {};
+        });
+    }
 
     // Handle view invoice button clicks
     document.querySelectorAll('.view-invoice-btn').forEach(button => {
@@ -1840,119 +1991,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
-// Function to load existing payments into the payment modal
-function loadExistingPayments(invoiceId) {
-    const section = document.getElementById('existingPaymentsSection');
-    const listDiv = document.getElementById('existingPaymentsList');
-    
-    // Show loading
-    listDiv.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div><small class="ms-2">Loading payments...</small></div>';
-    section.style.display = 'block';
-    
-    // Fetch payments
-    fetch(`{{ url('admin/billing/invoices') }}/${invoiceId}/payments`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.payments && data.payments.length > 0) {
-            let html = '<table class="table table-sm table-bordered"><thead class="table-light"><tr><th>Date</th><th>Amount</th><th>Method</th><th>Action</th></tr></thead><tbody>';
-            
-            data.payments.forEach(payment => {
-                html += `
-                    <tr>
-                        <td>${new Date(payment.payment_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}</td>
-                        <td><strong class="text-success">৳${parseFloat(payment.amount).toLocaleString('en-BD', {minimumFractionDigits: 2})}</strong></td>
-                        <td><span class="badge bg-info">${payment.payment_method}</span></td>
-                        <td>
-                            <a href="/admin/billing/payment/${payment.payment_id}/edit" class="btn btn-sm btn-warning me-1" title="Edit this payment">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <button class="btn btn-sm btn-danger delete-payment-inline-btn" 
-                                    data-payment-id="${payment.payment_id}"
-                                    data-invoice-id="${invoiceId}"
-                                    data-amount="${payment.amount}"
-                                    title="Delete this payment">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            html += '</tbody></table>';
-            html += '<small class="text-muted"><i class="fas fa-info-circle me-1"></i>Edit or delete wrong payments to recalculate invoice amounts</small>';
-            
-            listDiv.innerHTML = html;
-            console.log('Payments loaded, HTML inserted:', html);
-            
-            // Event delegation for delete buttons (more reliable)
-            listDiv.addEventListener('click', function(e) {
-                if (e.target.closest('.delete-payment-inline-btn')) {
-                    console.log('Delete button clicked');
-                    e.preventDefault();
-                    const btn = e.target.closest('.delete-payment-inline-btn');
-                    const paymentId = btn.getAttribute('data-payment-id');
-                    const invoiceId = btn.getAttribute('data-invoice-id');
-                    const amount = btn.getAttribute('data-amount');
-                    
-                    if (confirm(`Delete payment of ৳${parseFloat(amount).toLocaleString('en-BD', {minimumFractionDigits: 2})}?\n\nInvoice amounts will be recalculated.`)) {
-                        deletePaymentInline(paymentId, invoiceId, btn);
-                    }
-                }
-            });
-        } else {
-            section.style.display = 'none';
-        }
-    })
-    .catch(error => {
-        console.error('Error loading payments:', error);
-        section.style.display = 'none';
-    });
-}
-
-// Function to delete a payment from within the modal
-function deletePaymentInline(paymentId, invoiceId, btnElement) {
-    const originalHtml = btnElement.innerHTML;
-    btnElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-    btnElement.disabled = true;
-    
-    fetch(`{{ url('admin/billing/payment') }}/${paymentId}`, {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            _method: 'DELETE'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast('Success', 'Payment deleted. Reloading...', 'success');
-            
-            // Close modal and reload page
-            $('#addPaymentModal').modal('hide');
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showToast('Error', data.message || 'Failed to delete payment', 'danger');
-            btnElement.innerHTML = originalHtml;
-            btnElement.disabled = false;
-        }
-    })
-    .catch(error => {
-        console.error('Error deleting payment:', error);
-        showToast('Error', 'Network error occurred', 'danger');
-        btnElement.innerHTML = originalHtml;
-        btnElement.disabled = false;
-    });
-}
+// Note: loadExistingPayments and payment edit/delete are handled by payment-modal.js
 </script>
 @endsection

@@ -523,10 +523,8 @@
 
         <!-- Delete Customer -->
         <button type="button" 
-                class="btn btn-sm btn-outline-danger action-btn"
+                class="btn btn-sm btn-outline-danger action-btn delete-customer-btn"
                 title="Delete Customer"
-                data-bs-toggle="modal" 
-                data-bs-target="#deleteCustomerModal"
                 data-customer-id="{{ $customer->c_id }}"
                 data-customer-name="{{ $customer->name }}">
             <i class="fas fa-trash"></i>
@@ -585,39 +583,8 @@
     </div>
 </div>
 
-<!-- Delete Customer Modal -->
-<div class="modal fade" id="deleteCustomerModal" tabindex="-1" aria-labelledby="deleteCustomerModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-bottom-0">
-                <h5 class="modal-title text-danger" id="deleteCustomerModalLabel">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body py-4">
-                <div class="alert alert-warning border-0 mb-0">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <strong>Warning:</strong> This action cannot be undone.
-                </div>
-                <p class="mt-3 mb-0">
-                    Are you sure you want to delete <strong id="deleteCustomerName" class="text-danger"></strong>?
-                    All associated invoices, payments, and product assignments will be permanently removed.
-                </p>
-            </div>
-            <div class="modal-footer border-top-0">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="deleteCustomerForm" method="POST" class="d-inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash me-2"></i>Delete Customer
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Include Delete Confirmation Modal -->
+<x-delete-confirmation-modal />
 
 <style>
 /* Professional Table Styling */
@@ -837,19 +804,23 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    // Delete Customer Modal
-    const deleteCustomerModal = document.getElementById('deleteCustomerModal');
-    if (deleteCustomerModal) {
-        deleteCustomerModal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const customerId = button.getAttribute('data-customer-id');
-            const customerName = button.getAttribute('data-customer-name');
-            
-            const modal = this;
-            modal.querySelector('#deleteCustomerName').textContent = customerName;
-            modal.querySelector('#deleteCustomerForm').action = `/admin/customers/${customerId}`;
+    // Delete Customer with modal confirmation
+    document.body.addEventListener('click', function(e) {
+        const delBtn = e.target.closest('.delete-customer-btn');
+        if (!delBtn) return;
+        
+        const customerId = delBtn.getAttribute('data-customer-id');
+        const customerName = delBtn.getAttribute('data-customer-name');
+        
+        const message = `Are you sure you want to delete <strong>"${customerName}"</strong>?<br><small class="text-danger">All associated invoices, payments, and product assignments will be permanently removed. This action cannot be undone.</small>`;
+        const action = `/admin/customers/${customerId}`;
+        const row = delBtn.closest('tr');
+        
+        showDeleteModal(message, action, row, function() {
+            // Reload page after successful deletion to update stats
+            setTimeout(() => location.reload(), 500);
         });
-    }
+    });
 
     // Auto-submit form when status filter changes
     const statusFilter = document.getElementById('statusFilter');

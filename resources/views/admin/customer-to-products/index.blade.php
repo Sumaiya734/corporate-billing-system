@@ -9,7 +9,7 @@
             <h1 class="page-title"><i class="fas fa-user-tag me-2"></i>Customer to Products</h1>
         </div>
         <div class="col-auto">
-            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-primary">
+            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-primary" style="margin:10px">
                 <i class="fas fa-plus me-2"></i>Assign Products
             </a>
         </div>
@@ -30,7 +30,7 @@
     @endif
 
     <!-- Stats Cards -->
-    <div class="row mb-4">
+    <!-- <div class="row mb-4">
         <div class="col-md-3 mb-3">
             <div class="card stats-card">
                 <i class="fas fa-users stats-icon"></i>
@@ -59,7 +59,7 @@
                 <div class="stats-label">Renewals Due</div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- Search and Filter Section -->
     <div class="card mb-4">
@@ -355,7 +355,7 @@
     .page-title {
         color: #2c3e50;
         font-weight: 700;
-        margin-bottom: 1.5rem;
+        margin: 1rem;
         padding-bottom: 0.5rem;
         border-bottom: 3px solid #3498db;
     }
@@ -366,7 +366,7 @@
         transition: transform 0.3s;
     }
     .card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-2px);
     }
     .table-container {
         background-color: white;

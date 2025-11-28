@@ -292,6 +292,9 @@
         </div>
     </div>
 </div>
+
+<!-- Include Delete Confirmation Modal -->
+<x-delete-confirmation-modal />
 @endsection
 
 @section('styles')
@@ -828,7 +831,7 @@
             }
         }
 
-        // DELETE: product with improved confirmation and feedback
+        // DELETE: product with modal confirmation
         console.log('✅ Delete button listener attached');
         
         document.body.addEventListener('click', function(e) {
@@ -841,67 +844,12 @@
             const productName = delBtn.getAttribute('data-name');
             console.log('📝 product ID:', pId, 'Name:', productName);
             
-            // Custom confirmation with product name
-            const confirmMsg = `Are you sure you want to delete "${productName}"?\n\nThis action cannot be undone and will remove all associated data.`;
+            const message = `Are you sure you want to delete <strong>"${productName}"</strong>?<br><small class="text-danger">This action cannot be undone and will remove all associated data.</small>`;
+            const action = `{{ url('admin/products') }}/${pId}`;
+            const row = document.getElementById(`product-row-${pId}`);
             
-            if (confirm(confirmMsg)) {
-                console.log('✅ User confirmed deletion');
-                // Disable button and show loading state
-                delBtn.disabled = true;
-                const originalHtml = delBtn.innerHTML;
-                delBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                
-                deleteproduct(pId, productName).finally(() => {
-                    delBtn.disabled = false;
-                    delBtn.innerHTML = originalHtml;
-                });
-            } else {
-                console.log('❌ User cancelled deletion');
-            }
+            showDeleteModal(message, action, row, updateproductCount);
         });
-
-        async function deleteproduct(pId, productName) {
-            try {
-                const url = `{{ url('admin/products') }}/${pId}`;
-                console.log('📡 Deleting product at:', url);
-                
-                const res = await fetch(url, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                const json = await res.json().catch(() => ({}));
-
-                if (!res.ok) {
-                    showToast(json.message || `Failed to delete product (${res.status})`, 'danger');
-                    return;
-                }
-
-                if (json.success) {
-                    showToast(json.message || `product "${productName}" deleted successfully!`, 'success');
-                    
-                    // Animate row removal
-                    const row = document.getElementById(`product-row-${pId}`);
-                    if (row) {
-                        row.style.transition = 'opacity 0.3s ease-out';
-                        row.style.opacity = '0';
-                        setTimeout(() => {
-                            row.remove();
-                            updateproductCount();
-                        }, 300);
-                    }
-                } else {
-                    showToast(json.message || 'Failed to delete product', 'danger');
-                }
-            } catch (err) {
-                console.error('Error deleting product:', err);
-                showToast('Network error: Failed to delete product', 'danger');
-            }
-        }
 
         // Helper function to update product count
         function updateproductCount() {
