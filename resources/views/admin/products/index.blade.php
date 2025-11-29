@@ -29,18 +29,18 @@
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6">
-            <div class="card stat-card stat-card-clickable" data-filter="all" data-action="filter" role="button" title="Click to view all products">
+            <div class="card stat-card bg-primary text-white mb-4 stat-card-clickable" data-filter="all" data-action="filter" role="button" title="Click to view all products">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title text-muted mb-2">Total Products</h6>
+                            <h6 class="card-title text-white-muted mb-2">Total Products</h6>
                             <h3 class="mb-0">{{ $stats['total_products'] ?? 0 }}</h3>
                         </div>
-                        <div class="avatar-sm bg-primary rounded-circle text-white d-flex align-items-center justify-content-center">
+                        <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
                             <i class="fas fa-cubes"></i>
                         </div>
                     </div>
-                    <p class="text-success mt-3 mb-0">
+                    <p class="text-white mt-3 mb-0">
                         <i class="fas fa-check-circle me-1"></i> All active products
                     </p>
                 </div>
@@ -48,18 +48,18 @@
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card stat-card stat-card-clickable" data-action="show-types" role="button" title="Click to view all product types">
+            <div class="card stat-card bg-success text-white mb-4 stat-card-clickable" data-action="show-types" role="button" title="Click to view all product types">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title text-muted mb-2">Total Types</h6>
+                            <h6 class="card-title text-white-muted mb-2">Total Types</h6>
                             <h3 class="mb-0">{{ $stats['total_types'] ?? 0 }}</h3>
                         </div>
-                        <div class="avatar-sm bg-danger rounded-circle text-white d-flex align-items-center justify-content-center">
+                        <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
                             <i class="fas fa-tags"></i>
                         </div>
                     </div>
-                    <p class="text-muted mt-3 mb-0">
+                    <p class="text-white-muted mt-3 mb-0">
                         <i class="fas fa-info-circle me-1"></i> Product categories available
                     </p>
                 </div>
@@ -67,18 +67,18 @@
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card stat-card stat-card-clickable" data-action="show-popular" data-product="{{ $stats['most_popular'] ?? '' }}" role="button" title="Click to view most popular product details">
+            <div class="card stat-card bg-info text-white mb-4 stat-card-clickable" data-action="show-popular" data-product="{{ $stats['most_popular'] ?? '' }}" role="button" title="Click to view most popular product details">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title text-muted mb-2">Most Popular</h6>
+                            <h6 class="card-title text-whitemuted mb-2">Most Popular</h6>
                             <h3 class="mb-0" style="font-size: 1.5rem;">{{ $stats['most_popular'] ?? 'N/A' }}</h3>
                         </div>
-                        <div class="avatar-sm bg-success rounded-circle text-white d-flex align-items-center justify-content-center">
+                        <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
                             <i class="fas fa-fire"></i>
                         </div>
                     </div>
-                    <p class="text-muted mt-3 mb-0">
+                    <p class="text-white muted mt-3 mb-0">
                         <i class="fas fa-chart-line me-1"></i> Top selling product
                     </p>
                 </div>
@@ -86,18 +86,18 @@
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card stat-card stat-card-clickable" data-action="show-customers" role="button" title="Click to view active customers">
+            <div class="card stat-card bg-secondary text-white stat-card-clickable" data-action="show-customers" role="button" title="Click to view active customers">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title text-muted mb-2">Active Customers</h6>
+                            <h6 class="card-title text-white-muted mb-2">Active Customers</h6>
                             <h3 class="mb-0">{{ $stats['active_customers'] ?? 'N/A' }}</h3>
                         </div>
-                        <div class="avatar-sm bg-info rounded-circle text-white d-flex align-items-center justify-content-center">
+                        <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
                             <i class="fas fa-users"></i>
                         </div>
                     </div>
-                    <p class="text-success mt-3 mb-0">
+                    <p class="text-white mt-3 mb-0">
                         <i class="fas fa-arrow-up me-1"></i> Using products
                     </p>
                 </div>

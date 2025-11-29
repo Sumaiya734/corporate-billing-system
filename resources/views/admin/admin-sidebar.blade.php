@@ -187,10 +187,18 @@
         transform: translateX(-100%);
         transition: transform 0.3s ease-in-out;
         overflow-y: auto;
+        width: 80%;
+        max-width: 300px;
     }
     
     .sidebar.show {
         transform: translateX(0);
+        box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+    }
+    
+    .main-content {
+        width: 100%;
+        margin-left: 0 !important;
     }
 }
 
@@ -220,107 +228,48 @@ document.addEventListener('DOMContentLoaded', function() {
             const target = document.querySelector(targetSelector);
             
             if (target) {
-                // Check if this dropdown is currently open
                 const isCurrentlyOpen = target.classList.contains('show');
-                
-                // Close all other dropdowns first
-                document.querySelectorAll('.submenu').forEach(submenu => {
-                    if (submenu !== target) {
-                        submenu.classList.remove('show');
-                        const correspondingToggle = document.querySelector(`[data-bs-target="#${submenu.id}"]`);
-                        if (correspondingToggle) {
-                            correspondingToggle.setAttribute('aria-expanded', 'false');
-                            // Remove active class only if no child items are active
-                            const activeChild = submenu.querySelector('.dropdown-item.active');
-                            if (!activeChild) {
-                                correspondingToggle.classList.remove('active');
-                            }
-                        }
-                    }
-                });
                 
                 // Toggle the current dropdown
                 if (isCurrentlyOpen) {
                     target.classList.remove('show');
                     this.setAttribute('aria-expanded', 'false');
-                    // Remove active class only if no child items are active
-                    const activeChild = target.querySelector('.dropdown-item.active');
-                    if (!activeChild) {
-                        this.classList.remove('active');
-                    }
                 } else {
                     target.classList.add('show');
                     this.setAttribute('aria-expanded', 'true');
-                    this.classList.add('active');
                 }
             }
         });
     });
 
-    // Handle navigation link clicks
-    const navLinks = document.querySelectorAll('.nav-link:not(.dropdown-toggle), .dropdown-item');
+    // Set active states on page load based on server-side rendering
+    // The blade templates already handle this with {{ request()->routeIs() }}
+    // This script just ensures dropdowns stay open if they contain active items
+    const activeDropdownItems = document.querySelectorAll('.dropdown-item.active');
     
-    navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            // Remove active class from all main nav links
-            document.querySelectorAll('.nav-link:not(.dropdown-toggle)').forEach(navLink => {
-                navLink.classList.remove('active');
-            });
+    activeDropdownItems.forEach(item => {
+        const parentDropdown = item.closest('.dropdown');
+        if (parentDropdown) {
+            const dropdownToggle = parentDropdown.querySelector('.dropdown-toggle');
+            const submenu = item.closest('.submenu');
             
-            // Remove active class from all dropdown toggles
-            document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
-                const submenu = document.querySelector(toggle.getAttribute('data-bs-target'));
-                const activeChild = submenu?.querySelector('.dropdown-item.active');
-                if (!activeChild) {
-                    toggle.classList.remove('active');
-                }
-            });
-            
-            // Remove active class from all dropdown items
-            document.querySelectorAll('.dropdown-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            // Add active class to clicked link
-            this.classList.add('active');
-            
-            // If this is a dropdown item, also mark the parent dropdown toggle as active
-            if (this.classList.contains('dropdown-item')) {
-                const parentDropdown = this.closest('.dropdown');
-                if (parentDropdown) {
-                    const dropdownToggle = parentDropdown.querySelector('.dropdown-toggle');
-                    if (dropdownToggle) {
-                        dropdownToggle.classList.add('active');
-                    }
-                }
+            if (dropdownToggle && submenu) {
+                submenu.classList.add('show');
+                dropdownToggle.setAttribute('aria-expanded', 'true');
             }
-        });
+        }
     });
     
-    // Handle initial active states based on current URL
-    const currentPath = window.location.pathname;
-    const allLinks = document.querySelectorAll('.nav-link, .dropdown-item');
+    // Also check for active dropdown toggles (when on a route that matches the dropdown)
+    const activeDropdownToggles = document.querySelectorAll('.dropdown-toggle.active');
     
-    allLinks.forEach(link => {
-        const href = link.getAttribute('href');
-        if (href && href !== '#' && currentPath.includes(href)) {
-            link.classList.add('active');
-            
-            // If this is a dropdown item, also mark the parent dropdown as active and show submenu
-            if (link.classList.contains('dropdown-item')) {
-                const parentDropdown = link.closest('.dropdown');
-                if (parentDropdown) {
-                    const dropdownToggle = parentDropdown.querySelector('.dropdown-toggle');
-                    if (dropdownToggle) {
-                        dropdownToggle.classList.add('active');
-                        const submenu = document.querySelector(dropdownToggle.getAttribute('data-bs-target'));
-                        if (submenu) {
-                            submenu.classList.add('show');
-                            dropdownToggle.setAttribute('aria-expanded', 'true');
-                        }
-                    }
-                }
-            }
+    activeDropdownToggles.forEach(toggle => {
+        const targetSelector = toggle.getAttribute('data-bs-target');
+        const target = document.querySelector(targetSelector);
+        
+        if (target && !target.classList.contains('show')) {
+            target.classList.add('show');
+            toggle.setAttribute('aria-expanded', 'true');
         }
     });
 });

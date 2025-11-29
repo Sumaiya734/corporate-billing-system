@@ -62,35 +62,30 @@
                             <div class="text-xs font-weight-bold text-uppercase mb-1 opacity-75">
                                 <i class="fas fa-users me-1"></i>Customer Overview
                             </div>
-                            <div class="h5 mb-2 fw-bold">{{ $invoices->total() ?? 0 }} Invoices</div>
-                            @if(isset($customersWithDue) && isset($fullyPaidCustomers))
                             @php
+                                // Calculate customer statistics based on actual invoice data
+                                $totalInvoices = $invoices->total() ?? 0;
+                                $customersWithDue = $invoices->filter(function($invoice) {
+                                    return in_array($invoice->status, ['unpaid', 'partial']) && $invoice->next_due > 0;
+                                })->count();
+                                
+                                $fullyPaidCustomers = $invoices->filter(function($invoice) {
+                                    return $invoice->status === 'paid' || $invoice->next_due <= 0;
+                                })->count();
+                                
                                 $totalCustomers = $customersWithDue + $fullyPaidCustomers;
                                 $paidPercentage = $totalCustomers > 0 ? round(($fullyPaidCustomers / $totalCustomers) * 100) : 0;
                             @endphp
+                            <div class="h5 mb-2 fw-bold">{{ number_format($totalCustomers) }} Customers</div>
+                            <small class="text-white-50"><i class="fas fa-file-invoice me-1"></i>{{ $totalInvoices }} Total Invoices</small>
                             <div class="small mt-2 pt-2 border-top border-white border-opacity-25">
-                                <div class="mb-2">
-                                    <strong><i class="fas fa-chart-pie me-1"></i>Payment Status:</strong>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mb-1 p-1 rounded" style="background: rgba(255,255,255,0.1);">
+                                <div>
                                     <span><i class="fas fa-exclamation-circle me-1"></i>With Due</span>
                                     <span class="badge bg-warning text-dark fw-bold">{{ $customersWithDue }}</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center p-1 rounded" style="background: rgba(255,255,255,0.1);">
                                     <span><i class="fas fa-check-circle me-1"></i>Fully Paid</span>
                                     <span class="badge bg-success fw-bold">{{ $fullyPaidCustomers }}</span>
                                 </div>
-                                <div class="mt-2">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <small class="opacity-75">Payment Rate</small>
-                                        <small class="fw-bold">{{ $paidPercentage }}%</small>
-                                    </div>
-                                    <div class="progress" style="height: 5px; background: rgba(255,255,255,0.2);">
-                                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ $paidPercentage }}%" aria-valuenow="{{ $paidPercentage }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                </div>
                             </div>
-                            @endif
                         </div>
                         <div class="ms-3">
                             <i class="fas fa-users fa-2x opacity-50"></i>
@@ -105,7 +100,11 @@
                     <div class="d-flex justify-content-between">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Total Billing Amount</div>
-                            <div class="h5 mb-0">৳ {{ number_format($totalBillingAmount ?? 0, 2) }}</div>
+                            @php
+                                // Calculate total billing amount from actual invoice data
+                                $totalBillingAmount = $invoices->sum('total_amount');
+                            @endphp
+                            <div class="h5 mb-0">৳ {{ number_format($totalBillingAmount, 2) }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-white-300"></i>
@@ -120,7 +119,11 @@
                     <div class="d-flex justify-content-between">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Pending Payments</div>
-                            <div class="h5 mb-0">৳ {{ number_format($pendingAmount ?? 0, 2) }}</div>
+                            @php
+                                // Calculate pending amount from actual invoice data
+                                $pendingAmount = $invoices->sum('next_due');
+                            @endphp
+                            <div class="h5 mb-0">৳ {{ number_format($pendingAmount, 2) }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-clock fa-2x text-white-300"></i>
@@ -135,7 +138,11 @@
                     <div class="d-flex justify-content-between">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Paid Amount</div>
-                            <div class="h5 mb-0">৳ {{ number_format($paidAmount ?? 0, 2) }}</div>
+                            @php
+                                // Calculate paid amount from actual invoice data
+                                $paidAmount = $invoices->sum('received_amount');
+                            @endphp
+                            <div class="h5 mb-0">৳ {{ number_format($paidAmount, 2) }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-check-circle fa-2x text-white-300"></i>
@@ -226,6 +233,26 @@
                                 $isAdvancePayment = $receivedAmount > $totalAmount && $totalAmount > 0;
                                 $rowClass = $isAdvancePayment ? 'table-success' : '';
                             @endphp
+                            
+                            @php
+                                // Check if this row should be displayed based on due date logic
+                                $assignDate = \Carbon\Carbon::parse($customerProduct->assign_date);
+                                $invoiceMonth = \Carbon\Carbon::parse($month . '-01');
+                                $actualDueDate = null;
+                                $billingCycleMonths = $customerProduct->billing_cycle_months ?? 1;
+                                
+                                // Simplified due date logic
+                                if ($assignDate->diffInMonths($invoiceMonth) % $billingCycleMonths === 0) {
+                                    $dueDay = $customerProduct->due_date ? \Carbon\Carbon::parse($customerProduct->due_date)->day : $assignDate->day;
+                                    $actualDueDate = $invoiceMonth->copy()->day(min($dueDay, $invoiceMonth->daysInMonth));
+                                }
+                                
+                                // Skip this row if there's no actual due date
+                                if (!$actualDueDate) {
+                                    continue;
+                                }
+                            @endphp
+                            
                             <tr class="{{ $rowClass }}">
                                 @if($customer && $product)
                                     {{-- Invoice ID --}}
@@ -250,18 +277,10 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </td>
+                                        </td>
 
                                     {{-- Single Product Info with Due Date --}}
-                                    <td>
-                                        <div class="fw-medium text-dark">{{ $product->name ?? 'Unknown Product' }}</div>
-                                        <div class="text-muted small">
-                                            ৳ {{ number_format($product->monthly_price ?? 0, 2) }}/month
-                                            @if($customerProduct->billing_cycle_months > 1)
-                                            <span class="badge bg-info ms-1">({{ $customerProduct->billing_cycle_months }} months cycle)</span>
-                                            @endif
-                                        </div>
+                                   <td>
                                         @php
                                             $assignDate = \Carbon\Carbon::parse($customerProduct->assign_date);
                                             $invoiceMonth = \Carbon\Carbon::parse($month . '-01');
@@ -274,7 +293,15 @@
                                                 $actualDueDate = $invoiceMonth->copy()->day(min($dueDay, $invoiceMonth->daysInMonth));
                                             }
                                         @endphp
+
                                         @if($actualDueDate)
+                                            <div class="fw-medium text-dark">{{ $product->name ?? 'Unknown Product' }}</div>
+                                            <div class="text-muted small">
+                                                ৳ {{ number_format($product->monthly_price ?? 0, 2) }}/month
+                                                @if($customerProduct->billing_cycle_months > 1)
+                                                <span class="badge bg-info ms-1">({{ $customerProduct->billing_cycle_months }} months cycle)</span>
+                                                @endif
+                                            </div>
                                             <div class="mt-1">
                                                 <small class="text-success">
                                                     <i class="fas fa-calendar-check me-1"></i>
@@ -282,11 +309,11 @@
                                                 </small>
                                             </div>
                                         @else
-                                            <div class="mt-1">
-                                                <small class="text-muted">
-                                                    <i class="fas fa-info-circle me-1"></i>Billing cycle not this month
-                                                </small>
-                                            </div>
+                                            {{-- Hide this row if there's no actual due date --}}
+                                            @php
+                                                // Skip this row by ending the loop early
+                                                continue;
+                                            @endphp
                                         @endif
                                     </td>
 
@@ -401,8 +428,8 @@
                                                 // Check if fully paid (including advance payments)
                                                 // A customer is fully paid if received_amount >= total_amount OR next_due <= 0
                                                 $isFullyPaid = ($receivedAmount >= $totalAmount && $totalAmount > 0) || 
-                                                               ($nextDue <= 0.00 && $invoice->status === 'paid') ||
-                                                               ($nextDue <= 0.00 && $receivedAmount > 0);
+                                                                ($nextDue <= 0.00 && $invoice->status === 'paid') ||
+                                                                ($nextDue <= 0.00 && $receivedAmount > 0);
                                                 
                                                 // Check for advance payment (received more than total)
                                                 $isAdvancePayment = $receivedAmount > $totalAmount && $totalAmount > 0;
@@ -582,14 +609,20 @@
                         
                         <div class="mt-2 p-2 bg-light rounded">
                             <strong><i class="fas fa-calculator me-1"></i>Verification:</strong> 
+                            @php
+                                // Calculate amounts from actual invoice data
+                                $totalBillingAmount = $invoices->sum('total_amount');
+                                $paidAmount = $invoices->sum('received_amount');
+                                $pendingAmount = $invoices->sum('next_due');
+                            @endphp
                             <div class="mt-1">
-                                Total Billing (৳{{ number_format($totalBillingAmount ?? 0, 2) }}) 
-                                - Paid (৳{{ number_format($paidAmount ?? 0, 2) }}) 
-                                = Pending (৳{{ number_format($pendingAmount ?? 0, 2) }})
+                                Total Billing (৳{{ number_format($totalBillingAmount, 2) }}) 
+                                - Paid (৳{{ number_format($paidAmount, 2) }}) 
+                                = Pending (৳{{ number_format($pendingAmount, 2) }})
                             </div>
                             @php
-                                $calculatedPending = ($totalBillingAmount ?? 0) - ($paidAmount ?? 0);
-                                $isBalanced = abs($calculatedPending - ($pendingAmount ?? 0)) < 0.01;
+                                $calculatedPending = $totalBillingAmount - $paidAmount;
+                                $isBalanced = abs($calculatedPending - $pendingAmount) < 0.01;
                             @endphp
                             <div class="mt-1">
                                 <span class="badge {{ $isBalanced ? 'bg-success' : 'bg-danger' }}">
@@ -739,7 +772,11 @@
                                 <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
                                     <div>
                                         <small class="text-muted d-block">Total Billing Amount</small>
-                                        <h4 class="mb-0 text-primary">৳ {{ number_format($totalBillingAmount ?? 0, 2) }}</h4>
+                                        @php
+                                            // Calculate total billing amount from actual invoice data
+                                            $totalBillingAmount = $invoices->sum('total_amount');
+                                        @endphp
+                                        <h4 class="mb-0 text-primary">৳ {{ number_format($totalBillingAmount, 2) }}</h4>
                                     </div>
                                     <i class="fas fa-file-invoice-dollar fa-2x text-primary opacity-50"></i>
                                 </div>
@@ -748,7 +785,11 @@
                                 <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
                                     <div>
                                         <small class="text-muted d-block">Total Paid Amount</small>
-                                        <h4 class="mb-0 text-success">৳ {{ number_format($paidAmount ?? 0, 2) }}</h4>
+                                        @php
+                                            // Calculate paid amount from actual invoice data
+                                            $paidAmount = $invoices->sum('received_amount');
+                                        @endphp
+                                        <h4 class="mb-0 text-success">৳ {{ number_format($paidAmount, 2) }}</h4>
                                     </div>
                                     <i class="fas fa-check-circle fa-2x text-success opacity-50"></i>
                                 </div>
@@ -757,7 +798,11 @@
                                 <div class="d-flex justify-content-between align-items-center p-3 bg-danger text-white rounded">
                                     <div>
                                         <small class="d-block opacity-75">Outstanding Due (To be carried forward)</small>
-                                        <h3 class="mb-0">৳ {{ number_format($pendingAmount ?? 0, 2) }}</h3>
+                                        @php
+                                            // Calculate pending amount from actual invoice data
+                                            $pendingAmount = $invoices->sum('next_due');
+                                        @endphp
+                                        <h3 class="mb-0">৳ {{ number_format($pendingAmount, 2) }}</h3>
                                     </div>
                                     <i class="fas fa-exclamation-circle fa-3x opacity-50"></i>
                                 </div>
@@ -767,22 +812,33 @@
                         <!-- Customer Breakdown -->
                         <div class="mt-3 pt-3 border-top">
                             <h6 class="mb-3"><i class="fas fa-users me-2"></i>Customer Status</h6>
+                            @php
+                                // Calculate customer statistics based on actual invoice data
+                                $totalInvoices = $invoices->total() ?? 0;
+                                $customersWithDue = $invoices->filter(function($invoice) {
+                                    return in_array($invoice->status, ['unpaid', 'partial']) && $invoice->next_due > 0;
+                                })->count();
+                                
+                                $fullyPaidCustomers = $invoices->filter(function($invoice) {
+                                    return $invoice->status === 'paid' || $invoice->next_due <= 0;
+                                })->count();
+                            @endphp
                             <div class="row text-center">
                                 <div class="col-4">
                                     <div class="p-2 bg-light rounded">
-                                        <h5 class="mb-0 text-primary">{{ $invoices->total() ?? 0 }}</h5>
+                                        <h5 class="mb-0 text-primary">{{ $totalInvoices }}</h5>
                                         <small class="text-muted">Total Invoices</small>
                                     </div>
                                 </div>
                                 <div class="col-4">
                                     <div class="p-2 bg-light rounded">
-                                        <h5 class="mb-0 text-success">{{ $fullyPaidCustomers ?? 0 }}</h5>
+                                        <h5 class="mb-0 text-success">{{ $fullyPaidCustomers }}</h5>
                                         <small class="text-muted">Fully Paid</small>
                                     </div>
                                 </div>
                                 <div class="col-4">
                                     <div class="p-2 bg-light rounded">
-                                        <h5 class="mb-0 text-warning">{{ $customersWithDue ?? 0 }}</h5>
+                                        <h5 class="mb-0 text-warning">{{ $customersWithDue }}</h5>
                                         <small class="text-muted">With Dues</small>
                                     </div>
                                 </div>
@@ -795,8 +851,12 @@
                 <div class="card border-warning">
                     <div class="card-body">
                         <h6 class="mb-3"><i class="fas fa-info-circle me-2"></i>What happens when you close this month?</h6>
+                        @php
+                            // Calculate pending amount from actual invoice data
+                            $pendingAmount = $invoices->sum('next_due');
+                        @endphp
                         <ul class="mb-3">
-                            <li>All outstanding dues (৳{{ number_format($pendingAmount ?? 0, 2) }}) will be carried forward to next month's invoices</li>
+                            <li>All outstanding dues (৳{{ number_format($pendingAmount, 2) }}) will be carried forward to next month's invoices</li>
                             <li>This month's billing cycle will be marked as closed</li>
                             <li>Fully paid invoices will remain as completed</li>
                             <li>Unpaid and partial invoices will have their dues transferred to the next billing period</li>
