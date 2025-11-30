@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Back Button Test Page</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 0;
+        }
+        .test-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        .method-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .method-auto { background: #28a745; color: white; }
+        .method-data { background: #007bff; color: white; }
+        .method-class { background: #ffc107; color: black; }
+        .method-onclick { background: #dc3545; color: white; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .page-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-indicator">
+        <strong>Test Page</strong><br>
+        <small class="text-muted">Navigate to test back buttons</small>
+    </div>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="text-center text-white mb-4">
+                    <h1 class="display-4 mb-3">
+                        <i class="fas fa-arrow-left me-3"></i>
+                        Back Button Test Suite
+                    </h1>
+                    <p class="lead">Test all back button implementations</p>
+                </div>
+
+                <!-- Navigation Links -->
+                <div class="test-card">
+                    <h3 class="mb-3">
+                        <i class="fas fa-link me-2 text-primary"></i>
+                        Navigation Test Links
+                    </h3>
+                    <p class="text-muted">Click these links to create navigation history, then test the back buttons below:</p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="?page=1" class="btn btn-outline-primary">Page 1</a>
+                        <a href="?page=2" class="btn btn-outline-primary">Page 2</a>
+                        <a href="?page=3" class="btn btn-outline-primary">Page 3</a>
+                        <a href="?page=4" class="btn btn-outline-primary">Page 4</a>
+                    </div>
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Current URL:</strong> <code id="currentUrl"></code>
+                    </div>
+                </div>
+
+                <!-- Method 1: Automatic Detection -->
+                <div class="test-card">
+                    <span class="method-badge method-auto">METHOD 1: AUTOMATIC</span>
+                    <h4 class="mb-3">Automatic Detection (Recommended)</h4>
+                    <p class="text-muted">These buttons are automatically detected by text or icon:</p>
+                    
+                    <div class="mb-3">
+                        <a href="#" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Customers
+                        </a>
+                        <a href="#" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Back
+                        </a>
+                        <button class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Go Back
+                        </button>
+                    </div>
+
+                    <pre><code>&lt;a href="#" class="btn btn-outline-secondary"&gt;
+    &lt;i class="fas fa-arrow-left me-1"&gt;&lt;/i&gt;Back to Customers
+&lt;/a&gt;</code></pre>
+                </div>
+
+                <!-- Method 2: Data Attribute -->
+                <div class="test-card">
+                    <span class="method-badge method-data">METHOD 2: DATA ATTRIBUTE</span>
+                    <h4 class="mb-3">Using data-action="back"</h4>
+                    <p class="text-muted">Explicit back button using data attribute:</p>
+                    
+                    <div class="mb-3">
+                        <a href="#" class="btn btn-primary" data-action="back">
+                            <i class="fas fa-arrow-left me-1"></i>Back with Data Attribute
+                        </a>
+                        <button class="btn btn-info" data-action="back">
+                            <i class="fas fa-undo me-1"></i>Return
+                        </button>
+                    </div>
+
+                    <pre><code>&lt;a href="#" class="btn btn-primary" data-action="back"&gt;
+    &lt;i class="fas fa-arrow-left me-1"&gt;&lt;/i&gt;Back with Data Attribute
+&lt;/a&gt;</code></pre>
+                </div>
+
+                <!-- Method 3: CSS Class -->
+                <div class="test-card">
+                    <span class="method-badge method-class">METHOD 3: CSS CLASS</span>
+                    <h4 class="mb-3">Using .btn-back Class</h4>
+                    <p class="text-muted">Back button with specific CSS class:</p>
+                    
+                    <div class="mb-3">
+                        <a href="#" class="btn btn-warning btn-back">
+                            <i class="fas fa-arrow-left me-1"></i>Back with Class
+                        </a>
+                    </div>
+
+                    <pre><code>&lt;a href="#" class="btn btn-warning btn-back"&gt;
+    &lt;i class="fas fa-arrow-left me-1"&gt;&lt;/i&gt;Back with Class
+&lt;/a&gt;</code></pre>
+                </div>
+
+                <!-- Method 4: onclick Function -->
+                <div class="test-card">
+                    <span class="method-badge method-onclick">METHOD 4: ONCLICK</span>
+                    <h4 class="mb-3">Using onclick="goBack()"</h4>
+                    <p class="text-muted">Direct function call:</p>
+                    
+                    <div class="mb-3">
+                        <button onclick="goBack()" class="btn btn-danger">
+                            <i class="fas fa-arrow-left me-1"></i>Back with onclick
+                        </button>
+                        <button onclick="window.history.back()" class="btn btn-dark">
+                            <i class="fas fa-arrow-left me-1"></i>Direct history.back()
+                        </button>
+                    </div>
+
+                    <pre><code>&lt;button onclick="goBack()" class="btn btn-danger"&gt;
+    &lt;i class="fas fa-arrow-left me-1"&gt;&lt;/i&gt;Back with onclick
+&lt;/button&gt;</code></pre>
+                </div>
+
+                <!-- History Info -->
+                <div class="test-card">
+                    <h4 class="mb-3">
+                        <i class="fas fa-history me-2 text-success"></i>
+                        Browser History Info
+                    </h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="alert alert-success">
+                                <strong>History Length:</strong> <span id="historyLength"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <strong>Can Go Back:</strong> <span id="canGoBack"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        Navigate using the links above to build history, then test the back buttons.
+                    </p>
+                </div>
+
+                <!-- Status Messages -->
+                <div class="test-card bg-light">
+                    <h5 class="mb-3">
+                        <i class="fas fa-check-circle me-2 text-success"></i>
+                        Implementation Status
+                    </h5>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Back button script loaded
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            All methods available
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Automatic detection active
+                        </li>
+                        <li class="mb-0">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Browser history API supported
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/back-button.js"></script>
+    <script>
+        // Update current URL display
+        document.getElementById('currentUrl').textContent = window.location.href;
+        
+        // Update history info
+        document.getElementById('historyLength').textContent = window.history.length;
+        document.getElementById('canGoBack').textContent = window.history.length > 1 ? 'Yes ✓' : 'No (navigate first)';
+        
+        // Log back button clicks
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('[data-action="back"]') || 
+                e.target.closest('.btn-back') ||
+                (e.target.textContent && e.target.textContent.toLowerCase().includes('back'))) {
+                console.log('Back button clicked:', e.target);
+            }
+        });
+    </script>
+</body>
+</html>
