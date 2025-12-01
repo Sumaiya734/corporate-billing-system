@@ -68,6 +68,12 @@
             </a>
         </div>
 
+
+        <div class="nav-item">
+            <a class="nav-link {{ request()->routeIs('admin.payment-details.index') ? 'active' : '' }}" href="{{ route('admin.payment-details.index') }}">
+                <i class="fas fa-box me-2"></i>Payment Details
+            </a>
+        </div>
         
       <!-- Reports & Analytics -->
    <div class="nav-item dropdown">

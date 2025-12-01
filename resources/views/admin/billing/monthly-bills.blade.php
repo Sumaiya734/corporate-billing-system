@@ -1520,7 +1520,41 @@ window.closeMonth = function() {
     .then(data => {
         if (data.success) {
             showToast('Success', data.message, 'success');
-            setTimeout(() => location.reload(), 1500);
+            try {
+                // Wait briefly so the user can read the success toast,
+                // then notify other tabs and close this modal/page.
+                const payload = { month: month, ts: Date.now() };
+                setTimeout(() => {
+                    try {
+                        // localStorage broadcast (works across tabs)
+                        localStorage.setItem('billing_month_closed', JSON.stringify(payload));
+
+                        // BroadcastChannel for modern browsers (works across same-origin contexts)
+                        if (window.BroadcastChannel) {
+                            try {
+                                const bc = new BroadcastChannel('billing_channel');
+                                bc.postMessage(payload);
+                                bc.close();
+                            } catch (e) {
+                                console.warn('BroadcastChannel error', e);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('Notify refresh failed', err);
+                    }
+                }, 1500);
+            } catch (e) {
+                console.warn('Notify scheduling failed', e);
+            }
+
+            // Close modal (if open) and reload this page after toast + notify
+            try {
+                const modalEl = document.getElementById('closeMonthModal');
+                const modalInst = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+                if (modalInst) modalInst.hide();
+            } catch (ignore) {}
+
+            setTimeout(() => location.reload(), 2600);
         } else {
             throw new Error(data.message || 'Failed to close month');
         }

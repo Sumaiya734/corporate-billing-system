@@ -528,7 +528,7 @@
                     @endif
                     
                     <!-- Page Header -->
-                    @if(View::hasSection('title') || View::hasSection('title-icon') || View::hasSection('header-actions'))
+                    <!-- @if(View::hasSection('title') || View::hasSection('title-icon') || View::hasSection('header-actions'))
                     <div class="page-header mb-4">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="page-header-content">
@@ -566,7 +566,7 @@
                             @endif
                         </div>
                     </div>
-                    @endif
+                    @endif -->
                     
                     <!-- Page Content -->
                     @yield('content')

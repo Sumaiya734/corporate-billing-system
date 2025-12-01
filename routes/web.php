@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\CustomerProductController;
 use App\Http\Controllers\Customer\CustomerController;
 use App\Http\Controllers\Admin\MonthlyBillController;
 use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\PaymentDetailsController;
 use App\Http\Controllers\Admin\ReportController;
 
 // Public Routes
@@ -166,6 +167,11 @@ Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(funct
         Route::get('/customer-statistics', [ReportController::class, 'customerStatistics'])->name('customer-statistics');
         Route::get('/collection-reports', [ReportController::class, 'collectionReports'])->name('collection-reports');
         Route::get('/', [ReportController::class, 'index'])->name('index');
+    });
+
+     Route::prefix('payment-details')->name('payment-details.')->group(function () {
+        Route::get('/', [PaymentDetailsController::class, 'index'])->name('index');
+        Route::get('/export', [PaymentDetailsController::class, 'export'])->name('payment-details.export');
     });
 });
 

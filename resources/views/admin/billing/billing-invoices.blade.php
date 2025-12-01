@@ -869,5 +869,47 @@
             lastUpdated.innerHTML = '<i class="fas fa-clock me-1"></i>Last updated: ' + timeStr;
         }, 60000); // Update every minute
     }
+
+    // Listen for cross-tab/page notifications to auto-refresh billing list
+    function handleBillingClosedNotification(payload) {
+        try {
+            console.log('Received billing_month_closed notification', payload);
+            // Optionally show a small toast/alert before reloading
+            if (window.showToast) {
+                showToast('Billing Month Closed', `Closed month: ${payload.month}`, 'success');
+            }
+            // Reload the page after a short delay so the message is visible
+            setTimeout(() => location.reload(), 1500);
+        } catch (e) {
+            console.error('Error handling billing closed notification', e);
+            location.reload();
+        }
+    }
+
+    // Storage event (fires in other tabs/windows)
+    window.addEventListener('storage', function (e) {
+        if (!e) return;
+        if (e.key === 'billing_month_closed' && e.newValue) {
+            try {
+                const payload = JSON.parse(e.newValue);
+                handleBillingClosedNotification(payload);
+            } catch (err) {
+                console.error('Invalid billing_month_closed payload', err);
+            }
+        }
+    });
+
+    // BroadcastChannel fallback/modern approach
+    if (window.BroadcastChannel) {
+        try {
+            const bc = new BroadcastChannel('billing_channel');
+            bc.addEventListener('message', function (ev) {
+                if (!ev || !ev.data) return;
+                handleBillingClosedNotification(ev.data);
+            });
+        } catch (err) {
+            console.warn('BroadcastChannel not available', err);
+        }
+    }
 </script>
 @endsection
