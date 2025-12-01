@@ -52,7 +52,7 @@
     </div>
     @endif
 
-    <!-- Statistics Cards -->
+   <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6">
             <div class="card bg-primary text-white mb-4">
@@ -60,7 +60,7 @@
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
                             <div class="text-xs font-weight-bold text-uppercase mb-1 opacity-75">
-                                <i class="fas fa-users me-1"></i>Customer Overview
+                                <i class="fas fa-users me-1"></i> Overview
                             </div>
                             @php
                                 // Calculate customer statistics based on actual invoice data
@@ -76,8 +76,7 @@
                                 $totalCustomers = $customersWithDue + $fullyPaidCustomers;
                                 $paidPercentage = $totalCustomers > 0 ? round(($fullyPaidCustomers / $totalCustomers) * 100) : 0;
                             @endphp
-                            <div class="h5 mb-2 fw-bold">{{ number_format($totalCustomers) }} Customers</div>
-                            <small class="text-white-50"><i class="fas fa-file-invoice me-1"></i>{{ $totalInvoices }} Total Invoices</small>
+                            <small class="h5 mb-2 fw-bold"><i class="fas fa-file-invoice me-1"></i>{{ $totalInvoices }} Total Invoices</small>
                             <div class="small mt-2 pt-2 border-top border-white border-opacity-25">
                                 <div>
                                     <span><i class="fas fa-exclamation-circle me-1"></i>With Due</span>
@@ -253,7 +252,7 @@
                                 }
                             @endphp
                             
-                            <tr class="{{ $rowClass }}">
+                            <tr class="{{ $rowClass }}" data-invoice-id="{{ $invoice->invoice_id }}">
                                 @if($customer && $product)
                                     {{-- Invoice ID --}}
                                     <td class="align-middle border-end">
@@ -346,7 +345,7 @@
                                             <strong class="{{ ($invoice->previous_due ?? 0) > 0 ? 'text-danger' : 'text-success' }}">
                                                 ৳ {{ number_format($invoice->previous_due ?? 0, 2) }}
                                             </strong>
-                                            <br><small class="text-muted">Previous balance</small>
+                                            <br><small class="text-muted">Previous due</small>
                                         </div>
                                     </td>
 
@@ -416,7 +415,7 @@
                                         {!! $invoice->status_badge ?? '<span class="badge bg-secondary">Unknown</span>' !!}
                                     </td>
 
-                                    {{-- Actions --}}
+                                   {{-- Actions --}}
                                     <td class="align-middle">
                                         <div class="d-flex flex-column gap-1">
                                             @php
@@ -425,47 +424,50 @@
                                                 $receivedAmount = $invoice->received_amount ?? 0;
                                                 $billingCycleMonths = $customerProduct->billing_cycle_months ?? 1;
                                                 
-                                                // Check if fully paid (including advance payments)
-                                                // A customer is fully paid if received_amount >= total_amount OR next_due <= 0
+                                                // Check if invoice is confirmed
+                                                $isConfirmed = $invoice->status === 'confirmed';
+                                                
                                                 $isFullyPaid = ($receivedAmount >= $totalAmount && $totalAmount > 0) || 
                                                                 ($nextDue <= 0.00 && $invoice->status === 'paid') ||
                                                                 ($nextDue <= 0.00 && $receivedAmount > 0);
                                                 
-                                                // Check for advance payment (received more than total)
                                                 $isAdvancePayment = $receivedAmount > $totalAmount && $totalAmount > 0;
-                                                
-                                                $hasPartialPayment = ($receivedAmount > 0) && !$isFullyPaid;
-                                                
-                                                // Check if this is a monthly billing customer (billing cycle = 1 month)
+                                                $hasPartialPayment = ($receivedAmount > 0) && !$isFullyPaid && !$isConfirmed;
                                                 $isMonthlyBilling = $billingCycleMonths == 1;
                                             @endphp
                                             
                                             @if($isMonthClosed ?? false)
-                                                {{-- Month Closed: Only show View button, no payment options --}}
+                                                {{-- Month Closed --}}
                                                 <button class="btn btn-outline-primary btn-sm view-invoice-btn" data-invoice-id="{{ $invoice->invoice_id }}" data-bs-toggle="modal" data-bs-target="#viewInvoiceModal" title="View Invoice">
                                                     <i class="fas fa-eye"></i> View
                                                 </button>
                                                 <button class="btn btn-secondary btn-sm" disabled title="Month Closed - No payments allowed">
                                                     <i class="fas fa-lock"></i> Month Closed
                                                 </button>
+                                            @elseif($isConfirmed)
+                                                {{-- Confirmed Status - Show View + Confirmed (muted) --}}
+                                                <button class="btn btn-outline-info btn-sm view-invoice-btn" data-invoice-id="{{ $invoice->invoice_id }}" data-bs-toggle="modal" data-bs-target="#viewInvoiceModal" title="View Invoice">
+                                                    <i class="fas fa-eye"></i> View
+                                                </button>
+                                                <button class="btn btn-secondary btn-sm" disabled title="User payment confirmed - Due carried forward">
+                                                    <i class="fas fa-check-circle"></i> Confirmed
+                                                </button>
                                             @elseif($isFullyPaid)
-                                                {{-- Fully Paid (including advance payments): Show View + Confirmed --}}
+                                                {{-- Fully Paid --}}
                                                 <button class="btn btn-outline-info btn-sm view-invoice-btn" data-invoice-id="{{ $invoice->invoice_id }}" data-bs-toggle="modal" data-bs-target="#viewInvoiceModal" title="View Invoice">
                                                     <i class="fas fa-eye"></i> View
                                                 </button>
                                                 @if($isMonthlyBilling)
-                                                    {{-- Monthly billing customer: Show muted Confirmed button for regular payment --}}
                                                     <button class="btn btn-secondary btn-sm" disabled title="Payment Confirmed - Monthly Billing">
                                                         <i class="fas fa-check-circle"></i> Confirmed
                                                     </button>
                                                 @else
-                                                    {{-- Multi-month billing customer: Show green Confirmed button --}}
                                                     <button class="btn btn-success btn-sm" disabled title="{{ $isAdvancePayment ? 'Advance Payment Confirmed' : 'Payment Confirmed - Multi-Month Billing' }}">
                                                         <i class="fas fa-check-circle"></i> {{ $isAdvancePayment ? 'Advance Paid' : 'Confirmed' }}
                                                     </button>
                                                 @endif
                                             @elseif($hasPartialPayment)
-                                                {{-- Partial Payment: Show Edit Payment + View --}}
+                                                {{-- Partial Payment: Show Edit Payment + View + Confirm --}}
                                                 <button class="btn btn-warning btn-sm payment-btn"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#addPaymentModal"
@@ -489,8 +491,10 @@
                                                     <i class="fas fa-eye"></i> View
                                                 </button>
                                                 
-                                                {{-- Add Confirm button to close user's month and carry forward remaining money --}}
+                                                {{-- Add Confirm button --}}
                                                 <button class="btn btn-warning btn-sm confirm-user-btn" 
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#confirmUserPaymentModal"
                                                         data-invoice-id="{{ $invoice->invoice_id }}"
                                                         data-cp-id="{{ $customerProduct->cp_id }}"
                                                         data-customer-name="{{ e($customer->name ?? 'Customer') }}"
@@ -523,149 +527,149 @@
                                             @endif
                                         </div>
                                     </td>
-                                @else
-                                    <td colspan="11" class="text-center text-danger">
-                                        Invoice #{{$invoice->invoice_number}} has missing product or customer data.
-                                    </td>
-                                @endif
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="11" class="text-center py-4">
-                                    <div class="text-muted">
-                                        <i class="fas fa-file-invoice-dollar fa-3x mb-3"></i>
-                                        <h5>No bills found for {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}</h5>
-                                        <p>Generate bills for this month to get started.</p>
-                                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateBillsModal">
-                                            <i class="fas fa-plus me-1"></i>Generate Bills
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
-
-                        {{-- Due customers without invoices (only show for past months, not current month) --}}
-                        @if(!($isCurrentMonth ?? false) && isset($dueCustomers) && $dueCustomers->isNotEmpty())
-                            @php
-                                $invoiceCustomerIds = ($invoices ?? collect())->pluck('customerProduct.c_id')->filter()->unique()->toArray();
-                            @endphp
-                            @foreach($dueCustomers as $dueCustomer)
-                                @if(!in_array($dueCustomer->c_id, $invoiceCustomerIds))
-                                    <tr class="table-warning">
-                                        <td class="align-middle border-end">
-                                            <strong class="text-muted">Not Generated</strong>
-                                        </td>
-                                        <td class="align-middle border-end">
-                                            <a href="{{ route('admin.customers.show', $dueCustomer->c_id) }}" class="text-decoration-none" Target="_blank">
-                                                <h6 class="mb-1 text-primary">{{ $dueCustomer->name ?? 'N/A' }}</h6>
-                                            </a>
-                                            <div class="text-muted small">{{ $dueCustomer->customer_id ?? 'N/A' }}</div>
-                                        </td>
-                                        <td colspan="9" class="text-center">
-                                            <div class="alert alert-warning mb-0 py-2">
-                                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                                <strong>This customer is due for billing but has no invoice.</strong>
-                                            </div>
-                                        </td>
+                                        @else
+                                            <td colspan="11" class="text-center text-danger">
+                                                Invoice #{{$invoice->invoice_number}} has missing product or customer data.
+                                            </td>
+                                        @endif
                                     </tr>
-                                @endif
-                            @endforeach
-                        @endif
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card-footer bg-white">
-            <div class="row align-items-center">
-                <div class="col-md-12 mb-3">
-                    <div class="alert alert-info mb-0 small">
-                        <div class="alert alert-info mb-4">
-                            <strong><i class="fas fa-info-circle me-1"></i>How to read this table:</strong>
-                            <ul class="mb-0 mt-1">
-                                <li><strong>Product Amount</strong> = Current month charges (from products)</li>
-                                <li><strong>Previous Due</strong> = Unpaid balance from past months</li>
-                                <li><strong>Total Invoice</strong> = Product Amount + Previous Due</li>
-                                <li><strong>Received</strong> = Payments made against this invoice</li>
-                                <li><strong>Next Due</strong> = Total Invoice - Received (what customer still owes)</li>
-                            </ul>
-                        </div>
-                        
-                        <div class="alert alert-info mb-4">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Note:</strong> 
-                            <ul class="mb-0">
-                                <li>Customers with invoices are shown in the table below</li>
-                                <li>Customers who are due but don't have invoices yet are highlighted with a warning</li>
-                                @if(!($isCurrentMonth ?? false))
-                                <li>Use the "Generate Bills" button to create invoices for all customers or only those who are due</li>
-                                @else
-                                <li>Invoices for current month customers are automatically generated</li>
-                                @endif
-                                @if(!($isMonthClosed ?? false) && !($isFutureMonth ?? false))
-                                <li><strong>Remember to close this month</strong> before accessing the next month's billing</li>
-                                @endif
-                            </ul>
-                        </div>
-                        
-                        <div class="mt-2 p-2 bg-light rounded">
-                            <strong><i class="fas fa-calculator me-1"></i>Verification:</strong> 
-                            @php
-                                // Calculate amounts from actual invoice data
-                                $totalBillingAmount = $invoices->sum('total_amount');
-                                $paidAmount = $invoices->sum('received_amount');
-                                $pendingAmount = $invoices->sum('next_due');
-                            @endphp
-                            <div class="mt-1">
-                                Total Billing (৳{{ number_format($totalBillingAmount, 2) }}) 
-                                - Paid (৳{{ number_format($paidAmount, 2) }}) 
-                                = Pending (৳{{ number_format($pendingAmount, 2) }})
-                            </div>
-                            @php
-                                $calculatedPending = $totalBillingAmount - $paidAmount;
-                                $isBalanced = abs($calculatedPending - $pendingAmount) < 0.01;
-                            @endphp
-                            <div class="mt-1">
-                                <span class="badge {{ $isBalanced ? 'bg-success' : 'bg-danger' }}">
-                                    <i class="fas fa-{{ $isBalanced ? 'check' : 'exclamation-triangle' }} me-1"></i>
-                                    {{ $isBalanced ? 'Balanced ✓' : 'Mismatch!' }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Pagination -->
-                @if($invoices->hasPages())
-                <div class="col-md-12 mb-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <small class="text-muted">
-                                Showing {{ $invoices->firstItem() }} to {{ $invoices->lastItem() }} of {{ $invoices->total() }} invoices
-                            </small>
-                        </div>
-                        <div>
-                            {{ $invoices->appends(request()->query())->links('pagination::bootstrap-5') }}
-                        </div>
-                    </div>
-                </div>
-                @endif
-                
-                <div class="col-md-6">
-                    <small class="text-muted">
-                        <i class="fas fa-check-circle text-success me-1"></i>
-                        Showing {{ $invoices->count() }} of {{ $invoices->total() }} invoices for {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}
-                    </small>
-                </div>
-                <div class="col-md-6 text-end">
-                    <small class="text-muted">
-                        <i class="fas fa-clock me-1"></i>
-                        Last updated: {{ now()->format('M j, Y g:i A') }}
-                    </small>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="11" class="text-center py-4">
+                                                            <div class="text-muted">
+                                                                <i class="fas fa-file-invoice-dollar fa-3x mb-3"></i>
+                                                                <h5>No bills found for {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}</h5>
+                                                                <p>Generate bills for this month to get started.</p>
+                                                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateBillsModal">
+                                                                    <i class="fas fa-plus me-1"></i>Generate Bills
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                @endforelse
+
+                                                {{-- Due customers without invoices (only show for past months, not current month) --}}
+                                                @if(!($isCurrentMonth ?? false) && isset($dueCustomers) && $dueCustomers->isNotEmpty())
+                                                    @php
+                                                        $invoiceCustomerIds = ($invoices ?? collect())->pluck('customerProduct.c_id')->filter()->unique()->toArray();
+                                                    @endphp
+                                                    @foreach($dueCustomers as $dueCustomer)
+                                                        @if(!in_array($dueCustomer->c_id, $invoiceCustomerIds))
+                                                            <tr class="table-warning">
+                                                                <td class="align-middle border-end">
+                                                                    <strong class="text-muted">Not Generated</strong>
+                                                                </td>
+                                                                <td class="align-middle border-end">
+                                                                    <a href="{{ route('admin.customers.show', $dueCustomer->c_id) }}" class="text-decoration-none" Target="_blank">
+                                                                        <h6 class="mb-1 text-primary">{{ $dueCustomer->name ?? 'N/A' }}</h6>
+                                                                    </a>
+                                                                    <div class="text-muted small">{{ $dueCustomer->customer_id ?? 'N/A' }}</div>
+                                                                </td>
+                                                                <td colspan="9" class="text-center">
+                                                                    <div class="alert alert-warning mb-0 py-2">
+                                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                                        <strong>This customer is due for billing but has no invoice.</strong>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        @endif
+                                                    @endforeach
+                                                @endif
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-white">
+                                            <div class="row align-items-center">
+                                                <div class="col-md-12 mb-3">
+                                                    <div class="alert alert-info mb-0 small">
+                                                        <div class="alert alert-info mb-4">
+                                                            <strong><i class="fas fa-info-circle me-1"></i>How to read this table:</strong>
+                                                            <ul class="mb-0 mt-1">
+                                                                <li><strong>Product Amount</strong> = Current month charges (from products)</li>
+                                                                <li><strong>Previous Due</strong> = Unpaid balance from past months</li>
+                                                                <li><strong>Total Invoice</strong> = Product Amount + Previous Due</li>
+                                                                <li><strong>Received</strong> = Payments made against this invoice</li>
+                                                                <li><strong>Next Due</strong> = Total Invoice - Received (what customer still owes)</li>
+                                                            </ul>
+                                                        </div>
+                                                        
+                                                        <div class="alert alert-info mb-4">
+                                                            <i class="fas fa-info-circle me-2"></i>
+                                                            <strong>Note:</strong> 
+                                                            <ul class="mb-0">
+                                                                <li>Customers with invoices are shown in the table below</li>
+                                                                <li>Customers who are due but don't have invoices yet are highlighted with a warning</li>
+                                                                @if(!($isCurrentMonth ?? false))
+                                                                <li>Use the "Generate Bills" button to create invoices for all customers or only those who are due</li>
+                                                                @else
+                                                                <li>Invoices for current month customers are automatically generated</li>
+                                                                @endif
+                                                                @if(!($isMonthClosed ?? false) && !($isFutureMonth ?? false))
+                                                                <li><strong>Remember to close this month</strong> before accessing the next month's billing</li>
+                                                                @endif
+                                                            </ul>
+                                                        </div>
+                                                        
+                                                        <div class="mt-2 p-2 bg-light rounded">
+                                                            <strong><i class="fas fa-calculator me-1"></i>Verification:</strong> 
+                                                            @php
+                                                                // Calculate amounts from actual invoice data
+                                                                $totalBillingAmount = $invoices->sum('total_amount');
+                                                                $paidAmount = $invoices->sum('received_amount');
+                                                                $pendingAmount = $invoices->sum('next_due');
+                                                            @endphp
+                                                            <div class="mt-1">
+                                                                Total Billing (৳{{ number_format($totalBillingAmount, 2) }}) 
+                                                                - Paid (৳{{ number_format($paidAmount, 2) }}) 
+                                                                = Pending (৳{{ number_format($pendingAmount, 2) }})
+                                                            </div>
+                                                            @php
+                                                                $calculatedPending = $totalBillingAmount - $paidAmount;
+                                                                $isBalanced = abs($calculatedPending - $pendingAmount) < 0.01;
+                                                            @endphp
+                                                            <div class="mt-1">
+                                                                <span class="badge {{ $isBalanced ? 'bg-success' : 'bg-danger' }}">
+                                                                    <i class="fas fa-{{ $isBalanced ? 'check' : 'exclamation-triangle' }} me-1"></i>
+                                                                    {{ $isBalanced ? 'Balanced ✓' : 'Mismatch!' }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Pagination -->
+                                                @if($invoices->hasPages())
+                                                <div class="col-md-12 mb-3">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            <small class="text-muted">
+                                                                Showing {{ $invoices->firstItem() }} to {{ $invoices->lastItem() }} of {{ $invoices->total() }} invoices
+                                                            </small>
+                                                        </div>
+                                                        <div>
+                                                            {{ $invoices->appends(request()->query())->links('pagination::bootstrap-5') }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                @endif
+                                                
+                                                <div class="col-md-6">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-check-circle text-success me-1"></i>
+                                                        Showing {{ $invoices->count() }} of {{ $invoices->total() }} invoices for {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-6 text-end">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-clock me-1"></i>
+                                                        Last updated: {{ now()->format('M j, Y g:i A') }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
 <!-- Generate Bills Modal -->
 <div class="modal fade" id="generateBillsModal" tabindex="-1" aria-labelledby="generateBillsModalLabel" aria-hidden="true">
@@ -887,7 +891,8 @@
 @include('admin.billing.payment-modal')
 
 <!-- Confirm User Payment Modal -->
-<div class="modal fade" id="confirmUserPaymentModal" tabindex="-1" aria-labelledby="confirmUserPaymentModalLabel" aria-hidden="true">
+<!-- Confirm User Payment Modal -->
+<div class="modal fade" id="confirmUserPaymentModal" tabindex="-1" aria-labelledby="confirmUserPaymentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-warning text-dark">
@@ -919,14 +924,15 @@
                     </div>
                 </div>
                 
-                <div class="alert alert-warning mb-0">
+                <!-- <div class="alert alert-warning mb-0">
                     <strong><i class="fas fa-exclamation-triangle me-2"></i>What happens next?</strong>
                     <ul class="mb-0 mt-2">
                         <li>The remaining amount will be carried forward to next month</li>
                         <li>This customer's billing for this month will be marked as confirmed</li>
                         <li>No further payments can be added for this month</li>
+                        <li>Due amount will still be visible and added to next payment</li>
                     </ul>
-                </div>
+                </div> -->
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -1570,45 +1576,33 @@ window.showToast = function(msg, type = 'info', details = null) {
 };
 
 // Store confirmation data globally
+// let confirmPaymentData = {};
+
+// Store confirmation data globally
 let confirmPaymentData = {};
 
-// Function to show confirm user payment modal
-function confirmUserPayment(invoiceId, cpId, customerName, productName, nextDue) {
-    // Store data for later use
-    confirmPaymentData = {
-        invoiceId: invoiceId,
-        cpId: cpId,
-        customerName: customerName,
-        productName: productName,
-        nextDue: nextDue
-    };
-    
-    // Update modal content
-    document.getElementById('confirm_customer_name').textContent = customerName;
-    document.getElementById('confirm_product_name').textContent = productName;
-    document.getElementById('confirm_next_due').textContent = `৳ ${parseFloat(nextDue).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('confirmUserPaymentModal'));
-    modal.show();
-}
-
-// Function to execute the confirmation
+// Function to execute the confirmation WITHOUT page refresh
 window.executeConfirmUserPayment = function() {
     const { invoiceId, cpId, customerName, productName, nextDue } = confirmPaymentData;
+    
+    console.log('executeConfirmUserPayment called with data:', {
+        invoiceId, 
+        cpId, 
+        customerName, 
+        productName, 
+        nextDue
+    });
+    
+    if (!invoiceId || !cpId) {
+        showToast('Error', 'Missing invoice data', 'danger');
+        return;
+    }
     
     // Show loading state on button
     const confirmBtn = document.getElementById('confirmUserPaymentBtn');
     const originalBtnHtml = confirmBtn.innerHTML;
     confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
     confirmBtn.disabled = true;
-    
-    // Also update the table button
-    const buttons = document.querySelectorAll(`.confirm-user-btn[data-invoice-id="${invoiceId}"]`);
-    buttons.forEach(btn => {
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-        btn.disabled = true;
-    });
     
     // Send AJAX request to confirm user payment
     fetch('{{ route("admin.billing.confirm-user-payment") }}', {
@@ -1620,56 +1614,265 @@ window.executeConfirmUserPayment = function() {
         body: JSON.stringify({
             invoice_id: invoiceId,
             cp_id: cpId,
-            next_due: nextDue
+            next_due: parseFloat(nextDue)
         })
     })
     .then(response => response.json())
     .then(data => {
+        console.log('AJAX response received:', data);
         if (data.success) {
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('confirmUserPaymentModal'));
-            modal.hide();
+            // Close modal properly with backdrop cleanup
+            const modalElement = document.getElementById('confirmUserPaymentModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
             
-            // Show success toast
+            // Manually remove any remaining backdrops to prevent screen from staying dim
+            setTimeout(() => {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => {
+                    if (backdrop.parentNode) {
+                        backdrop.parentNode.removeChild(backdrop);
+                    }
+                });
+                document.body.classList.remove('modal-open');
+            }, 100);
+            
+            // Show success toast WITHOUT page refresh
             const details = `
                 <div><strong>Customer:</strong> ${customerName}</div>
                 <div><strong>Product:</strong> ${productName}</div>
                 <div><strong>Carried Forward:</strong> ৳${parseFloat(nextDue).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                <div class="mt-1"><small><i class="fas fa-info-circle me-1"></i>Due amount will be added to next payment</small></div>
             `;
             showToast('Payment Confirmed Successfully!', 'success', details);
             
-            // Update UI to reflect confirmation
-            buttons.forEach(btn => {
-                // Replace with a disabled confirmed button
-                btn.outerHTML = `
-                    <button class="btn btn-success btn-sm" disabled title="User payment confirmed">
-                        <i class="fas fa-check-circle"></i> Confirmed
-                    </button>
-                `;
-            });
+            // Small delay to ensure modal is fully closed before updating UI
+            setTimeout(() => {
+                // Update UI dynamically WITHOUT page refresh
+                console.log('Calling updateUIAfterConfirmation with:', {
+                    invoiceId, 
+                    cpId, 
+                    customerName, 
+                    nextDue: parseFloat(nextDue)
+                });
+                updateUIAfterConfirmation(invoiceId, cpId, customerName, parseFloat(nextDue));
+            }, 300);
+            
         } else {
             showToast('Error', data.message || 'Failed to confirm user payment', 'danger');
-            // Restore buttons
+            // Restore button
             confirmBtn.innerHTML = originalBtnHtml;
             confirmBtn.disabled = false;
-            buttons.forEach(btn => {
-                btn.innerHTML = '<i class="fas fa-check"></i> Confirm';
-                btn.disabled = false;
-            });
         }
     })
     .catch(error => {
         console.error('Error:', error);
         showToast('Error', 'Network error occurred', 'danger');
-        // Restore buttons
+        // Restore button
         confirmBtn.innerHTML = originalBtnHtml;
         confirmBtn.disabled = false;
-        buttons.forEach(btn => {
-            btn.innerHTML = '<i class="fas fa-check"></i> Confirm';
-            btn.disabled = false;
-        });
     });
 };
+// Function to update UI after confirmation WITHOUT page refresh
+function updateUIAfterConfirmation(invoiceId, cpId, customerName, nextDue) {
+    console.log('Updating UI for invoice:', invoiceId, 'with due:', nextDue);
+    
+    try {
+        // Force a small delay to ensure DOM is ready
+        setTimeout(() => {
+            // Find all confirm buttons for this invoice and update them
+            const confirmButtons = document.querySelectorAll(`.confirm-user-btn[data-invoice-id="${invoiceId}"]`);
+            console.log('Found confirm buttons to update:', confirmButtons.length);
+            
+            confirmButtons.forEach((button, index) => {
+                console.log('Updating confirm button', index, button);
+                // Replace with View and Confirmed buttons (muted)
+                const actionCell = button.closest('.d-flex');
+                if (actionCell) {
+                    // Clear the action cell
+                    actionCell.innerHTML = '';
+                    
+                    // Add View button
+                    const viewButton = document.createElement('button');
+                    viewButton.className = 'btn btn-outline-info btn-sm view-invoice-btn mb-1';
+                    viewButton.setAttribute('data-invoice-id', invoiceId);
+                    viewButton.setAttribute('data-bs-toggle', 'modal');
+                    viewButton.setAttribute('data-bs-target', '#viewInvoiceModal');
+                    viewButton.title = 'View Invoice';
+                    viewButton.innerHTML = '<i class="fas fa-eye"></i> View';
+                    
+                    // Add Confirmed button (muted)
+                    const confirmedButton = document.createElement('button');
+                    confirmedButton.className = 'btn btn-secondary btn-sm';
+                    confirmedButton.disabled = true;
+                    confirmedButton.title = 'User payment confirmed - Due carried forward';
+                    confirmedButton.innerHTML = '<i class="fas fa-check-circle"></i> Confirmed';
+                    
+                    // Add both buttons to the action cell
+                    actionCell.appendChild(viewButton);
+                    actionCell.appendChild(confirmedButton);
+                }
+            });
+            
+            // Also update any payment buttons to show the confirmed status
+            const paymentButtons = document.querySelectorAll(`.payment-btn[data-invoice-id="${invoiceId}"]`);
+            console.log('Found payment buttons to update:', paymentButtons.length);
+            paymentButtons.forEach((button, index) => {
+                console.log('Updating payment button', index, button);
+                // Replace payment button with View and Confirmed buttons (muted)
+                const actionCell = button.closest('.d-flex');
+                if (actionCell) {
+                    // Clear the action cell
+                    actionCell.innerHTML = '';
+                    
+                    // Add View button
+                    const viewButton = document.createElement('button');
+                    viewButton.className = 'btn btn-outline-info btn-sm view-invoice-btn mb-1';
+                    viewButton.setAttribute('data-invoice-id', invoiceId);
+                    viewButton.setAttribute('data-bs-toggle', 'modal');
+                    viewButton.setAttribute('data-bs-target', '#viewInvoiceModal');
+                    viewButton.title = 'View Invoice';
+                    viewButton.innerHTML = '<i class="fas fa-eye"></i> View';
+                    
+                    // Add Confirmed button (muted)
+                    const confirmedButton = document.createElement('button');
+                    confirmedButton.className = 'btn btn-secondary btn-sm';
+                    confirmedButton.disabled = true;
+                    confirmedButton.title = 'User payment confirmed - Due carried forward';
+                    confirmedButton.innerHTML = '<i class="fas fa-check-circle"></i> Confirmed';
+                    
+                    // Add both buttons to the action cell
+                    actionCell.appendChild(viewButton);
+                    actionCell.appendChild(confirmedButton);
+                }
+            });
+            
+            // Update the due amount display in the table to show it's carried forward
+            const rows = document.querySelectorAll(`tr[data-invoice-id="${invoiceId}"]`);
+            console.log('Found rows to update:', rows.length);
+            
+            rows.forEach((row, index) => {
+                console.log('Updating row', index, row);
+                
+                // Update next due cell
+                const nextDueCell = row.querySelector('.next-due');
+                if (nextDueCell) {
+                    console.log('Updating next due cell:', nextDueCell);
+                    nextDueCell.innerHTML = `
+                        <strong class="text-warning">৳ ${parseFloat(nextDue).toLocaleString('en-BD', {minimumFractionDigits: 2})}</strong>
+                        <br><small class="text-warning"><i class="fas fa-forward me-1"></i>Carried Forward</small>
+                    `;
+                    // Force reflow
+                    nextDueCell.offsetHeight;
+                } else {
+                    console.log('Next due cell not found in row', index);
+                }
+                
+                // Update status cell to show confirmed
+                const statusCells = row.querySelectorAll('td');
+                if (statusCells.length >= 9) { // Status is typically the 9th column (0-indexed as 8)
+                    const statusCell = statusCells[8];
+                    if (statusCell) {
+                        console.log('Updating status cell:', statusCell);
+                        // Clear the cell and add our own badge
+                        statusCell.innerHTML = '';
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-success';
+                        badge.innerHTML = '<i class="fas fa-check-double me-1"></i>Confirmed';
+                        statusCell.appendChild(badge);
+                        // Force reflow
+                        statusCell.offsetHeight;
+                    }
+                }
+                
+                // Force reflow on the entire row
+                row.offsetHeight;
+            });
+            
+            // Force a repaint/reflow of the entire table
+            const table = document.getElementById('monthlyBillsTable');
+            if (table) {
+                table.style.visibility = 'hidden';
+                // Force reflow
+                table.offsetHeight;
+                table.style.visibility = 'visible';
+            }
+            
+            // Show a success message to the user
+            showToast('Success', 'Payment confirmed and due amount carried forward', 'success');
+            
+            // Scroll to the first updated row to make the change visible
+            if (rows.length > 0) {
+                // Wait a bit for DOM updates to complete
+                setTimeout(() => {
+                    rows[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Add a temporary highlight effect
+                    rows[0].classList.add('table-success');
+                    // Force reflow
+                    rows[0].offsetHeight;
+                    setTimeout(() => {
+                        rows[0].classList.remove('table-success');
+                        // Force reflow
+                        rows[0].offsetHeight;
+                    }, 2000);
+                }, 100);
+            }
+            
+            console.log('UI updated for invoice:', invoiceId, 'with due:', nextDue);
+        }, 100); // Increased delay to ensure everything is ready
+    } catch (error) {
+        console.error('Error updating UI:', error);
+        // Fallback: Show a message and suggest manual refresh
+        showToast('Notice', 'Display updated. Please refresh page if changes are not visible.', 'info');
+    }
+}
+
+// Handle confirm user button clicks - populate modal when shown
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmUserPaymentModal = document.getElementById('confirmUserPaymentModal');
+    if (confirmUserPaymentModal) {
+        confirmUserPaymentModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            
+            if (button && button.classList.contains('confirm-user-btn')) {
+                const invoiceId = button.getAttribute('data-invoice-id');
+                const cpId = button.getAttribute('data-cp-id');
+                const customerName = button.getAttribute('data-customer-name');
+                const productName = button.getAttribute('data-product-name');
+                const nextDue = button.getAttribute('data-next-due');
+                const rowElement = button.closest('tr');
+                
+                // Store data for later use
+                confirmPaymentData = {
+                    invoiceId: invoiceId,
+                    cpId: cpId,
+                    customerName: customerName,
+                    productName: productName,
+                    nextDue: nextDue,
+                    rowElement: rowElement
+                };
+                
+                // Update modal content
+                document.getElementById('confirm_customer_name').textContent = customerName;
+                document.getElementById('confirm_product_name').textContent = productName;
+                document.getElementById('confirm_next_due').textContent = `৳ ${parseFloat(nextDue).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            }
+        });
+        
+        // Reset modal on close
+        confirmUserPaymentModal.addEventListener('hidden.bs.modal', function() {
+            const confirmBtn = document.getElementById('confirmUserPaymentBtn');
+            if (confirmBtn) {
+                confirmBtn.innerHTML = '<i class="fas fa-check me-1"></i>Confirm & Carry Forward';
+                confirmBtn.disabled = false;
+            }
+            confirmPaymentData = {};
+        });
+
+    }
+});
 
 // Table Filtering Function
 window.filterTableByStatus = function() {
@@ -1995,51 +2198,34 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Enable/disable close month button based on checkbox
-    const confirmCheckbox = document.getElementById('confirmCloseMonth');
-    const confirmBtn = document.getElementById('confirmCloseMonthBtn');
-    
-    if (confirmCheckbox && confirmBtn) {
+
+    // --- Robust enable/disable logic for Close Month button ---
+    function setupCloseMonthCheckbox() {
+        var confirmCheckbox = document.getElementById('confirmCloseMonth');
+        var confirmBtn = document.getElementById('confirmCloseMonthBtn');
+        if (!confirmCheckbox || !confirmBtn) return;
+        // Attach event
         confirmCheckbox.addEventListener('change', function() {
             confirmBtn.disabled = !this.checked;
         });
+        // Fallback: set initial state in case checkbox is already checked
+        confirmBtn.disabled = !confirmCheckbox.checked;
+        // Reset on modal close
+        var closeMonthModal = document.getElementById('closeMonthModal');
+        if (closeMonthModal) {
+            closeMonthModal.addEventListener('hidden.bs.modal', function() {
+                confirmCheckbox.checked = false;
+                confirmBtn.disabled = true;
+            });
+        }
     }
+    // Run immediately and also on DOMContentLoaded (for dynamic loads)
+    setupCloseMonthCheckbox();
+    document.addEventListener('DOMContentLoaded', setupCloseMonthCheckbox);
 
-    // Reset checkbox when modal is closed
-    const closeMonthModal = document.getElementById('closeMonthModal');
-    if (closeMonthModal) {
-        closeMonthModal.addEventListener('hidden.bs.modal', function() {
-            if (confirmCheckbox) confirmCheckbox.checked = false;
-            if (confirmBtn) confirmBtn.disabled = true;
-        });
-    }
 
-    // Handle confirm user button clicks
-    document.querySelectorAll('.confirm-user-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const invoiceId = this.getAttribute('data-invoice-id');
-            const cpId = this.getAttribute('data-cp-id');
-            const customerName = this.getAttribute('data-customer-name');
-            const productName = this.getAttribute('data-product-name');
-            const nextDue = this.getAttribute('data-next-due');
-            
-            // Show confirmation modal instead of browser alert
-            confirmUserPayment(invoiceId, cpId, customerName, productName, nextDue);
-        });
-    });
 
-    // Reset confirm modal on close
-    const confirmUserPaymentModal = document.getElementById('confirmUserPaymentModal');
-    if (confirmUserPaymentModal) {
-        confirmUserPaymentModal.addEventListener('hidden.bs.modal', function() {
-            const confirmBtn = document.getElementById('confirmUserPaymentBtn');
-            if (confirmBtn) {
-                confirmBtn.innerHTML = '<i class="fas fa-check me-1"></i>Confirm & Carry Forward';
-                confirmBtn.disabled = false;
-            }
-            confirmPaymentData = {};
-        });
-    }
+    
 
     // Handle view invoice button clicks
     document.querySelectorAll('.view-invoice-btn').forEach(button => {

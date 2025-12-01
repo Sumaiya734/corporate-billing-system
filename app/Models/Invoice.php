@@ -224,6 +224,7 @@ class Invoice extends Model
                 ? '<span class="badge bg-danger">Overdue</span>'
                 : '<span class="badge bg-info">Unpaid</span>',
             self::STATUS_CANCELLED => '<span class="badge bg-secondary">Cancelled</span>',
+            'confirmed' => '<span class="badge bg-success"><i class="fas fa-check-double me-1"></i>Confirmed</span>',
             default => '<span class="badge bg-secondary">' . ucfirst($this->status) . '</span>'
         };
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -878,7 +879,7 @@ class MonthlyBillController extends Controller
     }
 
     /**
-     * Confirm user payment and close their month individually
+     * Confirm user payment and close their month individually - FIXED VERSION
      */
     public function confirmUserPayment(Request $request)
     {
@@ -891,47 +892,52 @@ class MonthlyBillController extends Controller
         try {
             DB::beginTransaction();
 
-            // Get invoice with customer and product
             $invoice = Invoice::with(['customer', 'customerProduct'])->findOrFail($request->invoice_id);
-            
             $dueAmount = round(floatval($request->next_due));
 
-            // If there's a due amount, we need to carry it forward
+            // Mark current invoice as confirmed (NOT paid) and carry forward the due
+            $closedNote = "\n[User Confirmed: " . now()->format('Y-m-d H:i:s') . " by " . (\Illuminate\Support\Facades\Auth::user()->name ?? 'System') . "]";
+            
             if ($dueAmount > 0) {
-                // Update invoice status to paid and note the carried forward amount
-                $closedNote = "\n[User Confirmed: " . now()->format('Y-m-d H:i:s') . " by " . (\Illuminate\Support\Facades\Auth::user()->name ?? 'System') . "]";
                 $closedNote .= " Due amount of ৳" . number_format($dueAmount, 2) . " carried forward to next billing cycle.";
-
+                
+                // Update current invoice - mark as confirmed but keep due amount visible
                 $invoice->update([
-                    'received_amount' => $invoice->total_amount,
-                    'next_due' => 0,
-                    'status' => 'paid',
+                    'status' => 'confirmed', // ✅ New status for confirmed but not fully paid
+                    'next_due' => $dueAmount, // ✅ Keep due amount visible
                     'notes' => ($invoice->notes ?? '') . $closedNote,
                     'is_closed' => true,
                     'closed_at' => now(),
                     'closed_by' => \Illuminate\Support\Facades\Auth::id()
                 ]);
 
-                // Create a new invoice for the next month with the carried forward amount
+                // Create or update next month's invoice with carried forward amount
                 $nextMonth = Carbon::parse($invoice->issue_date)->addMonth();
                 
-                // Check if invoice already exists for next month
                 $existingNextInvoice = Invoice::where('cp_id', $request->cp_id)
                     ->whereYear('issue_date', $nextMonth->year)
                     ->whereMonth('issue_date', $nextMonth->month)
                     ->first();
 
-                if (!$existingNextInvoice) {
-                    // Create new invoice for next month with carried forward amount
+                if ($existingNextInvoice) {
+                    // Update existing next month invoice - add carried forward amount to previous_due
+                    $existingNextInvoice->update([
+                        'previous_due' => $existingNextInvoice->previous_due + $dueAmount,
+                        'total_amount' => $existingNextInvoice->subtotal + $existingNextInvoice->previous_due + $dueAmount,
+                        'next_due' => ($existingNextInvoice->subtotal + $existingNextInvoice->previous_due + $dueAmount) - $existingNextInvoice->received_amount,
+                        'notes' => ($existingNextInvoice->notes ?? '') . "\nAdded ৳" . number_format($dueAmount, 2) . " carried forward from invoice {$invoice->invoice_number}"
+                    ]);
+                } else {
+                    // Create new invoice for next month with carried forward amount as previous_due
                     $newInvoice = Invoice::create([
                         'cp_id' => $request->cp_id,
                         'issue_date' => $nextMonth->format('Y-m-d'),
-                        'previous_due' => 0,
+                        'previous_due' => $dueAmount, // ✅ Carry forward as previous due
                         'service_charge' => 0.00,
                         'vat_percentage' => 0.00,
                         'vat_amount' => 0.00,
-                        'subtotal' => 0,
-                        'total_amount' => $dueAmount,
+                        'subtotal' => 0, // Will be calculated when products are added
+                        'total_amount' => $dueAmount, // Total is the carried forward amount
                         'received_amount' => 0,
                         'next_due' => $dueAmount,
                         'status' => 'unpaid',
@@ -942,6 +948,7 @@ class MonthlyBillController extends Controller
             } else {
                 // Fully paid, just mark as closed
                 $invoice->update([
+                    'status' => 'paid',
                     'is_closed' => true,
                     'closed_at' => now(),
                     'closed_by' => \Illuminate\Support\Facades\Auth::id()
@@ -953,7 +960,8 @@ class MonthlyBillController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'User payment confirmed successfully!',
-                'carried_forward_amount' => $dueAmount
+                'carried_forward_amount' => $dueAmount,
+                'invoice_status' => $dueAmount > 0 ? 'confirmed' : 'paid'
             ]);
 
         } catch (\Exception $e) {
@@ -1367,5 +1375,4 @@ class MonthlyBillController extends Controller
         
         return response()->json($response);
     }
-       
 }

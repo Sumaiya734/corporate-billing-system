@@ -367,13 +367,20 @@ class BillingController extends Controller
         try {
             // Load invoice with customerProduct relationship (which includes customer and product)
             $invoice = Invoice::with(['customerProduct.customer', 'customerProduct.product', 'payments'])
-                            ->findOrFail($invoiceId);
+                            ->find($invoiceId);
+
+            // Check if invoice exists
+            if (!$invoice) {
+                Log::error("Invoice not found: {$invoiceId}");
+                return response('<div class="alert alert-danger">Invoice not found.</div>', 404);
+            }
 
             return view('admin.billing.invoice-html', compact('invoice'));
 
         } catch (\Exception $e) {
             Log::error('Get invoice HTML error: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Invoice ID: ' . $invoiceId);
             return response('<div class="alert alert-danger">Error loading invoice: ' . $e->getMessage() . '</div>', 500);
         }
     }
@@ -1407,6 +1414,46 @@ class BillingController extends Controller
         } catch (\Exception $e) {
             Log::error('Update invoice error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to update invoice: ' . $e->getMessage())->withInput();
+        }
+    }
+    
+    /**
+     * Confirm user payment and carry forward remaining due
+     * This marks the customer's billing for this month as confirmed
+     * and carries forward any remaining due to the next billing cycle
+     */
+    public function confirmUserPayment(Request $request)
+    {
+        try {
+            $request->validate([
+                'invoice_id' => 'required|exists:invoices,invoice_id',
+                'cp_id' => 'required|exists:customer_to_products,cp_id',
+                'next_due' => 'required|numeric|min:0'
+            ]);
+
+            $invoice = Invoice::findOrFail($request->invoice_id);
+            $customerProduct = Customerproduct::findOrFail($request->cp_id);
+
+            // Mark invoice as confirmed (status = 'confirmed')
+            // The next_due will remain and be carried forward to next month automatically
+            $invoice->update([
+                'status' => 'confirmed',
+                'notes' => ($invoice->notes ?? '') . "\n[" . now()->format('Y-m-d H:i:s') . "] Month confirmed by " . Auth::user()->name . ". Remaining due: ৳" . number_format($request->next_due, 2) . " will be carried forward."
+            ]);
+
+            Log::info("User payment confirmed for invoice {$invoice->invoice_id}, CP {$customerProduct->cp_id}. Due carried forward: {$request->next_due}");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment confirmed successfully. Remaining due will be carried forward to next billing cycle.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Confirm user payment error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to confirm payment: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

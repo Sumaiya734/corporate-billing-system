@@ -272,6 +272,23 @@
         background: #f8f9fa;
         z-index: 10;
     }
+    
+    /* Ensure proper modal stacking */
+    .modal-backdrop {
+        z-index: 1040;
+    }
+
+    .modal {
+        z-index: 1050;
+    }
+
+    #deletePaymentModal {
+        z-index: 1060;
+    }
+
+    #deletePaymentModal .modal-backdrop {
+        z-index: 1059;
+    }
 </style>
 
 <!-- Delete Payment Confirmation Modal -->
@@ -307,14 +324,14 @@
                     <div class="p-2 bg-light rounded" id="delete_payment_method">-</div>
                 </div>
                 
-                <div class="alert alert-warning mb-0">
+                <!-- <div class="alert alert-warning mb-0">
                     <strong><i class="fas fa-info-circle me-2"></i>What happens next?</strong>
                     <ul class="mb-0 mt-2">
                         <li>This payment record will be permanently deleted</li>
                         <li>The invoice balance will be recalculated</li>
                         <li>The due amount will be updated accordingly</li>
                     </ul>
-                </div>
+                </div> -->
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelDeletePaymentBtn">
@@ -335,27 +352,32 @@ class PaymentModal {
         this.isSubmitting = false;
         this.editPaymentAmountListener = null;
         this.deleteModalInstance = null;
+        this.backdropCleanupScheduled = false;
+        this.eventsBound = false; // Track if events are bound
+        this.formSubmissionBound = false; // Track if form submission is bound
         this.init();
     }
 
     init() {
         this.bindEvents();
         this.initializeDeleteModal();
-        this.handleModalStacking(); // Add this line
     }
 
     bindEvents() {
-        // Handle payment modal show event
+        // Prevent duplicate event binding
+        if (this.eventsBound) {
+            console.log('Events already bound, skipping...');
+            return;
+        }
+        this.eventsBound = true;
+
+        console.log('Binding payment modal events...');
+
+        // Payment modal show event - use document level listener to avoid duplicates
         document.addEventListener('show.bs.modal', (event) => {
             if (event.target.id === 'addPaymentModal') {
-                try {
-                    this.handleModalShow(event);
-                } catch (error) {
-                    console.error('Error in handleModalShow:', error);
-                    if (typeof this.showToast === 'function') {
-                        this.showToast('Error opening payment modal. Please refresh and try again.', 'error');
-                    }
-                }
+                console.log('Payment modal show event triggered');
+                this.handleModalShow(event);
             }
         });
 
@@ -367,191 +389,167 @@ class PaymentModal {
             }
         });
 
-        // Payment form submission
-        document.addEventListener('submit', (e) => {
-            if (e.target.id === 'addPaymentForm') {
-                this.handlePaymentSubmit(e);
-            }
-        });
+        // Payment form submission - IMPROVED: Ensure only one listener
+        this.bindFormSubmission();
 
         // Reset payment form when modal is hidden
         document.addEventListener('hidden.bs.modal', (event) => {
             if (event.target.id === 'addPaymentModal') {
                 this.resetPaymentForm();
             }
-            // Ensure backdrop is removed when any modal is hidden
-            this.ensureBackdropRemoved();
         });
 
-        // Handle edit payment button click - using event delegation
+        // Single event delegation for all dynamic buttons
         document.addEventListener('click', (e) => {
-            // Edit payment button - check if it's the exact button or child
-            if (e.target.classList.contains('edit-payment-btn') || e.target.closest('.edit-payment-btn')) {
+            const target = e.target;
+            
+            // Edit payment button
+            const editBtn = target.closest('.edit-payment-btn');
+            if (editBtn) {
                 e.preventDefault();
-                const button = e.target.classList.contains('edit-payment-btn') ? e.target : e.target.closest('.edit-payment-btn');
-                if (!button.hasAttribute('data-handled')) {
-                    button.setAttribute('data-handled', 'true');
-                    console.log('Edit payment button clicked:', button);
-                    this.handleEditPayment(button);
-                    // Remove the attribute after processing to allow future clicks
-                    setTimeout(() => button.removeAttribute('data-handled'), 100);
-                }
+                e.stopPropagation();
+                console.log('Edit button clicked via delegation');
+                this.handleEditPayment(editBtn);
+                return;
             }
             
-            // Delete payment button - check if it's the exact button or child
-            if (e.target.classList.contains('delete-payment-btn') || e.target.closest('.delete-payment-btn')) {
+            // Delete payment button
+            const deleteBtn = target.closest('.delete-payment-btn');
+            if (deleteBtn) {
                 e.preventDefault();
-                const button = e.target.classList.contains('delete-payment-btn') ? e.target : e.target.closest('.delete-payment-btn');
-                if (!button.hasAttribute('data-handled')) {
-                    button.setAttribute('data-handled', 'true');
-                    console.log('Delete payment button clicked:', button);
-                    this.handleDeletePayment(button);
-                    // Remove the attribute after processing to allow future clicks
-                    setTimeout(() => button.removeAttribute('data-handled'), 100);
-                }
+                e.stopPropagation();
+                console.log('Delete button clicked via delegation');
+                this.handleDeletePayment(deleteBtn);
+                return;
             }
         });
 
-        // Tab switching functionality
-        document.addEventListener('shown.bs.tab', (event) => {
-            const activeTab = event.target;
-            this.handleTabSwitch(activeTab);
-        });
+        // Handle modal close buttons
+        this.setupModalCloseHandlers();
+    }
 
-        // Add event listener for cancel/close buttons to ensure proper modal dismissal
-        document.addEventListener('click', (e) => {
-            // Handle payment modal cancel/close buttons
-            if (e.target.id === 'cancelPaymentBtn' || e.target.closest('#cancelPaymentBtn') || 
-                e.target.id === 'closePaymentModalBtn' || e.target.closest('#closePaymentModalBtn')) {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('addPaymentModal'));
-                if (modal) {
-                    modal.hide();
-                }
-                this.ensureBackdropRemoved();
-            }
+    bindFormSubmission() {
+        // Ensure only one form submission handler
+        if (this.formSubmissionBound) {
+            console.log('Form submission already bound, skipping...');
+            return;
+        }
+        
+        const paymentForm = document.getElementById('addPaymentForm');
+        if (paymentForm) {
+            // Remove any existing event listeners by cloning and replacing
+            const newForm = paymentForm.cloneNode(true);
+            paymentForm.parentNode.replaceChild(newForm, paymentForm);
             
-            // Handle delete payment modal cancel/close buttons
-            if (e.target.id === 'cancelDeletePaymentBtn' || e.target.closest('#cancelDeletePaymentBtn') ||
-                e.target.id === 'closeDeletePaymentModalBtn' || e.target.closest('#closeDeletePaymentModalBtn')) {
-                const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deletePaymentModal'));
-                if (deleteModal) {
-                    deleteModal.hide();
-                }
-                // Don't remove backdrop here - let the main payment modal handle it
-                // The delete modal is a child modal, so when it closes, the backdrop should remain for parent
-            }
-        });
+            // Add the event listener to the new form
+            const finalForm = document.getElementById('addPaymentForm');
+            finalForm.addEventListener('submit', (e) => {
+                console.log('Form submit event triggered');
+                this.handlePaymentSubmit(e);
+            });
+            
+            this.formSubmissionBound = true;
+            console.log('Form submission handler bound successfully');
+        }
+    }
+
+    setupModalCloseHandlers() {
+        // Payment modal close buttons - FIXED: Use Bootstrap's native data-bs-dismiss
+        // No need for custom handlers since we're using Bootstrap's built-in functionality
+        
+        // Delete modal close buttons - FIXED: Use simpler approach
+        const cancelDeletePaymentBtn = document.getElementById('cancelDeletePaymentBtn');
+        const closeDeletePaymentModalBtn = document.getElementById('closeDeletePaymentModalBtn');
+        
+        if (cancelDeletePaymentBtn && !cancelDeletePaymentBtn.hasAttribute('data-listener-added')) {
+            cancelDeletePaymentBtn.setAttribute('data-listener-added', 'true');
+            cancelDeletePaymentBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.hideDeleteModal();
+            });
+        }
+        
+        if (closeDeletePaymentModalBtn && !closeDeletePaymentModalBtn.hasAttribute('data-listener-added')) {
+            closeDeletePaymentModalBtn.setAttribute('data-listener-added', 'true');
+            closeDeletePaymentModalBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.hideDeleteModal();
+            });
+        }
     }
 
     initializeDeleteModal() {
-        // Initialize delete modal event listener
         const confirmDeleteBtn = document.getElementById('confirmDeletePaymentBtn');
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', () => {
+        if (confirmDeleteBtn && !confirmDeleteBtn.hasAttribute('data-listener-added')) {
+            confirmDeleteBtn.setAttribute('data-listener-added', 'true');
+            confirmDeleteBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 this.executeDeletePayment();
             });
         }
     }
 
-    handleTabSwitch(activeTab) {
-        const submitBtn = document.getElementById('paymentSubmitBtn');
-        const submitText = document.getElementById('paymentSubmitText');
+    hideDeleteModal() {
+        console.log('Hiding delete modal');
         
-        if (!submitBtn || !submitText) {
-            return;
-        }
-
-        if (activeTab.id === 'payment-form-tab' || activeTab.id === 'existing-payments-tab') {
-            submitText.textContent = 'Record Payment';
-            submitBtn.classList.remove('btn-primary');
-            submitBtn.classList.add('btn-success');
+        const deleteModalElement = document.getElementById('deletePaymentModal');
+        if (deleteModalElement) {
+            let modalInstance = bootstrap.Modal.getInstance(deleteModalElement);
+            
+            if (modalInstance) {
+                console.log('Hiding delete modal via Bootstrap instance');
+                modalInstance.hide();
+            } else {
+                console.log('Manually hiding delete modal');
+                deleteModalElement.style.display = 'none';
+                deleteModalElement.classList.remove('show');
+                
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => {
+                    if (backdrop.parentNode) {
+                        backdrop.parentNode.removeChild(backdrop);
+                    }
+                });
+                
+                document.body.classList.remove('modal-open');
+            }
         }
     }
 
     handleModalShow(event) {
+        console.log('handleModalShow called');
+        
         const button = event.relatedTarget;
         
         if (!button) {
-            console.error('No button found - modal opened programmatically?');
-            this.setLoadingState();
+            console.log('Modal opened without button - may be programmatic');
             return;
         }
         
-        const invoiceId = button.dataset?.invoiceId;
+        const invoiceId = button.getAttribute('data-invoice-id');
         
         console.log('Payment modal opening for invoice:', invoiceId);
         
         if (!invoiceId) {
-            console.error('Missing invoice ID in button data');
-            this.setLoadingState();
-            if (typeof this.showToast === 'function') {
-                this.showToast('Missing invoice ID. Please refresh the page and try again.', 'error');
-            }
+            console.error('Missing invoice ID');
+            this.showToast('Missing invoice information', 'error');
             return;
         }
         
-        // Populate from button data first
-        if (button.dataset.invoiceNumber && button.dataset.customerName) {
-            console.log('Populating from button data...');
-            this.populateFromButtonData(button);
-            this.loadExistingPayments(invoiceId);
-        } else {
-            console.log('Button data incomplete, fetching from database...');
-            this.setLoadingState();
-            this.fetchInvoiceData(invoiceId)
-                .then(invoice => {
-                    console.log('Invoice data loaded from database:', invoice);
-                    this.populateModal(invoiceId, invoice);
-                    this.loadExistingPayments(invoiceId);
-                })
-                .catch(error => {
-                    console.error('Error fetching invoice data:', error);
-                    this.fallbackToButtonData(button);
-                });
-        }
-    }
-
-    setLoadingState() {
-        const elements = {
-            'payment_invoice_number_display': 'Loading...',
-            'payment_customer_name_display': 'Loading...',
-            'payment_total_amount_display': '৳ 0.00',
-            'payment_due_amount_display': '৳ 0.00',
-            'payment_status_display': 'Loading...'
-        };
-
-        Object.keys(elements).forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = elements[id];
-                if (id === 'payment_status_display') {
-                    element.className = 'badge bg-secondary';
-                }
-            }
-        });
-    }
-
-    async fetchInvoiceData(invoiceId) {
-        const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
-        const response = await fetch(`${baseUrl}/admin/billing/invoice/${invoiceId}/data`);
-        if (!response.ok) {
-            throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
-        }
-        const data = await response.json();
-        if (data.success) {
-            return data.invoice;
-        } else {
-            throw new Error(data.message || 'Failed to fetch invoice data');
-        }
+        this.populateFromButtonData(button);
+        this.loadExistingPayments(invoiceId);
     }
 
     populateFromButtonData(button) {
-        const invoiceId = button.dataset.invoiceId;
-        const invoiceNumber = button.dataset.invoiceNumber;
-        const customerName = button.dataset.customerName;
-        const totalAmount = button.dataset.totalAmount;
-        const dueAmount = button.dataset.dueAmount;
-        const status = button.dataset.status;
+        const invoiceId = button.getAttribute('data-invoice-id');
+        const invoiceNumber = button.getAttribute('data-invoice-number');
+        const customerName = button.getAttribute('data-customer-name');
+        const totalAmount = button.getAttribute('data-total-amount');
+        const dueAmount = button.getAttribute('data-due-amount');
+        const status = button.getAttribute('data-status');
         
         console.log('Populating from button data:', {
             invoiceId, invoiceNumber, customerName, totalAmount, dueAmount, status
@@ -560,13 +558,11 @@ class PaymentModal {
         // Set form action and invoice ID
         if (invoiceId) {
             const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
-            let fullPath = `${baseUrl}/admin/billing/record-payment/${invoiceId}`;
-            fullPath = fullPath.replace(/(\/netbill-bd\/public){2,}/g, '/netbill-bd/public');
-            
             const form = document.getElementById('addPaymentForm');
             if (form) {
-                form.action = fullPath;
+                form.action = `${baseUrl}/admin/billing/record-payment/${invoiceId}`;
             }
+            
             const invoiceIdField = document.getElementById('payment_invoice_id');
             if (invoiceIdField) {
                 invoiceIdField.value = invoiceId;
@@ -614,9 +610,9 @@ class PaymentModal {
         // Set payment amount field
         const paymentAmountField = document.getElementById('payment_amount');
         if (paymentAmountField) {
-            const totalAmt = parseFloat(totalAmount) || 0;
-            paymentAmountField.value = totalAmt.toFixed(2);
-            paymentAmountField.max = totalAmt;
+            const dueAmt = parseFloat(dueAmount) || 0;
+            paymentAmountField.value = dueAmt > 0 ? dueAmt.toFixed(2) : '';
+            paymentAmountField.max = dueAmt;
             paymentAmountField.min = 0.01;
             
             // Reset validation
@@ -627,9 +623,7 @@ class PaymentModal {
             }
             
             // Calculate initial values
-            setTimeout(() => {
-                this.calculateReceivedAndDue();
-            }, 0);
+            this.calculateReceivedAndDue();
         }
         
         console.log('Payment modal populated from button data');
@@ -657,15 +651,15 @@ class PaymentModal {
 
     validatePaymentAmount(input) {
         const paymentAmount = parseFloat(input.value) || 0;
-        const totalAmountText = document.getElementById('payment_total_amount_display')?.textContent;
-        const totalAmount = totalAmountText ? parseFloat(totalAmountText.replace(/[^\d.]/g, '')) || 0 : 0;
+        const dueAmountText = document.getElementById('payment_due_amount_display')?.textContent;
+        const dueAmount = dueAmountText ? parseFloat(dueAmountText.replace(/[^\d.]/g, '')) || 0 : 0;
         
-        if (paymentAmount > totalAmount) {
+        if (paymentAmount > dueAmount) {
             input.classList.add('is-invalid');
             const paymentAmountError = document.getElementById('payment_amount_error');
             if (paymentAmountError) {
                 paymentAmountError.style.display = 'block';
-                paymentAmountError.textContent = `Payment amount cannot exceed total invoice amount (৳${totalAmount.toFixed(2)})`;
+                paymentAmountError.textContent = `Payment amount cannot exceed due amount (৳${dueAmount.toFixed(2)})`;
             }
         } else {
             input.classList.remove('is-invalid');
@@ -676,364 +670,80 @@ class PaymentModal {
         }
     }
 
-    populateModal(invoiceId, invoice) {
-        console.log('Populating modal with invoice data:', invoice);
+    handleEditPayment(button) {
+        console.log('Edit payment button clicked');
         
-        const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
-        let fullPath = `${baseUrl}/admin/billing/record-payment/${invoiceId}`;
+        const paymentId = button.getAttribute('data-payment-id');
+        const amount = button.getAttribute('data-amount');
+        const paymentMethod = button.getAttribute('data-payment-method');
+        const paymentDate = button.getAttribute('data-payment-date');
+        const notes = button.getAttribute('data-notes') || '';
         
-        const form = document.getElementById('addPaymentForm');
-        if (form) {
-            form.action = fullPath;
-        }
+        console.log('Editing payment:', { paymentId, amount, paymentMethod, paymentDate, notes });
         
-        const invoiceIdField = document.getElementById('payment_invoice_id');
-        if (invoiceIdField) {
-            invoiceIdField.value = invoiceId;
-        }
-        
-        const displayData = {
-            'payment_invoice_number_display': invoice.invoice_number || 'N/A',
-            'payment_customer_name_display': invoice.customer_name || 'N/A',
-            'payment_total_amount_display': '৳ ' + (parseFloat(invoice.total_amount) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2}),
-            'payment_due_amount_display': '৳ ' + (parseFloat(invoice.next_due) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2}),
-            'payment_due_amount_helper': '৳ ' + (parseFloat(invoice.next_due) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})
-        };
-
-        Object.keys(displayData).forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = displayData[id];
-            }
-        });
-        
-        const statusDisplay = document.getElementById('payment_status_display');
-        if (statusDisplay) {
-            statusDisplay.textContent = invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : 'N/A';
-            statusDisplay.className = 'badge';
-            
-            switch(invoice.status) {
-                case 'paid':
-                    statusDisplay.classList.add('bg-success');
-                    break;
-                case 'partial':
-                    statusDisplay.classList.add('bg-warning', 'text-dark');
-                    break;
-                case 'unpaid':
-                    statusDisplay.classList.add('bg-danger');
-                    break;
-                default:
-                    statusDisplay.classList.add('bg-secondary');
-            }
-        }
-    }
-
-    fallbackToButtonData(button) {
-        if (button) {
-            this.populateFromButtonData(button);
-        }
-    }
-
-   // In the handleEditPayment function, add this line to prevent duplicate loading:
-handleEditPayment(button) {
-    const paymentId = button.dataset.paymentId;
-    const amount = button.dataset.amount;
-    const paymentMethod = button.dataset.paymentMethod;
-    const paymentDate = button.dataset.paymentDate;
-    const notes = button.dataset.notes || '';
-    
-    console.log('Editing payment:', { paymentId, amount, paymentMethod, paymentDate, notes });
-    
-    // Switch to payment form tab
-    const paymentFormTab = document.getElementById('payment-form-tab');
-    if (paymentFormTab) {
-        const tab = new bootstrap.Tab(paymentFormTab);
-        tab.show();
-    }
-    
-    // Populate form with payment data
-    document.getElementById('payment_id').value = paymentId;
-    document.getElementById('payment_amount').value = parseFloat(amount).toFixed(2);
-    document.querySelector('select[name="payment_method"]').value = paymentMethod;
-    document.querySelector('input[name="payment_date"]').value = paymentDate;
-    document.querySelector('textarea[name="notes"]').value = notes;
-    
-    // Change form to PUT method for update
-    document.getElementById('payment_method_override').value = 'PUT';
-    
-    // Update form action to include payment ID
-    const form = document.getElementById('addPaymentForm');
-    const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
-    form.action = `${baseUrl}/admin/billing/payment/${paymentId}`;
-    
-    // Update button text and styling
-    document.getElementById('paymentSubmitText').textContent = 'Update Payment';
-    const submitBtn = document.getElementById('paymentSubmitBtn');
-    if (submitBtn) {
-        submitBtn.classList.remove('btn-success');
-        submitBtn.classList.add('btn-primary');
-    }
-    
-    // Get total amount from display
-    const totalAmountText = document.getElementById('payment_total_amount_display').textContent;
-    const totalAmount = parseFloat(totalAmountText.replace(/[^\d.]/g, '')) || 0;
-    
-    // Calculate and display the new due amount
-    const editedPayment = parseFloat(amount) || 0;
-    const newDue = Math.max(0, totalAmount - editedPayment);
-    
-    // Update the next due field
-    document.getElementById('next_due').value = newDue.toFixed(2);
-    
-    // Set max value for payment amount
-    const paymentAmountField = document.getElementById('payment_amount');
-    paymentAmountField.max = totalAmount.toFixed(2);
-    
-    // Clear any validation errors
-    paymentAmountField.classList.remove('is-invalid');
-    const paymentAmountError = document.getElementById('payment_amount_error');
-    if (paymentAmountError) {
-        paymentAmountError.style.display = 'none';
-    }
-    
-    // Remove any existing event listeners to prevent duplicates
-    if (this.editPaymentAmountListener) {
-        paymentAmountField.removeEventListener('input', this.editPaymentAmountListener);
-    }
-    
-    // Add event listener to recalculate due when user changes amount
-    this.editPaymentAmountListener = () => {
-        this.calculateReceivedAndDue();
-    };
-    paymentAmountField.addEventListener('input', this.editPaymentAmountListener);
-    
-    // Show info message
-    this.showToast('Payment loaded for editing. Modify the amount and click "Update Payment" to save changes.', 'info');
-    
-    // Trigger input event to recalculate due when user changes amount
-    paymentAmountField.focus();
-}
-
-// Also update the displayExistingPayments function to properly clear the table:
-displayExistingPayments(payments) {
-    const tbody = document.getElementById('existingPaymentsTableBody');
-    const badge = document.getElementById('payment-count-badge');
-    
-    if (badge) {
-        badge.textContent = payments.length;
-        badge.classList.remove('bg-secondary');
-        badge.classList.add('bg-primary');
-    }
-    
-    // Clear the table body completely before adding new rows
-    if (tbody) {
-        tbody.innerHTML = ''; // Clear any existing content
-        
-        if (payments.length === 0) {
-            this.displayNoPayments();
+        if (!paymentId || !amount) {
+            console.error('Missing payment data for editing');
+            this.showToast('Error: Missing payment information', 'error');
             return;
         }
         
-        // Add each payment row
-        payments.forEach(payment => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>
-                    <small class="text-muted">${new Date(payment.payment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</small>
-                </td>
-                <td>
-                    <strong class="text-success">৳ ${parseFloat(payment.amount).toLocaleString('en-BD', {minimumFractionDigits: 2})}</strong>
-                </td>
-                <td>
-                    <span class="badge bg-light text-dark">${payment.payment_method.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-                </td>
-                <td>
-                    <small class="text-muted">${payment.note || payment.notes || '-'}</small>
-                </td>
-                <td class="text-center">
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-primary edit-payment-btn" 
-                                data-payment-id="${payment.payment_id}"
-                                data-amount="${payment.amount}"
-                                data-payment-method="${payment.payment_method}"
-                                data-payment-date="${payment.payment_date}"
-                                data-notes="${payment.note || payment.notes || ''}"
-                                title="Edit Payment">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-danger delete-payment-btn" 
-                                data-payment-id="${payment.payment_id}"
-                                data-amount="${payment.amount}"
-                                data-payment-method="${payment.payment_method}"
-                                data-payment-date="${payment.payment_date}"
-                                title="Delete Payment">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-}
-
-// And update the displayNoPayments function:
-displayNoPayments() {
-    const tbody = document.getElementById('existingPaymentsTableBody');
-    const badge = document.getElementById('payment-count-badge');
-    
-    if (badge) {
-        badge.textContent = '0';
-        badge.classList.remove('bg-primary');
-        badge.classList.add('bg-secondary');
-    }
-    
-    if (tbody) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="5" class="text-center py-4 text-muted">
-                    <i class="fas fa-receipt fa-2x mb-2 opacity-50"></i>
-                    <p class="mb-0 small">No payment history found</p>
-                </td>
-            </tr>
-        `;
-    }
-}
-
-// Also add a fix to prevent duplicate event listeners in the bindEvents method:
-bindEvents() {
-    // Use event delegation with proper checks to prevent duplicate handlers
-    document.addEventListener('click', (e) => {
-        // Edit payment button - check if it's the exact button or child
-        if (e.target.classList.contains('edit-payment-btn') || e.target.closest('.edit-payment-btn')) {
-            e.preventDefault();
-            const button = e.target.classList.contains('edit-payment-btn') ? e.target : e.target.closest('.edit-payment-btn');
-            if (!button.hasAttribute('data-handled')) {
-                button.setAttribute('data-handled', 'true');
-                console.log('Edit payment button clicked:', button);
-                this.handleEditPayment(button);
-                // Remove the attribute after processing to allow future clicks
-                setTimeout(() => button.removeAttribute('data-handled'), 100);
-            }
+        // Switch to payment form tab
+        const paymentFormTab = document.getElementById('payment-form-tab');
+        if (paymentFormTab) {
+            const tab = new bootstrap.Tab(paymentFormTab);
+            tab.show();
         }
         
-        // Delete payment button - check if it's the exact button or child
-        if (e.target.classList.contains('delete-payment-btn') || e.target.closest('.delete-payment-btn')) {
-            e.preventDefault();
-            const button = e.target.classList.contains('delete-payment-btn') ? e.target : e.target.closest('.delete-payment-btn');
-            if (!button.hasAttribute('data-handled')) {
-                button.setAttribute('data-handled', 'true');
-                console.log('Delete payment button clicked:', button);
-                this.handleDeletePayment(button);
-                // Remove the attribute after processing to allow future clicks
-                setTimeout(() => button.removeAttribute('data-handled'), 100);
-            }
-        }
-    });
-
-    // Handle payment modal show event
-    document.addEventListener('show.bs.modal', (event) => {
-        if (event.target.id === 'addPaymentModal') {
-            try {
-                this.handleModalShow(event);
-            } catch (error) {
-                console.error('Error in handleModalShow:', error);
-                if (typeof this.showToast === 'function') {
-                    this.showToast('Error opening payment modal. Please refresh and try again.', 'error');
-                }
-            }
-        }
-    });
-
-    // Payment amount validation
-    document.addEventListener('input', (e) => {
-        if (e.target.id === 'payment_amount') {
-            this.validatePaymentAmount(e.target);
-            this.calculateReceivedAndDue();
-        }
-    });
-
-    // Payment form submission
-    document.addEventListener('submit', (e) => {
-        if (e.target.id === 'addPaymentForm') {
-            this.handlePaymentSubmit(e);
-        }
-    });
-
-    // Reset payment form when modal is hidden
-    document.addEventListener('hidden.bs.modal', (event) => {
-        if (event.target.id === 'addPaymentModal') {
-            this.resetPaymentForm();
-        }
-        // Ensure backdrop is removed when any modal is hidden
-        this.ensureBackdropRemoved();
-    });
-
-    // Handle edit payment button click - using event delegation
-    document.addEventListener('click', (e) => {
-        // Edit payment button - check if it's the exact button or child
-        if (e.target.classList.contains('edit-payment-btn') || e.target.closest('.edit-payment-btn')) {
-            e.preventDefault();
-            const button = e.target.classList.contains('edit-payment-btn') ? e.target : e.target.closest('.edit-payment-btn');
-            if (!button.hasAttribute('data-handled')) {
-                button.setAttribute('data-handled', 'true');
-                console.log('Edit payment button clicked:', button);
-                this.handleEditPayment(button);
-                // Remove the attribute after processing to allow future clicks
-                setTimeout(() => button.removeAttribute('data-handled'), 100);
-            }
+        // Populate form with payment data
+        document.getElementById('payment_id').value = paymentId;
+        document.getElementById('payment_amount').value = parseFloat(amount).toFixed(2);
+        
+        const paymentMethodSelect = document.querySelector('select[name="payment_method"]');
+        if (paymentMethodSelect && paymentMethod) {
+            paymentMethodSelect.value = paymentMethod;
         }
         
-        // Delete payment button - check if it's the exact button or child
-        if (e.target.classList.contains('delete-payment-btn') || e.target.closest('.delete-payment-btn')) {
-            e.preventDefault();
-            const button = e.target.classList.contains('delete-payment-btn') ? e.target : e.target.closest('.delete-payment-btn');
-            if (!button.hasAttribute('data-handled')) {
-                button.setAttribute('data-handled', 'true');
-                console.log('Delete payment button clicked:', button);
-                this.handleDeletePayment(button);
-                // Remove the attribute after processing to allow future clicks
-                setTimeout(() => button.removeAttribute('data-handled'), 100);
-            }
-        }
-    });
-
-    // Tab switching functionality
-    document.addEventListener('shown.bs.tab', (event) => {
-        const activeTab = event.target;
-        this.handleTabSwitch(activeTab);
-    });
-
-    // Add event listener for cancel/close buttons to ensure proper modal dismissal
-    document.addEventListener('click', (e) => {
-        // Handle payment modal cancel/close buttons
-        if (e.target.id === 'cancelPaymentBtn' || e.target.closest('#cancelPaymentBtn') || 
-            e.target.id === 'closePaymentModalBtn' || e.target.closest('#closePaymentModalBtn')) {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('addPaymentModal'));
-            if (modal) {
-                modal.hide();
-            }
-            this.ensureBackdropRemoved();
+        const paymentDateInput = document.querySelector('input[name="payment_date"]');
+        if (paymentDateInput && paymentDate) {
+            paymentDateInput.value = paymentDate;
         }
         
-        // Handle delete payment modal cancel/close buttons
-        if (e.target.id === 'cancelDeletePaymentBtn' || e.target.closest('#cancelDeletePaymentBtn') ||
-            e.target.id === 'closeDeletePaymentModalBtn' || e.target.closest('#closeDeletePaymentModalBtn')) {
-            const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deletePaymentModal'));
-            if (deleteModal) {
-                deleteModal.hide();
-            }
-            // Don't remove backdrop here - let the main payment modal handle it
-            // The delete modal is a child modal, so when it closes, the backdrop should remain for parent
+        const notesTextarea = document.querySelector('textarea[name="notes"]');
+        if (notesTextarea) {
+            notesTextarea.value = notes;
         }
-    });
-}
+        
+        // Change form to PUT method for update
+        document.getElementById('payment_method_override').value = 'PUT';
+        
+        // Update form action to include payment ID
+        const form = document.getElementById('addPaymentForm');
+        const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
+        if (form && paymentId) {
+            form.action = `${baseUrl}/admin/billing/payment/${paymentId}`;
+        }
+        
+        // Update button text and styling
+        const submitText = document.getElementById('paymentSubmitText');
+        const submitBtn = document.getElementById('paymentSubmitBtn');
+        if (submitText) submitText.textContent = 'Update Payment';
+        if (submitBtn) {
+            submitBtn.classList.remove('btn-success');
+            submitBtn.classList.add('btn-primary');
+        }
+        
+        // Calculate and display the new due amount
+        this.calculateReceivedAndDue();
+        
+        console.log('Payment loaded for editing');
+        this.showToast('Payment loaded for editing. Modify details and click "Update Payment" to save.', 'info');
+    }
 
     handleDeletePayment(button) {
-        const paymentId = button.dataset.paymentId;
-        const amount = button.dataset.amount;
-        const paymentMethod = button.dataset.paymentMethod;
-        const paymentDate = button.dataset.paymentDate;
+        const paymentId = button.getAttribute('data-payment-id');
+        const amount = button.getAttribute('data-amount');
+        const paymentMethod = button.getAttribute('data-payment-method');
+        const paymentDate = button.getAttribute('data-payment-date');
         
         console.log('Deleting payment:', { paymentId, amount, paymentMethod, paymentDate });
         
@@ -1063,13 +773,19 @@ bindEvents() {
             deletePaymentMethod.textContent = paymentMethod ? paymentMethod.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-';
         }
         
-        // Show delete modal
+        // Show delete modal using Bootstrap's modal system
         const deleteModalElement = document.getElementById('deletePaymentModal');
         if (deleteModalElement) {
-            if (!this.deleteModalInstance) {
-                this.deleteModalInstance = new bootstrap.Modal(deleteModalElement);
+            // Get or create the Bootstrap modal instance
+            let deleteModalInstance = bootstrap.Modal.getInstance(deleteModalElement);
+            if (!deleteModalInstance) {
+                console.log('Creating new Bootstrap modal instance for delete modal');
+                deleteModalInstance = new bootstrap.Modal(deleteModalElement, {
+                    backdrop: true,
+                    keyboard: true
+                });
             }
-            this.deleteModalInstance.show();
+            deleteModalInstance.show();
         } else {
             console.error('Delete payment modal element not found');
             this.showToast('Error: Delete confirmation dialog not found. Please refresh and try again.', 'error');
@@ -1083,6 +799,9 @@ bindEvents() {
             this.showToast('Payment ID not found', 'error');
             return;
         }
+        
+        const deleteModalElement = document.getElementById('deletePaymentModal');
+        let deleteModalInstance = deleteModalElement ? bootstrap.Modal.getInstance(deleteModalElement) : null;
         
         const confirmBtn = document.getElementById('confirmDeletePaymentBtn');
         const originalHtml = confirmBtn ? confirmBtn.innerHTML : 'Delete Payment';
@@ -1107,26 +826,17 @@ bindEvents() {
             const data = await response.json();
             
             if (data.success) {
-                // Close delete modal properly
-                const deleteModalElement = document.getElementById('deletePaymentModal');
-                if (deleteModalElement) {
-                    const deleteModal = bootstrap.Modal.getInstance(deleteModalElement);
-                    if (deleteModal) {
-                        deleteModal.hide();
-                    }
+                // Close delete modal properly using Bootstrap's method
+                if (deleteModalInstance) {
+                    deleteModalInstance.hide();
                 }
                 
                 // Also close the main payment modal
                 const paymentModalElement = document.getElementById('addPaymentModal');
-                if (paymentModalElement) {
-                    const paymentModal = bootstrap.Modal.getInstance(paymentModalElement);
-                    if (paymentModal) {
-                        paymentModal.hide();
-                    }
+                const paymentModalInstance = paymentModalElement ? bootstrap.Modal.getInstance(paymentModalElement) : null;
+                if (paymentModalInstance) {
+                    paymentModalInstance.hide();
                 }
-                
-                // Clean up backdrop completely
-                this.ensureBackdropRemoved();
                 
                 // Show success message
                 this.showToast(data.message || 'Payment deleted successfully', 'success');
@@ -1149,10 +859,12 @@ bindEvents() {
     }
 
     loadExistingPayments(invoiceId) {
+        if (!invoiceId) return;
+        
         const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
         const url = `${baseUrl}/admin/billing/invoice/${invoiceId}/payments`;
         
-        console.log('Loading existing payments from:', url);
+        console.log('Loading payments from:', url);
         
         fetch(url, {
             headers: {
@@ -1161,19 +873,11 @@ bindEvents() {
             }
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Non-JSON response');
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.json();
         })
         .then(data => {
-            console.log('Payments loaded:', data);
-            
-            if (data && data.success && data.payments) {
+            if (data?.success && data.payments) {
                 this.displayExistingPayments(data.payments);
             } else {
                 this.displayNoPayments();
@@ -1191,54 +895,59 @@ bindEvents() {
         
         if (badge) {
             badge.textContent = payments.length;
-            badge.classList.remove('bg-secondary');
-            badge.classList.add('bg-primary');
+            badge.className = 'badge bg-primary ms-1';
         }
+        
+        if (!tbody) return;
         
         if (payments.length === 0) {
             this.displayNoPayments();
             return;
         }
         
-        if (tbody) {
-            tbody.innerHTML = payments.map(payment => `
-                <tr>
-                    <td>
-                        <small class="text-muted">${new Date(payment.payment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</small>
-                    </td>
-                    <td>
-                        <strong class="text-success">৳ ${parseFloat(payment.amount).toLocaleString('en-BD', {minimumFractionDigits: 2})}</strong>
-                    </td>
-                    <td>
-                        <span class="badge bg-light text-dark">${payment.payment_method.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-                    </td>
-                    <td>
-                        <small class="text-muted">${payment.note || payment.notes || '-'}</small>
-                    </td>
-                    <td class="text-center">
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button type="button" class="btn btn-outline-primary edit-payment-btn" 
-                                    data-payment-id="${payment.payment_id}"
-                                    data-amount="${payment.amount}"
-                                    data-payment-method="${payment.payment_method}"
-                                    data-payment-date="${payment.payment_date}"
-                                    data-notes="${payment.note || payment.notes || ''}"
-                                    title="Edit Payment">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button type="button" class="btn btn-outline-danger delete-payment-btn" 
-                                    data-payment-id="${payment.payment_id}"
-                                    data-amount="${payment.amount}"
-                                    data-payment-method="${payment.payment_method}"
-                                    data-payment-date="${payment.payment_date}"
-                                    title="Delete Payment">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-        }
+        tbody.innerHTML = payments.map(payment => `
+            <tr>
+                <td>
+                    <small class="text-muted">${new Date(payment.payment_date).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                    })}</small>
+                </td>
+                <td>
+                    <strong class="text-success">৳ ${parseFloat(payment.amount).toLocaleString('en-BD', {minimumFractionDigits: 2})}</strong>
+                </td>
+                <td>
+                    <span class="badge bg-light text-dark border">
+                        ${(payment.payment_method || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </span>
+                </td>
+                <td>
+                    <small class="text-muted">${payment.note || payment.notes || '-'}</small>
+                </td>
+                <td class="text-center">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-primary edit-payment-btn" 
+                                data-payment-id="${payment.payment_id || payment.id}"
+                                data-amount="${payment.amount}"
+                                data-payment-method="${payment.payment_method}"
+                                data-payment-date="${payment.payment_date}"
+                                data-notes="${payment.note || payment.notes || ''}"
+                                title="Edit Payment">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger delete-payment-btn" 
+                                data-payment-id="${payment.payment_id || payment.id}"
+                                data-amount="${payment.amount}"
+                                data-payment-method="${payment.payment_method}"
+                                data-payment-date="${payment.payment_date}"
+                                title="Delete Payment">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
     }
 
     displayNoPayments() {
@@ -1247,8 +956,7 @@ bindEvents() {
         
         if (badge) {
             badge.textContent = '0';
-            badge.classList.remove('bg-primary');
-            badge.classList.add('bg-secondary');
+            badge.className = 'badge bg-secondary ms-1';
         }
         
         if (tbody) {
@@ -1263,161 +971,112 @@ bindEvents() {
         }
     }
 
-    hideModalWithBackdropRemoval(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        // Try to use Bootstrap's modal instance first
-        const modalInstance = bootstrap.Modal.getInstance(modal);
-        if (modalInstance) {
-            modalInstance.hide();
-        } else {
-            // Fallback: manually hide modal and backdrop
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            modal.setAttribute('aria-hidden', 'true');
-        }
-        
-        // Always clean up backdrop and body classes
-        this.ensureBackdropRemoved();
-    }
-}
-
-ensureBackdropRemoved() {
-    // Remove any leftover backdrop elements
-    const backdrops = document.querySelectorAll('.modal-backdrop');
-    backdrops.forEach(backdrop => {
-        backdrop.remove();
-    });
-    
-    // Remove modal-open class from body and reset padding
-    document.body.classList.remove('modal-open');
-    document.body.style.paddingRight = '';
-    document.body.style.overflow = '';
-}
-
-// Add a method to handle modal stacking properly:
-handleModalStacking() {
-    // When delete modal opens, ensure proper z-index stacking
-    document.addEventListener('show.bs.modal', (e) => {
-        if (e.target.id === 'deletePaymentModal') {
-            // Increase z-index for delete modal to appear above payment modal
-            e.target.style.zIndex = '1060';
-            
-            // Adjust backdrop z-index
-            const backdrops = document.querySelectorAll('.modal-backdrop');
-            backdrops.forEach(backdrop => {
-                if (parseInt(backdrop.style.zIndex) === 1050) {
-                    backdrop.style.zIndex = '1059';
-                }
-            });
-        }
-    });
-
-    // When delete modal closes, restore z-index values
-    document.addEventListener('hidden.bs.modal', (e) => {
-        if (e.target.id === 'deletePaymentModal') {
-            // Reset z-index
-            e.target.style.zIndex = '';
-            
-            // Restore backdrop z-index for main modal
-            const backdrops = document.querySelectorAll('.modal-backdrop');
-            backdrops.forEach(backdrop => {
-                if (parseInt(backdrop.style.zIndex) === 1059) {
-                    backdrop.style.zIndex = '1050';
-                }
-            });
-        }
-    });
-}
-
     handlePaymentSubmit(e) {
+        // FIXED: Prevent multiple submissions with additional safeguards
         e.preventDefault();
         
+        // Additional check to prevent double submissions
         if (this.isSubmitting) {
+            console.log('Submission already in progress, ignoring duplicate click');
             return;
         }
         
-        const form = e.target;
-        const submitBtn = document.getElementById('paymentSubmitBtn');
-        const originalHtml = submitBtn.innerHTML;
-        const isEditing = document.getElementById('payment_id').value !== '';
-        
-        // Validate payment amount
-        const paymentAmount = parseFloat(document.getElementById('payment_amount').value) || 0;
-        
-        if (paymentAmount <= 0) {
-            this.showToast('Payment amount must be greater than zero', 'error');
-            return;
-        }
-        
-        // Validation: payment cannot exceed total invoice amount
-        const totalAmountText = document.getElementById('payment_total_amount_display').textContent;
-        const totalAmount = parseFloat(totalAmountText.replace(/[^\d.]/g, '')) || 0;
-        
-        if (paymentAmount > totalAmount + 0.01) {
-            this.showToast(`Payment amount cannot exceed total invoice amount (৳${totalAmount.toFixed(2)})`, 'error');
-            return;
-        }
-        
+        // Set submitting flag immediately
         this.isSubmitting = true;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
-        submitBtn.disabled = true;
         
-        const formData = new FormData(form);
+        console.log('Payment form submission started');
         
-        // Determine the correct method and URL based on whether we're editing or creating
-        const method = isEditing ? 'PUT' : 'POST';
-        let url = form.action;
-        
-        fetch(url, {
-            method: method,
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        // Add a small delay to ensure the flag is set before proceeding
+        setTimeout(() => {
+            const form = e.target;
+            const submitBtn = document.getElementById('paymentSubmitBtn');
+            
+            // Double-check the submitting flag
+            if (!submitBtn || submitBtn.disabled) {
+                console.log('Button already disabled, ignoring submission');
+                this.isSubmitting = false;
+                return;
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                this.showToast(data.message || (isEditing ? 'Payment updated successfully' : 'Payment processed successfully'), 'success');
-                
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('addPaymentModal'));
-                if (modal) {
-                    modal.hide();
-                    // Ensure backdrop is removed
-                    this.ensureBackdropRemoved();
+            
+            const originalHtml = submitBtn.innerHTML;
+            const isEditing = document.getElementById('payment_id').value !== '';
+            
+            // Validate payment amount
+            const paymentAmount = parseFloat(document.getElementById('payment_amount').value) || 0;
+            const dueAmountText = document.getElementById('payment_due_amount_display').textContent;
+            const dueAmount = dueAmountText ? parseFloat(dueAmountText.replace(/[^\d.]/g, '')) || 0 : 0;
+            
+            if (paymentAmount <= 0) {
+                this.showToast('Payment amount must be greater than zero', 'error');
+                this.isSubmitting = false;
+                return;
+            }
+            
+            if (paymentAmount > dueAmount + 0.01) {
+                this.showToast(`Payment amount cannot exceed due amount (৳${dueAmount.toFixed(2)})`, 'error');
+                this.isSubmitting = false;
+                return;
+            }
+            
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+            submitBtn.disabled = true;
+            
+            const formData = new FormData(form);
+            
+            fetch(form.action, {
+                method: isEditing ? 'PUT' : 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Payment submission response:', data);
                 
-                // Reload page after short delay
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                this.showToast(data.message || (isEditing ? 'Error updating payment' : 'Error processing payment'), 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            this.showToast(isEditing ? 'Network error occurred while updating payment' : 'Network error occurred while processing payment', 'error');
-        })
-        .finally(() => {
-            this.isSubmitting = false;
-            submitBtn.innerHTML = originalHtml;
-            submitBtn.disabled = false;
-        });
+                if (data.success) {
+                    this.showToast(data.message || 'Operation completed successfully', 'success');
+                    
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addPaymentModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                    
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    throw new Error(data.message || 'Operation failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.showToast(error.message || 'Network error occurred', 'error');
+            })
+            .finally(() => {
+                this.isSubmitting = false;
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalHtml;
+                    submitBtn.disabled = false;
+                }
+                console.log('Payment form submission completed');
+            });
+        }, 10); // Small delay to ensure flag is properly set
     }
 
     resetPaymentForm() {
         const form = document.getElementById('addPaymentForm');
         if (form) {
             form.reset();
+            const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
+            const invoiceId = document.getElementById('payment_invoice_id').value;
+            if (invoiceId) {
+                form.action = `${baseUrl}/admin/billing/record-payment/${invoiceId}`;
+            }
         }
         
-        // Reset hidden fields
         document.getElementById('payment_id').value = '';
         document.getElementById('payment_method_override').value = 'POST';
         
-        // Reset button
         const submitText = document.getElementById('paymentSubmitText');
         const submitBtn = document.getElementById('paymentSubmitBtn');
         if (submitText) submitText.textContent = 'Record Payment';
@@ -1426,12 +1085,9 @@ handleModalStacking() {
             submitBtn.classList.add('btn-success');
         }
         
-        // Clear validation
         const paymentAmountField = document.getElementById('payment_amount');
         if (paymentAmountField) {
             paymentAmountField.classList.remove('is-invalid');
-            paymentAmountField.removeEventListener('input', this.editPaymentAmountListener);
-            this.editPaymentAmountListener = null;
         }
         
         const paymentAmountError = document.getElementById('payment_amount_error');
@@ -1439,21 +1095,16 @@ handleModalStacking() {
             paymentAmountError.style.display = 'none';
         }
         
-        // Reset next_due field
         const nextDueField = document.getElementById('next_due');
         if (nextDueField) {
             nextDueField.value = '';
         }
         
-        // Switch back to payment form tab
         const paymentFormTab = document.getElementById('payment-form-tab');
         if (paymentFormTab) {
             const tab = new bootstrap.Tab(paymentFormTab);
             tab.show();
         }
-        
-        // Ensure backdrop is removed
-        this.ensureBackdropRemoved();
     }
 
     showToast(message, type = 'info') {
@@ -1465,19 +1116,36 @@ handleModalStacking() {
     }
 }
 
-// Initialize payment modal when document is ready
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize when DOM is ready
+function initializePaymentModal() {
     if (window.paymentModalInitialized) {
+        console.log('Payment modal already initialized, skipping...');
         return;
     }
     
     try {
+        const paymentModal = document.getElementById('addPaymentModal');
+        const paymentForm = document.getElementById('addPaymentForm');
+        
+        if (!paymentModal || !paymentForm) {
+            console.log('Payment modal elements not found, retrying...');
+            setTimeout(initializePaymentModal, 100);
+            return;
+        }
+        
         window.paymentModalInitialized = true;
         window.paymentModalInstance = new PaymentModal();
         console.log('Payment modal initialized successfully');
     } catch (error) {
         console.error('Error initializing payment modal:', error);
-        window.paymentModalInitialized = false;
+        setTimeout(initializePaymentModal, 500);
     }
-});
+}
+
+// Initialize only once
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePaymentModal);
+} else {
+    initializePaymentModal();
+}
 </script>

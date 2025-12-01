@@ -64,31 +64,16 @@ class BillingPeriod extends Model
      */
     public static function canAccessMonth($month)
     {
-        $monthDate = Carbon::createFromFormat('Y-m', $month);
-        $previousMonth = $monthDate->copy()->subMonth()->format('Y-m');
-        
-        // Current month is always accessible
-        if ($month === Carbon::now()->format('Y-m')) {
-            return true;
-        }
-        
-        // Future months are not accessible
+        // Disallow future months
         if ($month > Carbon::now()->format('Y-m')) {
             return false;
         }
-        
-        // For past months, check if previous month is closed
-        // First month ever is always accessible
-        $firstInvoice = \App\Models\Invoice::orderBy('issue_date')->first();
-        if ($firstInvoice) {
-            $firstMonth = Carbon::parse($firstInvoice->issue_date)->format('Y-m');
-            if ($month === $firstMonth) {
-                return true;
-            }
-        }
-        
-        // Check if previous month is closed
-        return self::isMonthClosed($previousMonth);
+
+        // Allow access to any current or past month. Previous business logic
+        // required the previous month to be closed before accessing the next
+        // month; to let admins view/close historical months directly we
+        // remove that restriction here.
+        return true;
     }
 
     /**

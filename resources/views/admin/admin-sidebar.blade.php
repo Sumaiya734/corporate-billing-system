@@ -69,41 +69,28 @@
         </div>
 
         
-        <!-- Reports & Analytics -->
-        <div class="dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#reportsMenu" aria-expanded="false">
+      <!-- Reports & Analytics -->
+   <div class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="collapse" data-bs-target="#reportsMenu" aria-expanded="{{ request()->routeIs('admin.reports.*') ? 'true' : 'false' }}" aria-controls="reportsMenu">
                 <i class="fas fa-chart-bar me-2"></i>Reports & Analytics
             </a>
-            <div class="collapse submenu" id="reportsMenu">
-                <a class="dropdown-item" href="#">
+            <div class="collapse submenu {{ request()->routeIs('admin.reports.*') ? 'show' : '' }}" id="reportsMenu">
+                <a class="dropdown-item {{ request()->routeIs('admin.reports.revenue') ? 'active' : '' }}" href="{{ route('admin.reports.revenue') }}">
                     <i class="fas fa-money-bill-wave me-2"></i>Revenue Reports
                 </a>
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item {{ request()->routeIs('admin.reports.financial-analytics') ? 'active' : '' }}" href="{{ route('admin.reports.financial-analytics') }}">
                     <i class="fas fa-chart-line me-2"></i>Financial Analytics
                 </a>
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item {{ request()->routeIs('admin.reports.customer-statistics') ? 'active' : '' }}" href="{{ route('admin.reports.customer-statistics') }}">
                     <i class="fas fa-users me-2"></i>Customer Statistics
                 </a>
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item {{ request()->routeIs('admin.reports.collection-reports') ? 'active' : '' }}" href="{{ route('admin.reports.collection-reports') }}">
                     <i class="fas fa-clipboard-list me-2"></i>Collection Reports
                 </a>
             </div>
         </div>
 
-        <!-- Notifications -->
-        <div class="dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#notificationsMenu" aria-expanded="false">
-                <i class="fas fa-envelope me-2"></i>Notifications
-            </a>
-            <div class="collapse submenu" id="notificationsMenu">
-                <a class="dropdown-item" href="#">
-                    <i class="fas fa-bullhorn me-2"></i>Announcements
-                </a>
-                <a class="dropdown-item" href="#">
-                    <i class="fas fa-envelope me-2"></i>Email Templates
-                </a>
-            </div>
-        </div>
+    
 
         <!-- Settings -->
         <div class="dropdown">

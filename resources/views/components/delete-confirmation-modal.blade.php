@@ -1,5 +1,5 @@
 <!-- Custom Delete Confirmation Modal -->
-<div id="deleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+<!-- <div id="deleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
     <div style="background: white; border-radius: 10px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); animation: modalSlideIn 0.2s ease-out;">
         <div style="text-align: center; margin-bottom: 20px;">
             <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #dc3545;"></i>
@@ -15,7 +15,7 @@
             </button>
         </div>
     </div>
-</div>
+</div> -->
 
 <style>
     /* Modal animation */
@@ -34,6 +34,10 @@
 <script>
     // Delete Modal Functions
     (function() {
+        // Prevent multiple initializations
+        if (window.deleteModalInitialized) return;
+        window.deleteModalInitialized = true;
+        
         const deleteModal = document.getElementById('deleteModal');
         const deleteModalMessage = document.getElementById('deleteModalMessage');
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
@@ -42,6 +46,7 @@
         let pendingDeleteAction = null;
         let pendingDeleteRow = null;
         let pendingDeleteCallback = null;
+        let isProcessing = false; // Add processing flag
         
         window.showDeleteModal = function(message, action, row, callback) {
             deleteModalMessage.innerHTML = message;
@@ -62,7 +67,10 @@
         };
         
         function executeDelete() {
-            if (!pendingDeleteAction) return;
+            // Prevent multiple clicks
+            if (isProcessing || !pendingDeleteAction) return;
+            
+            isProcessing = true;
             
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             
@@ -137,27 +145,50 @@
                 }
             })
             .finally(() => {
+                // Re-enable buttons
                 confirmDeleteBtn.disabled = false;
                 cancelDeleteBtn.disabled = false;
                 confirmDeleteBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Delete';
+                isProcessing = false; // Reset processing flag
             });
         }
         
-        // Modal event listeners
-        confirmDeleteBtn.addEventListener('click', executeDelete);
-        cancelDeleteBtn.addEventListener('click', hideDeleteModal);
+        // Modal event listeners with debounce
+        confirmDeleteBtn.addEventListener('click', function() {
+            if (!isProcessing) {
+                isProcessing = true;
+                setTimeout(() => isProcessing = false, 300);
+                executeDelete();
+            }
+        });
+        
+        cancelDeleteBtn.addEventListener('click', function() {
+            if (!isProcessing) {
+                isProcessing = true;
+                setTimeout(() => isProcessing = false, 300);
+                hideDeleteModal();
+            }
+        });
         
         // Close modal on ESC key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && deleteModal.style.display === 'flex') {
-                hideDeleteModal();
+                if (!isProcessing) {
+                    isProcessing = true;
+                    setTimeout(() => isProcessing = false, 300);
+                    hideDeleteModal();
+                }
             }
         });
         
         // Close modal on backdrop click
         deleteModal.addEventListener('click', function(e) {
             if (e.target === deleteModal) {
-                hideDeleteModal();
+                if (!isProcessing) {
+                    isProcessing = true;
+                    setTimeout(() => isProcessing = false, 300);
+                    hideDeleteModal();
+                }
             }
         });
     })();

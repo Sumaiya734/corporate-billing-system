@@ -228,19 +228,10 @@
                                 @endif
                             </td>
                             <td>
-                                @php
-                                    $canAccess = \App\Models\BillingPeriod::canAccessMonth($month->billing_month);
-                                @endphp
-                                @if($canAccess)
                                 <a href="{{ route('admin.billing.monthly-bills', ['month' => $month->billing_month]) }}" 
                                    class="btn btn-outline-primary btn-sm monthly-bill-btn">
                                     <i class="fas fa-file-invoice-dollar me-1"></i>Monthly Bills
                                 </a>
-                                @else
-                                <button class="btn btn-outline-secondary btn-sm" disabled title="Close previous month first">
-                                    <i class="fas fa-lock me-1"></i>Locked
-                                </button>
-                                @endif
                             </td>
                             <td>
                                 <!-- Details Button -->
