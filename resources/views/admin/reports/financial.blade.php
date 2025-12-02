@@ -22,7 +22,7 @@
 @endsection
 
 @section('content')
-<div class="container-fluid">
+<div class="page-body">
     @php
         use Illuminate\Support\Str;
         // Determine first billing month: use earliest of first invoice date and first customer registration

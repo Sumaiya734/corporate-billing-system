@@ -25,7 +25,7 @@
 @endsection
 
 @section('content')
-<div class="container-fluid">
+<div class="page-body">
     <!-- Collection Overview Cards -->
     <div class="row mb-4">
         <!-- Total Collected -->

@@ -3,7 +3,7 @@
 @section('title', 'Customer Profile - ' . $customer->name)
 
 @section('content')
-<div class="container-fluid p-4">
+<div class="page-body p-4">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>

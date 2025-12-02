@@ -6,7 +6,7 @@
 <!-- Toast Notification Container -->
 <div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 10000; min-width: 350px;"></div>
 
-<div class="container-fluid p-4">
+<div class="page-body p-4">
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>

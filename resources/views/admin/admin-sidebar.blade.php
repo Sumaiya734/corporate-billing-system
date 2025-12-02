@@ -1,7 +1,6 @@
 <!-- resources/views/admin/admin-sidebar.blade.php -->
 
-<!-- Sidebar -->
-<div class="col-md-3 col-lg-2 sidebar" id="sidebar">
+<!-- Sidebar fragment (included into layout's column) -->
     <div class="sidebar-brand">
         <h5 class="text-white mb-0"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h5>
     </div>
@@ -116,7 +115,6 @@
             </div>
         </div>
     </nav>
-</div>
 
 <style>
  

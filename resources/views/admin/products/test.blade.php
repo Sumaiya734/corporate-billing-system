@@ -3,7 +3,7 @@
 @section('title', 'Test product Creation')
 
 @section('content')
-<div class="container-fluid p-4">
+<div class="page-body p-4">
     <h1>Test product Creation</h1>
     
     <div class="card">

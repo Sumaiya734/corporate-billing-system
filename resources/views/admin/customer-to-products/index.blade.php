@@ -3,7 +3,7 @@
 @section('title', 'Customer Products')
 
 @section('content')
-<div class="container-fluid">
+<div class="page-body">
     <div class="row mb-4">
         <div class="col">
             <h1 class="page-title"><i class="fas fa-user-tag me-2"></i>Customer to Products</h1>

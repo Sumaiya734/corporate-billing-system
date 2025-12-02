@@ -22,7 +22,7 @@
 @endsection
 
 @section('content')
-<div class="container-fluid">
+<div class="page-body">
     <!-- Customer Overview Cards -->
     <div class="row mb-4">
         <!-- Total Customers -->

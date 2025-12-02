@@ -3,7 +3,33 @@
 @section('title', 'Product Management - Admin Dashboard')
 
 @section('content')
-<div class="container-fluid p-4">
+<div class="page-body p-4">
+    <!-- Font Awesome Test -->
+    <div style="display: none; position: fixed; top: 10px; right: 10px; z-index: 9999; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ccc;" id="faTest">
+        <i class="fa-solid fa-check" style="color: green;"></i> FA Loaded
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                const test = document.getElementById('faTest');
+                if (test) {
+                    const computed = window.getComputedStyle(test.querySelector('i'));
+                    const font = computed.fontFamily;
+                    if (font.includes('Font Awesome')) {
+                        console.log('✅ Font Awesome loaded:', font);
+                        test.style.display = 'block';
+                        setTimeout(() => test.style.display = 'none', 3000);
+                    } else {
+                        console.warn('❌ Font Awesome not detected');
+                        test.innerHTML = '<i class="fas fa-times" style="color: red;"></i> FA NOT Loaded';
+                        test.style.display = 'block';
+                    }
+                }
+            }, 1000);
+        });
+    </script>
+
     <!-- Toast container -->
     <div class="position-fixed top-0 end-0 p-3" style="z-index: 1080;">
         <div id="toastContainer"></div>
@@ -13,20 +39,20 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="h3 mb-0 page-title">
-                <i class="fas fa-cube me-2 text-primary"></i>Product Management
+                <span class="text-primary me-2">📦</span>Product Management
             </h2>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-outline-primary" id="exportBtn">
-                <i class="fas fa-download me-1"></i>Export
+                <span class="me-1">📥</span>Export
             </button>
             <a href="{{ route('admin.products.create') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-1"></i>Create Product
+                <span class="me-1">➕</span>Create Product
             </a>
         </div>
     </div>
 
-    <!-- Statistics Cards -->
+    <!-- Statistics Cards - Using EMOJI fallback -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card bg-primary text-white mb-4 stat-card-clickable" data-filter="all" data-action="filter" role="button" title="Click to view all products">
@@ -37,11 +63,11 @@
                             <h3 class="mb-0">{{ $stats['total_products'] ?? 0 }}</h3>
                         </div>
                         <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
-                            <i class="fas fa-cubes"></i>
+                            <span style="font-size: 1.5rem;">📦</span>
                         </div>
                     </div>
                     <p class="text-white mt-3 mb-0">
-                        <i class="fas fa-check-circle me-1"></i> All active products
+                        <span class="me-1">✅</span> All active products
                     </p>
                 </div>
             </div>
@@ -56,11 +82,11 @@
                             <h3 class="mb-0">{{ $stats['total_types'] ?? 0 }}</h3>
                         </div>
                         <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
-                            <i class="fas fa-tags"></i>
+                            <span style="font-size: 1.5rem;">🏷️</span>
                         </div>
                     </div>
                     <p class="text-white-muted mt-3 mb-0">
-                        <i class="fas fa-info-circle me-1"></i> Product categories available
+                        <span class="me-1">ℹ️</span> Product categories available
                     </p>
                 </div>
             </div>
@@ -75,11 +101,11 @@
                             <h3 class="mb-0" style="font-size: 1.5rem;">{{ $stats['most_popular'] ?? 'N/A' }}</h3>
                         </div>
                         <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
-                            <i class="fas fa-fire"></i>
+                            <span style="font-size: 1.5rem;">🔥</span>
                         </div>
                     </div>
                     <p class="text-white muted mt-3 mb-0">
-                        <i class="fas fa-chart-line me-1"></i> Top selling product
+                        <span class="me-1">📈</span> Top selling product
                     </p>
                 </div>
             </div>
@@ -94,11 +120,11 @@
                             <h3 class="mb-0">{{ $stats['active_customers'] ?? 'N/A' }}</h3>
                         </div>
                         <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
-                            <i class="fas fa-users"></i>
+                            <span style="font-size: 1.5rem;">👥</span>
                         </div>
                     </div>
                     <p class="text-white mt-3 mb-0">
-                        <i class="fas fa-arrow-up me-1"></i> Using products
+                        <span class="me-1">⬆️</span> Using products
                     </p>
                 </div>
             </div>
@@ -109,17 +135,11 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="card-title mb-0">
-                <i class="fas fa-list me-2"></i>All Products
+                <span class="me-2">📋</span>All Products
             </h5>
 
             <div class="d-flex gap-2 align-items-center">
                 <input type="text" class="form-control form-control-sm search-box" placeholder="Search products..." style="min-width: 200px;">
-                <div class="btn-group">
-                    <!-- <button class="btn btn-sm btn-outline-secondary filter-btn active" data-type="all">All</button>
-                    <button class="btn btn-sm btn-outline-secondary filter-btn" data-type="regular">Regular</button>
-                    <button class="btn btn-sm btn-outline-secondary filter-btn" data-type="special">Special</button> -->
-                    <!-- <input type="text" class="form-control form-control-sm search-box" placeholder="Filter products..." style="min-width: 200px;"> -->
-                </div>
             </div>
         </div>
 
@@ -149,7 +169,7 @@
                             <td>
                                 <div class="d-flex align-items-center">
                                     <div class="product-icon me-3 {{ $product->isRegular() ? 'bg-primary' : 'bg-warning' }}">
-                                        <i class="fas {{ $product->isRegular() ? 'fa-wifi' : 'fa-star' }}"></i>
+                                        <span>{{ $product->isRegular() ? '📶' : '⭐' }}</span>
                                     </div>
                                     <div>
                                         <h6 class="mb-0">{{ $product->name }}</h6>
@@ -184,14 +204,14 @@
                                             data-id="{{ $product->p_id }}" 
                                             data-name="{{ $product->name }}"
                                             title="Edit Product">
-                                        <i class="fas fa-edit"></i>
+                                        <span>✏️</span>
                                         <span class="d-none d-md-inline ms-1">Edit</span>
                                     </button>
                                     <button type="button" class="btn btn-outline-danger delete-product" 
                                             data-id="{{ $product->p_id }}" 
                                             data-name="{{ $product->name }}"
                                             title="Delete Product">
-                                        <i class="fas fa-trash"></i>
+                                        <span>🗑️</span>
                                         <span class="d-none d-md-inline ms-1">Delete</span>
                                     </button>
                                 </div>
@@ -299,6 +319,11 @@
 
 @section('styles')
 <style>
+    /* Font Awesome backup styles */
+    .fa-icon-fallback {
+        font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    }
+    
     .product-icon {
         width: 40px;
         height: 40px;
@@ -576,7 +601,7 @@
                     <div class="card-body">
                         <div class="text-center mb-3">
                             <div class="avatar-lg bg-success rounded-circle text-white d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                                <i class="fas fa-fire fa-2x"></i>
+                                <span style="font-size: 2rem;">🔥</span>
                             </div>
                             <h4>${product.name}</h4>
                             <span class="badge bg-${product.type?.name === 'regular' ? 'primary' : 'warning'}">${product.type?.name || 'N/A'}</span>
@@ -611,16 +636,16 @@
             const content = `
                 <div class="text-center py-4">
                     <div class="avatar-lg bg-info rounded-circle text-white d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                        <i class="fas fa-users fa-2x"></i>
+                        <span style="font-size: 2rem;">👥</span>
                     </div>
                     <h2 class="mb-2">${customerCount}</h2>
                     <p class="text-muted mb-4">Active customers currently using products</p>
                     <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
+                        <span class="me-2">ℹ️</span>
                         These customers have active product subscriptions
                     </div>
                     <a href="{{ route('admin.customers.index') }}" class="btn btn-primary">
-                        <i class="fas fa-users me-2"></i>View All Customers
+                        <span class="me-2">👥</span>View All Customers
                     </a>
                 </div>
             `;
@@ -711,7 +736,7 @@
                 // Disable button temporarily
                 editBtn.disabled = true;
                 const originalHtml = editBtn.innerHTML;
-                editBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                editBtn.innerHTML = '<span class="me-1">⏳</span>';
                 
                 openEditModal(pId, productName).finally(() => {
                     editBtn.disabled = false;
@@ -768,7 +793,7 @@
                 console.error('Error loading product:', err);
                 loadingEl.innerHTML = `
                     <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span class="me-2">⚠️</span>
                         ${err.message || 'Failed to load product details. Please try again.'}
                     </div>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -904,6 +929,6 @@
         console.log('📊 Edit buttons found:', document.querySelectorAll('.edit-product').length);
         console.log('📊 Delete buttons found:', document.querySelectorAll('.delete-product').length);
 
-    })();
+    });
 </script>
 @endsection

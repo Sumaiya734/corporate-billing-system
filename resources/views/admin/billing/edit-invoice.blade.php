@@ -3,7 +3,7 @@
 @section('title', 'Edit Invoice - Admin Dashboard')
 
 @section('content')
-<div class="container-fluid p-4">
+<div class="page-body p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="h3 mb-0 page-title">

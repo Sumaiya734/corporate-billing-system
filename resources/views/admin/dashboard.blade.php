@@ -4,218 +4,258 @@
 
 @section('content')
 
+<style>
+/* ------------------------------ */
+/*  PREMIUM ADVANCED THEME STYLES */
+/* ------------------------------ */
 
-            <!-- Main Content -->
-            
-                    <!-- Page Header -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2 class="h3 mb-0 text-dark">
-                            <i class="fas fa-tachometer-alt me-2 text-primary"></i>Dashboard Overview
-                        </h2>
-                        <div class="btn-group">
-                            <button class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-sync-alt me-1"></i>Refresh
-                            </button>
-                            <button class="btn btn-outline-success btn-sm">
-                                <i class="fas fa-download me-1"></i>Export
-                            </button>
-                        </div>
-                    </div>
+/* Color Palette (Soft, Eye-Soothing) */
+:root {
+    --soft-blue: #6EA8FE;
+    --soft-purple: #A78BFA;
+    --soft-cyan: #67E8F9;
+    --soft-lavender: #C4B5FD;
+    --soft-green: #86EFAC;
+    --soft-orange: #FDBA74;
+    --soft-pink: #F9A8D4;
+    --dark-text: #1f2937;
+}
 
-                    <!-- Statistics Cards -->
-                    <div class="row g-4 mb-4">
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card text-white bg-primary">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h5 class="card-title">Total Customers</h5>
-                                            <h2 class="mb-0">{{ $totalCustomers ?? 0 }}</h2>
-                                            <small>Active subscribers</small>
-                                        </div>
-                                        <div class="display-4">
-                                            <i class="fas fa-users"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card text-white bg-success">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h5 class="card-title">Monthly Revenue</h5>
-                                            <h2 class="mb-0">৳{{ number_format($monthlyRevenue ?? 0, 2) }}</h2>
-                                            <small>Current month</small>
-                                        </div>
-                                        <div class="display-4">
-                                            <i class="fas fa-money-bill-wave"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card text-white bg-warning">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h5 class="card-title">Pending Bills</h5>
-                                            <h2 class="mb-0">{{ $pendingBills ?? 0 }}</h2>
-                                            <small>Awaiting payment</small>
-                                        </div>
-                                        <div class="display-4">
-                                            <i class="fas fa-clock"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card text-white bg-info">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h5 class="card-title">Active products</h5>
-                                            <h2 class="mb-0">{{ $activeproducts ?? 0 }}</h2>
-                                            <small>Total products</small>
-                                        </div>
-                                        <div class="display-4">
-                                            <i class="fas fa-cube"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+/* Smooth fade animation */
+.fade-in {
+    animation: fadeIn 0.9s ease forwards;
+    opacity: 0;
+}
+@keyframes fadeIn {
+    to { opacity: 1; }
+}
 
-                    <!-- Additional Stats -->
-                    <div class="row g-4">
-                        <div class="col-lg-4 col-md-6">
-                            <div class="card stat-card bg-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">Overdue Bills</h6>
-                                            <h3 class="text-danger">{{ $overdueBills ?? 0 }}</h3>
-                                        </div>
-                                        <div class="text-danger">
-                                            <i class="fas fa-exclamation-triangle fa-2x"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-4 col-md-6">
-                            <div class="card stat-card bg-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">Paid Invoices</h6>
-                                            <h3 class="text-success">{{ $paidInvoices ?? 0 }}</h3>
-                                        </div>
-                                        <div class="text-success">
-                                            <i class="fas fa-check-circle fa-2x"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-4 col-md-6">
-                            <div class="card stat-card bg-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">New Customers</h6>
-                                            <h3 class="text-primary">{{ $newCustomers ?? 0 }}</h3>
-                                        </div>
-                                        <div class="text-primary">
-                                            <i class="fas fa-user-plus fa-2x"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+/* Soft slide animation */
+.slide-up {
+    animation: slideUp 0.8s ease forwards;
+    opacity: 0;
+    transform: translateY(20px);
+}
+@keyframes slideUp {
+    to { opacity: 1; transform: translateY(0); }
+}
 
-                    <!-- Quick Actions -->
-                    <div class="row mt-5">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header bg-white">
-                                    <h5 class="card-title mb-0">
-                                        <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-lg-3 col-md-6">
-                                            <a href="{{ route('admin.customers.create') }}" class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center py-3">
-                                                <i class="fas fa-user-plus fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Add Customer</strong>
-                                                    <br>
-                                                    <small>Register new customer</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-lg-3 col-md-6">
-                                            <a href="{{ route('admin.billing.billing-invoices') }}" class="btn btn-outline-success w-100 d-flex align-items-center justify-content-center py-3">
-                                                <i class="fas fa-file-invoice-dollar fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Generate Bills</strong>
-                                                    <br>
-                                                    <small>Create monthly invoices</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-lg-3 col-md-6">
-                                            <a href="#" class="btn btn-outline-info w-100 d-flex align-items-center justify-content-center py-3">
-                                                <i class="fas fa-chart-bar fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>View Reports</strong>
-                                                    <br>
-                                                    <small>Financial analytics</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-lg-3 col-md-6">
-                                            <a href="#" class="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center py-3">
-                                                <i class="fas fa-bell fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Send Alerts</strong>
-                                                    <br>
-                                                    <small>Payment reminders</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+/* Animated gradient cards */
+.advanced-card {
+    border-radius: 18px;
+    padding: 28px;
+    color: #fff;
+    border: none;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    transition: 0.35s ease;
+}
+
+.advanced-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.12);
+}
+
+.gradient-1 { background: linear-gradient(135deg, var(--soft-blue), var(--soft-purple)); }
+.gradient-2 { background: linear-gradient(135deg, var(--soft-green), var(--soft-cyan)); }
+.gradient-3 { background: linear-gradient(135deg, var(--soft-orange), #F59E0B); }
+.gradient-4 { background: linear-gradient(135deg, var(--soft-pink), var(--soft-lavender)); }
+
+.icon-bg {
+    position: absolute;
+    right: -15px;
+    top: -15px;
+    font-size: 90px;
+    opacity: 0.18;
+}
+
+/* Clean white cards */
+.glass-card {
+    border-radius: 16px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.35);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    transition: 0.3s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+}
+
+/* Quick Action Buttons */
+.quick-btn {
+    border-radius: 14px !important;
+    padding: 18px !important;
+    font-weight: 600;
+    transition: 0.25s ease;
+    background: rgba(255,255,255,0.85);
+    border: 2px solid #e5e7eb;
+}
+
+.quick-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.10);
+    border-color: transparent;
+}
+
+.quick-btn i {
+    font-size: 32px;
+    margin-right: 14px;
+}
+</style>
+
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-4 fade-in">
+    <h2 class="fw-bold text-dark">
+        <i class="fas fa-tachometer-alt text-primary me-2"></i> Dashboard Overview
+    </h2>
+
+    <div>
+        <button class="btn btn-light border me-2 shadow-sm">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <button class="btn btn-primary shadow-sm">
+            <i class="fas fa-download"></i> Export
+        </button>
+    </div>
+</div>
+
+
+<!-- GRADIENT STAT CARDS -->
+<div class="row g-4 mb-4">
+
+    <div class="col-xl-3 col-md-6 slide-up" style="animation-delay: .1s">
+        <div class="advanced-card gradient-1">
+            <div class="icon-bg"><i class="fas fa-users"></i></div>
+            <h6>Total Customers</h6>
+            <h2>{{ $totalCustomers ?? 0 }}</h2>
+            <small>Active subscribers</small>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 slide-up" style="animation-delay: .2s">
+        <div class="advanced-card gradient-2">
+            <div class="icon-bg"><i class="fas fa-money-bill-wave"></i></div>
+            <h6>Monthly Revenue</h6>
+            <h2>৳{{ number_format($monthlyRevenue ?? 0, 2) }}</h2>
+            <small>Current month</small>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 slide-up" style="animation-delay: .3s">
+        <div class="advanced-card gradient-3">
+            <div class="icon-bg"><i class="fas fa-clock"></i></div>
+            <h6>Pending Bills</h6>
+            <h2>{{ $pendingBills ?? 0 }}</h2>
+            <small>Awaiting payment</small>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 slide-up" style="animation-delay: .4s">
+        <div class="advanced-card gradient-4">
+            <div class="icon-bg"><i class="fas fa-cube"></i></div>
+            <h6>Active Products</h6>
+            <h2>{{ $activeproducts ?? 0 }}</h2>
+            <small>Total products</small>
+        </div>
+    </div>
+
+</div>
+
+
+<!-- CLEAN WHITE STATS -->
+<div class="row g-4 mb-4">
+
+    <div class="col-lg-4 col-md-6 slide-up" style="animation-delay: .5s">
+        <div class="glass-card p-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted">Overdue Bills</h6>
+                    <h3 class="text-danger fw-bold">{{ $overdueBills ?? 0 }}</h3>
                 </div>
-            
-        
-    
+                <i class="fas fa-exclamation-triangle text-danger fa-2x"></i>
+            </div>
+        </div>
+    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Prevent Bootstrap click toggle (we're using hover)
-    document.querySelectorAll('.sidebar .dropdown-toggle').forEach(toggle => {
-        toggle.addEventListener('click', e => e.preventDefault());
-    });
+    <div class="col-lg-4 col-md-6 slide-up" style="animation-delay: .6s">
+        <div class="glass-card p-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted">Paid Invoices</h6>
+                    <h3 class="text-success fw-bold">{{ $paidInvoices ?? 0 }}</h3>
+                </div>
+                <i class="fas fa-check-circle text-success fa-2x"></i>
+            </div>
+        </div>
+    </div>
 
-    // Active link highlight
-    const currentPath = window.location.pathname;
-    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-        if (link.getAttribute('href') === currentPath) {
-            link.classList.add('active');
-        }
-    });
-});
-</script>
+    <div class="col-lg-4 col-md-6 slide-up" style="animation-delay: .7s">
+        <div class="glass-card p-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted">New Customers</h6>
+                    <h3 class="text-primary fw-bold">{{ $newCustomers ?? 0 }}</h3>
+                </div>
+                <i class="fas fa-user-plus text-primary fa-2x"></i>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<!-- QUICK ACTIONS -->
+<div class="glass-card mt-4 slide-up" style="animation-delay: .8s">
+    <div class="card-header bg-white border-0">
+        <h5 class="fw-bold mb-0 text-dark"><i class="fas fa-bolt text-warning me-2"></i> Quick Actions</h5>
+    </div>
+
+    <div class="card-body">
+        <div class="row g-3">
+
+            <div class="col-lg-3 col-md-6">
+                <a href="{{ route('admin.customers.create') }}" class="quick-btn w-100 d-flex align-items-center">
+                    <i class="fas fa-user-plus text-primary"></i>
+                    <div>
+                        Add Customer<br><small class="text-muted">Register new customer</small>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <a href="{{ route('admin.billing.billing-invoices') }}" class="quick-btn w-100 d-flex align-items-center">
+                    <i class="fas fa-file-invoice-dollar text-success"></i>
+                    <div>
+                        Generate Bills<br><small class="text-muted">Create invoices</small>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <a href="#" class="quick-btn w-100 d-flex align-items-center">
+                    <i class="fas fa-chart-line text-info"></i>
+                    <div>
+                        View Reports<br><small class="text-muted">Financial insights</small>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <a href="#" class="quick-btn w-100 d-flex align-items-center">
+                    <i class="fas fa-bell text-warning"></i>
+                    <div>
+                        Send Alerts<br><small class="text-muted">Payment reminders</small>
+                    </div>
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>
 
 @endsection

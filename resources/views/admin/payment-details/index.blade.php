@@ -3,7 +3,7 @@
 @section('title', 'Payment Details')
 
 @section('content')
-<div class="container-fluid">
+<div class="page-body">
     <!-- Page Header -->
     <div class="page-header mb-4">
         <div class="row align-items-center">

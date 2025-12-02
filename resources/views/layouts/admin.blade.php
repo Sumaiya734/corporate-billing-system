@@ -1,700 +1,369 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@yield('title', 'Dashboard') - Nanosoft Billing</title>
+
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="base-url" content="{{ url('/') }}">
-    <title>@yield('title', 'Dashboard') - Nanosoft Billing</title>
-    
-    <!-- Font Awesome: prefer local copy if present, else CDN -->
-    @php 
-        $faLocal = public_path('vendor/fontawesome/css/all.min.css'); 
-        $faLocalExists = file_exists($faLocal);
-    @endphp
-    @if ($faLocalExists)
-        <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
-    @else
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    @endif
-    <!-- Ensure fonts load using absolute paths when serving locally -->
-    @if ($faLocalExists)
-    <style>
-        /* Override @font-face sources to absolute paths so browser requests match server files */
-        @font-face { font-family: "Font Awesome 6 Brands"; font-style: normal; font-weight: 400; font-display: swap; src: url('/vendor/fontawesome/webfonts/fa-brands-400.woff2') format('woff2'), url('/vendor/fontawesome/webfonts/fa-brands-400.ttf') format('truetype'); }
-        @font-face { font-family: "Font Awesome 6 Free"; font-style: normal; font-weight: 400; font-display: swap; src: url('/vendor/fontawesome/webfonts/fa-regular-400.woff2') format('woff2'), url('/vendor/fontawesome/webfonts/fa-regular-400.ttf') format('truetype'); }
-        @font-face { font-family: "Font Awesome 6 Free"; font-style: normal; font-weight: 900; font-display: swap; src: url('/vendor/fontawesome/webfonts/fa-solid-900.woff2') format('woff2'), url('/vendor/fontawesome/webfonts/fa-solid-900.ttf') format('truetype'); }
-        /* Back-compat names used in some CSS variants */
-        @font-face { font-family: "Font Awesome 5 Free"; font-style: normal; font-weight: 900; font-display: swap; src: url('/vendor/fontawesome/webfonts/fa-solid-900.woff2') format('woff2'), url('/vendor/fontawesome/webfonts/fa-solid-900.ttf') format('truetype'); }
-        @font-face { font-family: "Font Awesome 5 Free"; font-style: normal; font-weight: 400; font-display: swap; src: url('/vendor/fontawesome/webfonts/fa-regular-400.woff2') format('woff2'), url('/vendor/fontawesome/webfonts/fa-regular-400.ttf') format('truetype'); }
-        @font-face { font-family: "FontAwesome"; font-style: normal; font-weight: 400; font-display: swap; src: url('/vendor/fontawesome/webfonts/fa-v4compatibility.woff2') format('woff2'), url('/vendor/fontawesome/webfonts/fa-v4compatibility.ttf') format('truetype'); }
-    </style>
-    @endif
-    
+
+    <!-- FONT AWESOME (single canonical CDN) -->
+    <!-- Use a single version only to avoid conflicts -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous" referrerpolicy="no-referrer"/>
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <!-- DataTables CSS -->
     <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-    
-    @vite(['resources/sass/app.scss', 'resources/css/admin.css', 'resources/js/app.js'])
-   <style>
-    :root {
-        --primary-color: #3498db;
-        --secondary-color: #2c3e50;
-        --accent-color: #2980b9;
-        --success-color: #27ae60;
-        --warning-color: #f39c12;
-        --danger-color: #e74c3c;
-        --light-bg: #f8f9fa;
-        --sidebar-width: 280px;
-        --sidebar-collapsed-width: 80px;
-    }
-    
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: var(--light-bg);
-        overflow-x: hidden;
-        color: #2b2d42 !important; /* Ensure default text is readable */
-    }
-    
-    /* FIX: Ensure all text in statistic cards is visible */
-    .stat-card {
-        color: #ffffff !important; /* Force white text on colored backgrounds */
-    }
-    
-    .stat-card * {
-        color: inherit !important; /* Force inherit for all child elements */
-    }
-    
-    .stat-card .text-muted {
-        color: rgba(255, 255, 255, 0.8) !important;
-    }
-    
-    .stat-card .text-success {
-        color: #ffffff !important;
-    }
-    
-    /* Fix Font Awesome icon display */
-    .fa, .fas, .far, .fal, .fab, .fa-solid, .fa-regular, .fa-light, .fa-brands {
-        font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro", "FontAwesome", sans-serif !important;
-        font-weight: 900 !important;
-        font-style: normal !important;
-        display: inline-block !important;
-        line-height: 1 !important;
-    }
-    
-    /* Ensure icons are properly sized and visible */
-    .product-icon i,
-    .icon-shape i {
-        font-size: 1rem !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
 
-    /* Stat card icons should be large (fa-2x) - 2rem */
-    .stat-card i {
-        font-size: 2rem !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
+    <!-- Chart.js (for analytics) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    /* Card header icons should be medium (fa-lg) - 1.25rem */
-    .card-header i {
-        font-size: 1.25rem !important;
-        display: inline-block !important;
-        vertical-align: middle !important;
-    }
+    <!-- Vite / App assets (keep if your project uses vite) -->
+    @if (app()->environment('local') || app()->environment('development'))
+        {{-- during development --}}
+        @vite(['resources/sass/app.scss', 'resources/css/admin.css', 'resources/js/app.js'])
+    @else
+        {{-- in production you might compile assets differently --}}
+        @vite(['resources/sass/app.scss', 'resources/css/admin.css', 'resources/js/app.js'])
+    @endif
 
-    /* Page Header Styles */
-    .page-header {
-        background: white;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        border-bottom: 2px solid #f0f0f0;
-    }
+    <style>
+        /* ---------------------------
+           Soft Blue / White Theme A
+           --------------------------- */
+        :root{
+            --primary: #3A7BD5;
+            --primary-700: #2F63B8;
+            --secondary: #2C3E50;
+            --muted: #6b7280;
+            --bg: #f7fafc;
+            --card-radius: 14px;
+            --glass: rgba(255,255,255,0.85);
+        }
 
-    .page-header-content {
-        flex: 1;
-    }
+        html,body{height:100%;}
+        body{
+            margin:0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: #1f2937;
+            -webkit-font-smoothing:antialiased;
+        }
 
-    .page-header-actions {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        align-items: flex-start;
-    }
+        /* NAVBAR */
+        .navbar-brand { font-weight:700; color:var(--primary); display:flex; gap:.6rem; align-items:center; }
+        .navbar { background: #ffffff; box-shadow: 0 6px 18px rgba(15,23,42,0.06); padding: .6rem 1rem; }
 
-    .page-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 60px;
-        height: 60px;
-        background: rgba(52, 152, 219, 0.1);
-        border-radius: 12px;
-    }
-
-    .page-title {
-        color: #2b2d42;
-        font-weight: 700;
-        margin: 0;
-    }
-
-    .breadcrumb-dark {
-        background: transparent;
-        padding: 0;
-        margin: 0;
-    }
-
-    .breadcrumb-dark .breadcrumb-item {
-        color: #6c757d;
-    }
-
-    .breadcrumb-dark .breadcrumb-item.active {
-        color: #2b2d42;
-        font-weight: 600;
-    }
-
-    .breadcrumb-dark .breadcrumb-item a {
-        color: #3498db;
-        text-decoration: none;
-    }
-
-    .breadcrumb-dark .breadcrumb-item a:hover {
-        color: #2980b9;
-        text-decoration: underline;
-    }
-    
-    @media (max-width: 768px) {
+        /* TOP AREA */
         .page-header {
-            padding: 16px;
+            background: #fff;
+            border-radius: var(--card-radius);
+            padding: 20px;
+            box-shadow: 0 6px 18px rgba(12, 15, 29, 0.04);
+            margin-bottom: 1.25rem;
+            border-left: 4px solid rgba(58, 123, 213, 0.08);
         }
 
-        .page-header-actions {
-            justify-content: flex-start;
-            width: 100%;
-            margin-top: 16px;
-        }
-
-        .d-flex.justify-content-between {
-            flex-direction: column;
-        }
-    }
-    
-    .sidebar {
-        background: #2c3e50;
-        min-height: 100vh;
-        padding: 0;
-        transition: all 0.3s;
-        border-right: 3px solid #2c3e50;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .sidebar .nav-link {
-        color: #ecf0f1;
-        padding: 12px 20px;
-        border-bottom: 1px solid #34495e;
-        border-left: 3px solid transparent;
-        border-right: none;
-        margin: 0;
-        transition: all 0.3s;
-        display: block;
-        width: 100%;
-    }
-
-    .sidebar .nav-link:hover {
-        background: #34495e;
-        color: #3498db;
-        padding-left: 25px;
-        border-left: 3px solid #3498db;
-    }
-
-    .sidebar .nav-link.active {
-        background: #3498db;
-        color: white;
-        border-left: 4px solid #2980b9;
-        border-right: none;
-    }
-
-    .sidebar .dropdown-menu {
-        background: #34495e;
-        border: none;
-        border-radius: 0;
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        box-shadow: none;
-    }
-
-    .sidebar .dropdown-item {
-        color: #ecf0f1;
-        padding: 10px 20px 10px 40px;
-        border-bottom: 1px solid #2c3e50;
-        margin: 0;
-        width: 100%;
-    }
-
-    .sidebar .dropdown-item:hover {
-        background: #3498db;
-        color: white;
-        border-bottom: 1px solid #3498db;
-    }
-
-    .sidebar .dropdown-item:last-child {
-        border-bottom: none;
-    }
-
-    .sidebar-brand {
-        padding: 20px;
-        background: #34495e;
-        border-bottom: 1px solid #2c3e50;
-        margin: 0;
-    }
-
-    .main-content {
-        background: #f8f9fa;
-        min-height: 100vh;
-        padding: 0;
-    }
-
-    /* Cards */
-    .stat-card {
-        border-radius: 15px;
-        transition: all 0.3s ease;
-        border: none;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        background: white;
-        overflow: hidden;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-    }
-    
-    .stat-card .card-body {
-        padding: 1.5rem;
-    }
-    
-    /* Gradient backgrounds for statistic cards */
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-    }
-
-    .bg-gradient-success {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
-        color: white !important;
-    }
-
-    .bg-gradient-warning {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
-        color: white !important;
-    }
-
-    .bg-gradient-info {
-        background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%) !important;
-        color: white !important;
-    }
-
-    /* Custom Button Styles */
-    .btn-primary {
-        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-        border: none;
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
-    }
-    
-    /* Table Styles */
-    .table {
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-    
-    .table th {
-        background: linear-gradient(135deg, var(--secondary-color), #34495e);
-        color: white;
-        border: none;
-        padding: 15px;
-        font-weight: 600;
-    }
-    
-    .table td {
-        color: #2b2d42;
-        padding: 12px 15px;
-        vertical-align: middle;
-        border-color: #f1f3f4;
-    }
-    
-    /* Progress Bars */
-    .progress {
-        border-radius: 10px;
-        height: 20px;
-        background: #f1f3f4;
-    }
-    
-    .progress-bar {
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.75rem;
-    }
-    
-    /* Mobile Responsive */
-    @media (max-width: 767.98px) {
+        /* SIDEBAR */
         .sidebar {
-            transform: translateX(-100%);
-            width: 85%;
-            max-width: 300px;
+            background: linear-gradient(180deg, #22334a 0%, #263a4f 100%);
+            color: #ecf2ff;
+            min-height: 100vh;
+            padding: 0;
+            transition: transform .28s ease;
+            position: relative;
         }
-        
-        .sidebar.show {
-            transform: translateX(0);
+        @media (min-width: 992px) {
+            /* Keep a consistent fixed width on large screens but use col-lg-auto so
+               the grid doesn't allocate a percentage column AND a fixed width. */
+            .sidebar { width: 250px; }
+            .main-content { padding: 24px; }
         }
-        
-        .main-content {
-            margin-left: 0 !important;
-            width: 100%;
+        .sidebar .sidebar-brand { padding: 20px; background: rgba(0,0,0,0.06); display:flex; align-items:center; gap:12px; }
+        .sidebar .sidebar-brand img { height:36px; width:auto; border-radius:8px; }
+        .sidebar .nav-link{
+            color: rgba(236,242,255,0.92);
+            padding: 12px 18px;
+            border-left: 4px solid transparent;
+            transition: all .22s ease;
+            display:flex;
+            gap:.8rem;
+            align-items:center;
         }
-        
-        .overlay.show {
-            display: block;
-            opacity: 1;
+        .sidebar .nav-link i { color: rgba(255,255,255,0.9); min-width:22px; text-align:center; font-size:1.05rem; }
+        .sidebar .nav-link:hover {
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            padding-left: 22px;
+            border-left: 4px solid var(--primary);
+            text-decoration:none;
         }
-    }
-    
-    @media (min-width: 768px) {
-        .sidebar-collapsed .sidebar {
-            width: var(--sidebar-collapsed-width);
+        .sidebar .nav-link.active {
+            background: linear-gradient(90deg, rgba(58,123,213,0.12), rgba(58,123,213,0.06));
+            color: #fff;
+            border-left: 4px solid var(--primary);
         }
-        
-        .sidebar-collapsed .sidebar .nav-link span,
-        .sidebar-collapsed .sidebar .dropdown-toggle::after {
-            display: none;
+        .sidebar .dropdown-menu { background: transparent; border: none; box-shadow:none; padding:0; }
+        .sidebar .dropdown-item { color: rgba(236,242,255,0.95); padding-left: 46px; border-radius: 0; }
+        .sidebar .dropdown-item:hover { background: rgba(255,255,255,0.03); color: #fff; }
+
+        /* MAIN CONTENT */
+        /* Use Bootstrap grid for layout spacing; remove fixed margin-left which caused double offset
+           when the sidebar is rendered as a grid column. Keep only padding here so content aligns
+           with the sidebar column naturally. */
+        .main-content { padding: 24px; margin-left: 0; transition: margin-left .28s ease; }
+
+        /* CARDS & STAT */
+        .stat-card {
+            border-radius: 12px;
+            overflow: hidden;
+            border: none;
+            transition: transform .28s ease, box-shadow .28s ease;
+            background: linear-gradient(180deg, #fff, #fbfdff);
+            box-shadow: 0 8px 30px rgba(40,45,62,0.04);
         }
-        
-        .sidebar-collapsed .sidebar .nav-link {
-            justify-content: center;
-            padding: 15px;
-            margin: 2px 10px;
+        .stat-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 18px 40px rgba(26,32,44,0.07);
         }
-        
-        .sidebar-collapsed .sidebar .nav-link i {
-            margin-right: 0;
-            font-size: 1.3rem;
+        .stat-card .card-body { padding: 20px; }
+        .stat-title { font-size: .90rem; color: var(--muted); margin-bottom: .4rem; font-weight:600; }
+        .stat-value { font-size: 28px; font-weight:700; color: var(--secondary); }
+
+        /* Gradient badges (for stat cards) */
+        .bg-gradient-primary { background: linear-gradient(135deg, #6EA8FE 0%, #3A7BD5 100%); color: #fff; }
+        .bg-gradient-success { background: linear-gradient(135deg, #86EFAC 0%, #34D399 100%); color: #fff; }
+        .bg-gradient-warning { background: linear-gradient(135deg, #FFD27A 0%, #FB9A64 100%); color: #fff; }
+        .bg-gradient-info    { background: linear-gradient(135deg, #A5F3FC 0%, #67E8F9 100%); color:#fff; }
+
+        .stat-icon {
+            font-size: 36px;
+            opacity: .95;
         }
-        
-        .sidebar-collapsed .main-content {
-            margin-left: var(--sidebar-collapsed-width);
+
+        /* small animations */
+        .fade-in { animation: fadeIn .6s ease both; }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none; } }
+
+        /* TABLE & DATATABLES */
+        .table thead th { background: #f1f5f9; border-bottom: none; font-weight:700; color: #2b2d42; }
+        .table tbody td { vertical-align: middle; border-top: 1px solid #eff3f6; }
+
+        /* overlay (mobile) */
+        .overlay {
+            display:none;
+            position:fixed;
+            inset:0;
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            transition: opacity .2s ease;
         }
-        
-        .sidebar-collapsed .sidebar-brand h5 {
-            display: none;
-        }
-    }
-    
-    /* Overlay for mobile */
-    .overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 999;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        backdrop-filter: blur(5px);
-    }
-    
-    .overlay.show {
-        display: block;
-        opacity: 1;
-    }
-    
-    /* Loading Animation */
-    .loading-spinner {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 3px solid rgba(255,255,255,.3);
-        border-radius: 50%;
-        border-top-color: #fff;
-        animation: spin 1s ease-in-out infinite;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    /* Notification Badge */
-    .notification-badge {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        background: var(--danger-color);
-        color: white;
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        font-size: 0.7rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-</style>
+        .overlay.show { display:block; opacity:1; }
+
+        /* small helpers */
+        .btn-ghost { background: transparent; border: 1px solid rgba(58,123,213,0.08); color:var(--primary); border-radius:10px; padding:8px 12px; }
+        .notification-badge { position:absolute; top:10px; right:12px; background: #e74c3c; color:#fff; border-radius:50%; width:18px; height:18px; font-size:.72rem; display:flex; align-items:center; justify-content:center; }
+
+        /* responsive adjustments */
+        @media (max-width: 991.98px) {
+                .sidebar { position: fixed; left: -100%; width: 80%; z-index: 1100; }
+                .sidebar.show { left:0; }
+                .main-content { margin-left: 0 !important; }
+                .overlay { display:block; opacity:0; }
+            }
+
+            /* Prevent admin layout stacking on large screens while resources load */
+            @media (min-width: 992px) {
+                .admin-layout-row { flex-wrap: nowrap; }
+                .main-content { flex: 1 1 auto; min-width: 0; }
+            }
+    </style>
+
+    @stack('styles')
 </head>
 <body>
     <!-- Top Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container-fluid">
-            <button class="btn btn-dark d-md-none" type="button" id="sidebarToggle">
-                <i class="fas fa-bars"></i>
-            </button>
-                <a class="navbar-brand" href="{{ route('home') }}">
-                    <i class="fas fa-money-bill-wave"></i>
-                        Nanosoft-Billing
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-light d-lg-none" id="sidebarToggle" aria-label="Toggle sidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <a class="navbar-brand ms-2" href="{{ route('home') }}">
+                    <img src="{{ asset('assets/nanosoft logo.png') }}" alt="Nanosoft" style="height:36px; width:auto; margin-right:8px;">
+                    <span>Nanosoft Billing</span>
                 </a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text text-white me-3">
-                    <i class="fas fa-user-circle me-1"></i>Welcome, {{ Auth::user()->name }}
-                </span>
-                <form method="POST" action="{{ route('admin.logout') }}">
-                    @csrf
-                    <button type="submit" class="btn btn-outline-light btn-sm">
-                        <i class="fas fa-sign-out-alt me-1"></i>Logout
-                    </button>
-                </form>
             </div>
-        </div>
-    </nav>
-    
-     <!
-    
-    <!-- Overlay for mobile -->
-    <div class="overlay" id="overlay"></div>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Include Sidebar -->
-            @include('admin.admin-sidebar')
+            <div class="d-flex align-items-center ms-auto gap-3">
+                <div class="d-none d-md-flex align-items-center text-muted small">
+                    <i class="fa-regular fa-clock me-2"></i> {{ now()->format('F j, Y') }}
+                </div>
 
-            <!-- Main Content -->
-            <div class="col-md-9 col-lg-10 main-content">
-               
-                
-               
-                
-                <!-- Main Content Area -->
-                <div class="container-fluid">
-                    <!-- Flash Messages -->
-                    @if(session('success'))
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="fas fa-check-circle me-2"></i>
-                            {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center text-decoration-none" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="me-2 text-secondary"><i class="fa-solid fa-user-circle fa-2x"></i></div>
+                        <div class="d-none d-md-block text-start">
+                            <div style="font-weight:700">{{ Auth::user()->name }}</div>
+                            <small class="text-muted">Administrator</small>
                         </div>
-                    @endif
-                    
-                    @if(session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-circle me-2"></i>
-                            {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    @endif
-                    
-                    @if($errors->any())
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Please fix the following errors:
-                            <ul class="mb-0 mt-2">
-                                @foreach($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    @endif
-                    
-                    <!-- Page Header -->
-                    <!-- @if(View::hasSection('title') || View::hasSection('title-icon') || View::hasSection('header-actions'))
-                    <div class="page-header mb-4">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="page-header-content">
-                                @if(View::hasSection('breadcrumb'))
-                                <nav aria-label="breadcrumb" class="mb-3">
-                                    <ol class="breadcrumb breadcrumb-dark">
-                                        @yield('breadcrumb')
-                                    </ol>
-                                </nav>
-                                @endif
-                                
-                                <div class="d-flex align-items-center gap-3 mb-2">
-                                    @if(View::hasSection('title-icon'))
-                                    <div class="page-icon">
-                                        <i class="fas @yield('title-icon') fa-2x text-primary"></i>
-                                    </div>
-                                    @endif
-                                    <div>
-                                        <h1 class="page-title h2 mb-0">
-                                            @yield('title', 'Dashboard')
-                                        </h1>
-                                        @if(View::hasSection('subtitle'))
-                                        <p class="text-muted mt-1 mb-0">
-                                            @yield('subtitle')
-                                        </p>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            @if(View::hasSection('header-actions'))
-                            <div class="page-header-actions">
-                                @yield('header-actions')
-                            </div>
-                            @endif
-                        </div>
-                    </div>
-                    @endif -->
-                    
-                    <!-- Page Content -->
-                    @yield('content')
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                        <li><a class="dropdown-item" href="#"><i class="fa-solid fa-user-gear me-2"></i>Profile</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="POST" action="{{ route('admin.logout') }}">
+                                @csrf
+                                <button class="dropdown-item text-danger"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</button>
+                            </form>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
+    </nav>
+
+    <!-- overlay for mobile sidebar -->
+    <div class="overlay" id="overlay"></div>
+
+    <div class="container-fluid">
+        <div class="row admin-layout-row">
+            <!-- Sidebar -->
+            <div id="sidebar" class="col-12 col-lg-auto sidebar p-0">
+                {{-- Sidebar header / brand --}}
+                <div class="sidebar-brand d-flex align-items-center">
+                    <img src="{{ asset('assets/nanosoft logo.png') }}" alt="logo">
+                    <div>
+                        <div style="font-weight:700; color: #fff; margin-left:6px;">Nanosoft</div>
+                        <small style="color: rgba(255,255,255,0.75); margin-left:6px;">Billing</small>
+                    </div>
+                </div>
+
+                {{-- Navigation (you can keep your existing admin-sidebar include if you prefer) --}}
+                @if (View::exists('admin.admin-sidebar'))
+                    @include('admin.admin-sidebar')
+                @else
+                    <nav class="nav flex-column p-2">
+                        <a class="nav-link active" href="{{ route('admin.dashboard') }}"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+                        <a class="nav-link" href="{{ route('admin.customers.index') ?? '#' }}"><i class="fa-solid fa-users"></i> Customers</a>
+                        <a class="nav-link" href="{{ route('admin.products.index') ?? '#' }}"><i class="fa-solid fa-boxes-stacked"></i> Products</a>
+                        <a class="nav-link" href="{{ route('admin.billing.index') ?? '#' }}"><i class="fa-solid fa-file-invoice-dollar"></i> Billing</a>
+                        <a class="nav-link" href="#"><i class="fa-solid fa-chart-simple"></i> Reports</a>
+                        <a class="nav-link" href="#"><i class="fa-solid fa-gear"></i> Settings</a>
+                    </nav>
+                @endif
+            </div>
+
+            <!-- Main Content -->
+            <main class="col main-content">
+                    {{-- flash messages, errors --}}
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fa-solid fa-circle-check me-2"></i> {!! session('success') !!}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fa-solid fa-triangle-exclamation me-2"></i> {!! session('error') !!}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if ($errors->any())
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                            <strong>Please fix the following errors:</strong>
+                            <ul class="mb-0 mt-2">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    
+
+                    {{-- yield main content from child view --}}
+                    @yield('content')
+            </main>
+        </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-    
-    <!-- Universal Back Button Handler -->
-    <script src="{{ asset('js/back-button.js') }}"></script>
-    
-    <!-- Main Script -->
+    <!-- SCRIPTS -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js" crossorigin="anonymous"></script>
+
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Mobile sidebar toggle
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebarCollapse = document.getElementById('sidebarCollapse');
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        const body = document.body;
-        
-        // Mobile sidebar functionality
-        if (sidebarToggle && sidebar && overlay) {
-            sidebarToggle.addEventListener('click', function(e) {
-                e.preventDefault();
-                sidebar.classList.toggle('show');
-                overlay.classList.toggle('show');
+        document.addEventListener('DOMContentLoaded', function () {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const overlay = document.getElementById('overlay');
+            const body = document.body;
+
+            // Mobile sidebar toggle
+            if (sidebarToggle && sidebar && overlay) {
+                sidebarToggle.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    sidebar.classList.toggle('show');
+                    overlay.classList.toggle('show');
+                });
+
+                overlay.addEventListener('click', function () {
+                    sidebar.classList.remove('show');
+                    overlay.classList.remove('show');
+                });
+
+                // close sidebar on nav link click (mobile)
+                sidebar.querySelectorAll('.nav-link, .dropdown-item').forEach(link => {
+                    link.addEventListener('click', function () {
+                        if (window.innerWidth < 992) {
+                            sidebar.classList.remove('show');
+                            overlay.classList.remove('show');
+                        }
+                    });
+                });
+            }
+
+            // Auto-close alerts
+            document.querySelectorAll('.alert').forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                    bsAlert.close();
+                }, 6000);
             });
-            
-            // Close sidebar when clicking overlay
-            overlay.addEventListener('click', function() {
-                sidebar.classList.remove('show');
-                overlay.classList.remove('show');
-            });
-            
-            // Close sidebar when clicking a link on mobile
-            const sidebarLinks = sidebar.querySelectorAll('.nav-link, .dropdown-item');
-            sidebarLinks.forEach(link => {
-                link.addEventListener('click', function() {
-                    if (window.innerWidth < 768) {
-                        sidebar.classList.remove('show');
-                        overlay.classList.remove('show');
+
+            // Tooltips init
+            const tList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tList.map(function (t) { return new bootstrap.Tooltip(t); });
+
+            // DataTables auto init (tables with data-datatable="true")
+            document.querySelectorAll('table[data-datatable="true"]').forEach(function (tableEl) {
+                $(tableEl).DataTable({
+                    pageLength: 10,
+                    responsive: true,
+                    language: {
+                        search: "_INPUT_",
+                        searchPlaceholder: "Search...",
+                        paginate: {
+                            previous: "<i class='fa-solid fa-chevron-left'></i>",
+                            next: "<i class='fa-solid fa-chevron-right'></i>"
+                        }
                     }
                 });
             });
-        }
-        
-        // Desktop sidebar collapse
-        if (sidebarCollapse && sidebar) {
-            sidebarCollapse.addEventListener('click', function() {
-                body.classList.toggle('sidebar-collapsed');
-                const icon = this.querySelector('i');
-                if (body.classList.contains('sidebar-collapsed')) {
-                    icon.className = 'fas fa-chevron-right';
-                } else {
-                    icon.className = 'fas fa-chevron-left';
-                }
-            });
-        }
-        
-        // Auto-close alerts after 5 seconds
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(alert => {
-            setTimeout(() => {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            }, 5000);
         });
-        
-        // Initialize tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-        
-        // Add loading state to buttons with loading class
-        document.querySelectorAll('.btn-loading').forEach(button => {
-            button.addEventListener('click', function() {
-                const originalText = this.innerHTML;
-                this.innerHTML = '<span class="loading-spinner me-2"></span>Loading...';
-                this.disabled = true;
-                
-                // Reset after 3 seconds (for demo)
-                setTimeout(() => {
-                    this.innerHTML = originalText;
-                    this.disabled = false;
-                }, 3000);
-            });
-        });
-        
-        // Close sidebar when window is resized to desktop
-        window.addEventListener('resize', function() {
-            if (window.innerWidth >= 768 && sidebar && overlay) {
-                sidebar.classList.remove('show');
-                overlay.classList.remove('show');
-            }
-        });
-        
-        // Initialize DataTables if any table has the data-datatable attribute
-        document.querySelectorAll('table[data-datatable="true"]').forEach(table => {
-            $(table).DataTable({
-                pageLength: 10,
-                responsive: true,
-                language: {
-                    search: "_INPUT_",
-                    searchPlaceholder: "Search...",
-                    paginate: {
-                        previous: "<i class='fas fa-chevron-left'></i>",
-                        next: "<i class='fas fa-chevron-right'></i>"
-                    }
-                }
-            });
-        });
-    });
     </script>
 
-    @stack('styles')
     @stack('scripts')
     @yield('scripts')
 </body>

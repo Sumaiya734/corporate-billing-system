@@ -3,7 +3,7 @@
 @section('title', 'Create New Product - Admin Dashboard')
 
 @section('content')
-<div class="container-fluid p-4">
+<div class="page-body p-4">
     <!-- Toast container -->
     <div class="position-fixed top-0 end-0 p-3" style="z-index: 1080;">
         <div id="toastContainer"></div>

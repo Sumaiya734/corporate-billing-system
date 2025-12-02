@@ -16,7 +16,7 @@
     </div>
 </div>
 
-<div class="container-fluid">
+<div class="page-body">
     <div class="row mb-4">
         <div class="col">
             <h1 class="page-title"><i class="fas fa-plus-circle me-2"></i>Assign Products to Customer</h1>
