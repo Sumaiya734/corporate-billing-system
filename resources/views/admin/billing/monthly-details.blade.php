@@ -3,7 +3,7 @@
 @section('title', 'Monthly Billing Details - ' . $month)
 
 @section('content')
-<div class="page-body p-4">
+<div class="container-fluid p-4">
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -101,7 +101,7 @@
                                     @foreach($products as $product)
                                     <span class="badge bg-primary mb-1">
                                         {{ $product['product_name'] }} 
-                                        (৳{{ number_format($product['monthly_price'], 2) }})
+                                        (৳{{ number_format($product['monthly_price'], 0) }})
                                     </span>
                                     <br>
                                     @endforeach
@@ -110,7 +110,7 @@
                                 @endif
                             </td>
                             <td>
-                                <strong class="text-dark">৳ {{ number_format($totalCustomerCost, 2) }}</strong>
+                                <strong class="text-dark">৳ {{ number_format($totalCustomerCost, 0) }}</strong>
                             </td>
                             <td>
                                 {{ \Carbon\Carbon::parse($customer['created_at'])->format('M j, Y') }}
@@ -163,7 +163,7 @@
                                     @foreach($products as $product)
                                     <span class="badge bg-primary mb-1">
                                         {{ $product['product_name'] }} 
-                                        (৳{{ number_format($product['monthly_price'], 2) }})
+                                        (৳{{ number_format($product['monthly_price'], 0) }})
                                     </span>
                                     <br>
                                     @endforeach
@@ -172,7 +172,7 @@
                                 @endif
                             </td>
                             <td>
-                                <strong class="text-dark">৳ {{ number_format($totalCustomerCost, 2) }}</strong>
+                                <strong class="text-dark">৳ {{ number_format($totalCustomerCost, 0) }}</strong>
                             </td>
                             <td>
                                 {{ \Carbon\Carbon::parse($customer['created_at'])->format('M j, Y') }}
@@ -241,7 +241,7 @@
                                 <div class="text-end">
                                     <strong class="text-primary">{{ $stats['count'] }} customers</strong>
                                     <br>
-                                    <small class="text-success">৳ {{ number_format($stats['revenue'], 2) }}/month</small>
+                                    <small class="text-success">৳ {{ number_format($stats['revenue'], 0) }}/month</small>
                                 </div>
                             </div>
                         </div>
@@ -272,7 +272,7 @@
                                     <small class="text-muted">{{ $payment->payment_method }}</small>
                                 </div>
                                 <div class="text-end">
-                                    <strong class="text-success">৳ {{ number_format($payment->amount, 2) }}</strong>
+                                    <strong class="text-success">৳ {{ number_format($payment->amount, 0) }}</strong>
                                     <br>
                                     <small class="text-muted">{{ \Carbon\Carbon::parse($payment->payment_date)->format('M j, Y') }}</small>
                                 </div>

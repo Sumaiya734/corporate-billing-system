@@ -3,7 +3,7 @@
 @section('title', 'Generate Bill - ' . ($customer->name ?? 'Customer'))
 
 @section('content')
-<div class="page-body p-4">
+<div class="container-fluid p-4">
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -81,7 +81,7 @@
                     @if($activeproducts->count() > 0)
                         @foreach($activeproducts as $product)
                             <span class="badge bg-{{ $product->product_type == 'regular' ? 'primary' : 'warning' }} me-2 mb-2">
-                                {{ $product->name }} - ৳{{ number_format($product->custom_price ?? 0, 2) }}
+                                {{ $product->name }} - ৳{{ number_format($product->custom_price ?? 0, 0) }}
                                 <small>({{ $product->billing_cycle_months }} month cycle)</small>
                             </span>
                         @endforeach
@@ -100,7 +100,7 @@
                             $pendingAmount = $customerInvoices->where('status', 'unpaid')->sum('total_amount') - $customerInvoices->where('status', 'unpaid')->sum('received_amount');
                         @endphp
                         <p class="mb-1">Total Invoices: {{ $totalInvoices }}</p>
-                        <p class="mb-0">Pending Amount: ৳{{ number_format($pendingAmount, 2) }}</p>
+                        <p class="mb-0">Pending Amount: ৳{{ number_format($pendingAmount, 0) }}</p>
                     </div>
                 </div>
             </div>
@@ -281,17 +281,17 @@
                                 </div>
                             </td>
                             <td class="text-end">
-                                <span class="bill-amount">৳{{ number_format($productAmount, 2) }}</span>
+                                <span class="bill-amount">৳{{ number_format($productAmount, 0) }}</span>
                                 <br><small class="text-muted">Current month</small>
                             </td>
                             <td class="text-end">
-                                <span class="previous-due">৳{{ number_format($previousDue, 2) }}</span>
+                                <span class="previous-due">৳{{ number_format($previousDue, 0) }}</span>
                                 @if($previousDue > 0)
                                 <br><small class="text-muted">From past</small>
                                 @endif
                             </td>
                             <td class="text-end">
-                                <strong class="total-amount">৳{{ number_format($totalAmount, 2) }}</strong>
+                                <strong class="total-amount">৳{{ number_format($totalAmount, 0) }}</strong>
                                 <br><small class="text-muted">Total invoice</small>
                             </td>
                             <td class="text-end">
@@ -299,7 +299,7 @@
                                     <span class="text-muted">Not Generated</span>
                                 @else
                                     <input type="number" class="form-control form-control-sm received-amount" 
-                                           value="{{ number_format($receivedAmount, 2) }}" 
+                                           value="{{ number_format($receivedAmount, 0) }}" 
                                            min="0" max="{{ $totalAmount }}" 
                                            step="0.01"
                                            data-invoice-id="{{ $invoice->id }}"
@@ -318,7 +318,7 @@
                                         @elseif($nextDue > 0 && $nextDue <= ($totalAmount * 0.5)) text-warning
                                         @else text-danger
                                         @endif">
-                                        ৳{{ number_format($nextDue, 2) }}
+                                        ৳{{ number_format($nextDue, 0) }}
                                     </span>
                                 @endif
                                 <br><small class="text-muted">Outstanding</small>
@@ -347,11 +347,11 @@
                         @endphp
                         <tr>
                             <td colspan="3" class="text-end"><strong>Grand Total:</strong></td>
-                            <td class="text-end"><strong id="totalBillAmount">৳{{ number_format($totalBillAmount, 2) }}</strong></td>
+                            <td class="text-end"><strong id="totalBillAmount">৳{{ number_format($totalBillAmount, 0) }}</strong></td>
                             <td class="text-end"><strong id="totalPreviousDue">৳0.00</strong></td>
-                            <td class="text-end"><strong id="totalAmount">৳{{ number_format($totalBillAmount, 2) }}</strong></td>
-                            <td class="text-end"><strong id="totalReceived">৳{{ number_format($totalReceived, 2) }}</strong></td>
-                            <td class="text-end"><strong id="totalNextDue" class="{{ $totalNextDue > 0 ? 'text-danger' : 'text-success' }}">৳{{ number_format($totalNextDue, 2) }}</strong></td>
+                            <td class="text-end"><strong id="totalAmount">৳{{ number_format($totalBillAmount, 0) }}</strong></td>
+                            <td class="text-end"><strong id="totalReceived">৳{{ number_format($totalReceived, 0) }}</strong></td>
+                            <td class="text-end"><strong id="totalNextDue" class="{{ $totalNextDue > 0 ? 'text-danger' : 'text-success' }}">৳{{ number_format($totalNextDue, 0) }}</strong></td>
                             <td class="text-center"></td>
                         </tr>
                     </tfoot>
@@ -620,8 +620,8 @@
         const total = billAmount + previousDue;
         const nextDue = total - receivedAmount;
         
-        row.querySelector('.total-amount').textContent = `৳${total.toFixed(2)}`;
-        row.querySelector('.next-due').textContent = `৳${nextDue.toFixed(2)}`;
+        row.querySelector('.total-amount').textContent = `৳${total.toFixed(0)}`;
+        row.querySelector('.next-due').textContent = `৳${nextDue.toFixed(0)}`;
         
         // Update text color based on next due
         const nextDueElement = row.querySelector('.next-due');
@@ -687,13 +687,13 @@
             totalNextDue += parseFloat(row.querySelector('.next-due').textContent.replace('৳', '').replace(',', ''));
         });
 
-        document.getElementById('totalBillAmount').textContent = `৳${totalBillAmount.toFixed(2)}`;
-        document.getElementById('totalPreviousDue').textContent = `৳${totalPreviousDue.toFixed(2)}`;
-        document.getElementById('totalAmount').textContent = `৳${totalAmount.toFixed(2)}`;
-        document.getElementById('totalReceived').textContent = `৳${totalReceived.toFixed(2)}`;
+        document.getElementById('totalBillAmount').textContent = `৳${totalBillAmount.toFixed(0)}`;
+        document.getElementById('totalPreviousDue').textContent = `৳${totalPreviousDue.toFixed(0)}`;
+        document.getElementById('totalAmount').textContent = `৳${totalAmount.toFixed(0)}`;
+        document.getElementById('totalReceived').textContent = `৳${totalReceived.toFixed(0)}`;
         
         const totalNextDueElement = document.getElementById('totalNextDue');
-        totalNextDueElement.textContent = `৳${totalNextDue.toFixed(2)}`;
+        totalNextDueElement.textContent = `৳${totalNextDue.toFixed(0)}`;
         totalNextDueElement.className = 'text-end';
         totalNextDueElement.classList.add(totalNextDue > 0 ? 'text-danger' : 'text-success');
     }

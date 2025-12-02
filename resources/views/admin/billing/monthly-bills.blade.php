@@ -6,7 +6,7 @@
 <!-- Toast Notification Container -->
 <div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 10000; min-width: 350px;"></div>
 
-<div class="page-body p-4">
+<div class="container-fluid p-4">
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -103,7 +103,7 @@
                                 // Calculate total billing amount from actual invoice data
                                 $totalBillingAmount = $invoices->sum('total_amount');
                             @endphp
-                            <div class="h5 mb-0">৳ {{ number_format($totalBillingAmount, 2) }}</div>
+                            <div class="h5 mb-0">৳ {{ number_format($totalBillingAmount, 0) }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-white-300"></i>
@@ -122,7 +122,7 @@
                                 // Calculate pending amount from actual invoice data
                                 $pendingAmount = $invoices->sum('next_due');
                             @endphp
-                            <div class="h5 mb-0">৳ {{ number_format($pendingAmount, 2) }}</div>
+                            <div class="h5 mb-0">৳ {{ number_format($pendingAmount, 0) }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-clock fa-2x text-white-300"></i>
@@ -141,7 +141,7 @@
                                 // Calculate paid amount from actual invoice data
                                 $paidAmount = $invoices->sum('received_amount');
                             @endphp
-                            <div class="h5 mb-0">৳ {{ number_format($paidAmount, 2) }}</div>
+                            <div class="h5 mb-0">৳ {{ number_format($paidAmount, 0) }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-check-circle fa-2x text-white-300"></i>
@@ -173,18 +173,6 @@
                 </small>
             </div>
         </div>
-    </div>
-
-    <!-- How to Read This Table - Moved to a better position -->
-    <div class="alert alert-info mb-4">
-        <strong><i class="fas fa-info-circle me-1"></i>How to read this table:</strong>
-        <ul class="mb-0 mt-1">
-            <li><strong>Product Amount</strong> = Current month charges (from products)</li>
-            <li><strong>Previous Due</strong> = Unpaid balance from past months</li>
-            <li><strong>Total Invoice</strong> = Product Amount + Previous Due</li>
-            <li><strong>Received</strong> = Payments made against this invoice</li>
-            <li><strong>Next Due</strong> = Total Invoice - Received (what customer still owes)</li>
-        </ul>
     </div>
 
     <!-- Monthly Bills Table -->
@@ -308,7 +296,7 @@
                                         @if($actualDueDate)
                                             <div class="fw-medium text-dark">{{ $product->name ?? 'Unknown Product' }}</div>
                                             <div class="text-muted small">
-                                                ৳ {{ number_format($product->monthly_price ?? 0, 2) }}/month
+                                                ৳ {{ number_format($product->monthly_price ?? 0, 0) }}/month
                                                 @if($customerProduct->billing_cycle_months > 1)
                                                 <span class="badge bg-info ms-1">({{ $customerProduct->billing_cycle_months }} months cycle)</span>
                                                 @endif
@@ -331,7 +319,7 @@
                                     {{-- Product Amount (from database) --}}
                                     <td>
                                         <div class="bill-amount">
-                                            <strong class="text-dark">৳ {{ number_format($invoice->subtotal ?? 0, 2) }}</strong>
+                                            <strong class="text-dark">৳ {{ number_format($invoice->subtotal ?? 0, 0) }}</strong>
                                             <br><small class="text-muted">Current charges</small>
                                             @if(($invoice->previous_due ?? 0) > 0)
                                                 @php
@@ -355,7 +343,7 @@
                                     <td>
                                         <div class="previous-due">
                                             <strong class="{{ ($invoice->previous_due ?? 0) > 0 ? 'text-danger' : 'text-success' }}">
-                                                ৳ {{ number_format($invoice->previous_due ?? 0, 2) }}
+                                                ৳ {{ number_format($invoice->previous_due ?? 0, 0) }}
                                             </strong>
                                             <br><small class="text-muted">Previous due</small>
                                         </div>
@@ -364,8 +352,17 @@
                                     {{-- Total Amount (from database) --}}
                                     <td>
                                         <div class="total-amount">
-                                            <strong class="text-success">৳ {{ number_format($invoice->total_amount ?? 0, 2) }}</strong>
+                                            <strong class="text-success">৳ {{ number_format($invoice->total_amount ?? 0, 0) }}</strong>
                                             <br><small class="text-muted">Total due</small>
+                                            @if($customer && $product)
+                                                <br>
+                                                <a href="{{ route('admin.payment-details.index', ['search' => $customer->name, 'product_id' => $product->p_id]) }}" 
+                                                   class="btn btn-sm btn-outline-primary mt-1" 
+                                                   title="View payment details for {{ $customer->name }} - {{ $product->name }}">
+                                                    <!-- <i class="fas fa-search me-1"></i> -->
+                                                    Details
+                                                </a>
+                                            @endif
                                         </div>
                                     </td>
 
@@ -373,7 +370,7 @@
                                     <td>
                                         <div class="received-amount">
                                             @if(($invoice->received_amount ?? 0) > 0)
-                                                <strong class="text-info">৳ {{ number_format($invoice->received_amount ?? 0, 2) }}</strong>
+                                                <strong class="text-info">৳ {{ number_format($invoice->received_amount ?? 0, 0) }}</strong>
                                                 @if(($invoice->total_amount ?? 0) > 0)
                                                 <br><small class="text-muted">{{ number_format((($invoice->received_amount ?? 0) / ($invoice->total_amount ?? 1)) * 100, 1) }}% paid</small>
                                                 @endif
@@ -404,14 +401,14 @@
                                                 <span class="badge bg-success">
                                                     <i class="fas fa-check-double me-1"></i>Advance Paid
                                                 </span>
-                                                <br><small class="text-success">+৳ {{ number_format($advanceAmount, 2) }} credit</small>
+                                                <br><small class="text-success">+৳ {{ number_format($advanceAmount, 0) }} credit</small>
                                             @elseif($isFullyPaid)
                                                 <span class="badge bg-success">
                                                     <i class="fas fa-check-circle me-1"></i>Paid
                                                 </span>
                                                 <br><small class="text-muted">Fully paid</small>
                                             @elseif($nextDue > 0)
-                                                <strong class="text-danger">৳ {{ number_format($nextDue, 2) }}</strong>
+                                                <strong class="text-danger">৳ {{ number_format($nextDue, 0) }}</strong>
                                                 <br><small class="text-muted">Outstanding</small>
                                             @else
                                                 <span class="badge bg-success">
@@ -594,45 +591,58 @@
                                 <div class="card-footer bg-white">
                                             <div class="row align-items-center">
                                                 <div class="col-md-12 mb-3">
-                                                    <div class="alert alert-info mb-4">
-                                                        <i class="fas fa-info-circle me-2"></i>
-                                                        <strong>Note:</strong>
-                                                        <ul class="mb-0">
-                                                            <li>Customers with invoices are shown in the table below</li>
-                                                            <li>Customers who are due but don't have invoices yet are highlighted with a warning</li>
-                                                            @if(!($isCurrentMonth ?? false))
-                                                            <li>Use the "Generate Bills" button to create invoices for all customers or only those who are due</li>
-                                                            @else
-                                                            <li>Invoices for current month customers are automatically generated</li>
-                                                            @endif
-                                                            @if(!($isMonthClosed ?? false) && !($isFutureMonth ?? false))
-                                                            <li><strong>Remember to close this month</strong> before accessing the next month's billing</li>
-                                                            @endif
-                                                        </ul>
-                                                    </div>
-
-                                                    <div class="mt-2 p-2 bg-light rounded">
-                                                        <strong><i class="fas fa-calculator me-1"></i>Verification:</strong>
-                                                        @php
-                                                            // Calculate amounts from actual invoice data
-                                                            $totalBillingAmount = $invoices->sum('total_amount');
-                                                            $paidAmount = $invoices->sum('received_amount');
-                                                            $pendingAmount = $invoices->sum('next_due');
-                                                        @endphp
-                                                        <div class="mt-1">
-                                                            Total Billing (৳{{ number_format($totalBillingAmount, 2) }})
-                                                            - Paid (৳{{ number_format($paidAmount, 2) }})
-                                                            = Pending (৳{{ number_format($pendingAmount, 2) }})
+                                                    <div class="alert alert-info mb-0 small">
+                                                        <div class="alert alert-info mb-4">
+                                                            <strong><i class="fas fa-info-circle me-1"></i>How to read this table:</strong>
+                                                            <ul class="mb-0 mt-1">
+                                                                <li><strong>Product Amount</strong> = Current month charges (from products)</li>
+                                                                <li><strong>Previous Due</strong> = Unpaid balance from past months</li>
+                                                                <li><strong>Total Invoice</strong> = Product Amount + Previous Due</li>
+                                                                <li><strong>Received</strong> = Payments made against this invoice</li>
+                                                                <li><strong>Next Due</strong> = Total Invoice - Received (what customer still owes)</li>
+                                                            </ul>
                                                         </div>
-                                                        @php
-                                                            $calculatedPending = $totalBillingAmount - $paidAmount;
-                                                            $isBalanced = abs($calculatedPending - $pendingAmount) < 0.01;
-                                                        @endphp
-                                                        <div class="mt-1">
-                                                            <span class="badge {{ $isBalanced ? 'bg-success' : 'bg-danger' }}">
-                                                                <i class="fas fa-{{ $isBalanced ? 'check' : 'exclamation-triangle' }} me-1"></i>
-                                                                {{ $isBalanced ? 'Balanced ✓' : 'Mismatch!' }}
-                                                            </span>
+
+                                                        <div class="alert alert-info mb-4">
+                                                            <i class="fas fa-info-circle me-2"></i>
+                                                            <strong>Note:</strong>
+                                                            <ul class="mb-0">
+                                                                <li>Customers with invoices are shown in the table below</li>
+                                                                <li>Customers who are due but don't have invoices yet are highlighted with a warning</li>
+                                                                @if(!($isCurrentMonth ?? false))
+                                                                <li>Use the "Generate Bills" button to create invoices for all customers or only those who are due</li>
+                                                                @else
+                                                                <li>Invoices for current month customers are automatically generated</li>
+                                                                @endif
+                                                                @if(!($isMonthClosed ?? false) && !($isFutureMonth ?? false))
+                                                                <li><strong>Remember to close this month</strong> before accessing the next month's billing</li>
+                                                                @endif
+                                                            </ul>
+                                                        </div>
+
+                                                        <div class="mt-2 p-2 bg-light rounded">
+                                                            <strong><i class="fas fa-calculator me-1"></i>Verification:</strong>
+                                                            @php
+                                                                // Calculate amounts from actual invoice data
+                                                                $totalBillingAmount = $invoices->sum('total_amount');
+                                                                $paidAmount = $invoices->sum('received_amount');
+                                                                $pendingAmount = $invoices->sum('next_due');
+                                                            @endphp
+                                                            <div class="mt-1">
+                                                                Total Billing (৳{{ number_format($totalBillingAmount, 0) }})
+                                                                - Paid (৳{{ number_format($paidAmount, 0) }})
+                                                                = Pending (৳{{ number_format($pendingAmount, 0) }})
+                                                            </div>
+                                                            @php
+                                                                $calculatedPending = $totalBillingAmount - $paidAmount;
+                                                                $isBalanced = abs($calculatedPending - $pendingAmount) < 0.01;
+                                                            @endphp
+                                                            <div class="mt-1">
+                                                                <span class="badge {{ $isBalanced ? 'bg-success' : 'bg-danger' }}">
+                                                                    <i class="fas fa-{{ $isBalanced ? 'check' : 'exclamation-triangle' }} me-1"></i>
+                                                                    {{ $isBalanced ? 'Balanced ✓' : 'Mismatch!' }}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -779,7 +789,7 @@
                                             // Calculate total billing amount from actual invoice data
                                             $totalBillingAmount = $invoices->sum('total_amount');
                                         @endphp
-                                        <h4 class="mb-0 text-primary">৳ {{ number_format($totalBillingAmount, 2) }}</h4>
+                                        <h4 class="mb-0 text-primary">৳ {{ number_format($totalBillingAmount, 0) }}</h4>
                                     </div>
                                     <i class="fas fa-file-invoice-dollar fa-2x text-primary opacity-50"></i>
                                 </div>
@@ -792,7 +802,7 @@
                                             // Calculate paid amount from actual invoice data
                                             $paidAmount = $invoices->sum('received_amount');
                                         @endphp
-                                        <h4 class="mb-0 text-success">৳ {{ number_format($paidAmount, 2) }}</h4>
+                                        <h4 class="mb-0 text-success">৳ {{ number_format($paidAmount, 0) }}</h4>
                                     </div>
                                     <i class="fas fa-check-circle fa-2x text-success opacity-50"></i>
                                 </div>
@@ -805,7 +815,7 @@
                                             // Calculate pending amount from actual invoice data
                                             $pendingAmount = $invoices->sum('next_due');
                                         @endphp
-                                        <h3 class="mb-0">৳ {{ number_format($pendingAmount, 2) }}</h3>
+                                        <h3 class="mb-0">৳ {{ number_format($pendingAmount, 0) }}</h3>
                                     </div>
                                     <i class="fas fa-exclamation-circle fa-3x opacity-50"></i>
                                 </div>
@@ -859,7 +869,7 @@
                             $pendingAmount = $invoices->sum('next_due');
                         @endphp
                         <ul class="mb-3">
-                            <li>All outstanding dues (৳{{ number_format($pendingAmount, 2) }}) will be carried forward to next month's invoices</li>
+                            <li>All outstanding dues (৳{{ number_format($pendingAmount, 0) }}) will be carried forward to next month's invoices</li>
                             <li>This month's billing cycle will be marked as closed</li>
                             <li>Fully paid invoices will remain as completed</li>
                             <li>Unpaid and partial invoices will have their dues transferred to the next billing period</li>
@@ -1864,7 +1874,8 @@ function updateUIAfterConfirmation(invoiceId, cpId, customerName, nextDue) {
 
 // Handle confirm user button clicks - populate modal when shown
 document.addEventListener('DOMContentLoaded', function() {
-    const confirmUserPaymentModal = document.getElementById('confirmUserPaymentModal');    if (confirmUserPaymentModal) {
+    const confirmUserPaymentModal = document.getElementById('confirmUserPaymentModal');
+    if (confirmUserPaymentModal) {
         confirmUserPaymentModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
 
@@ -2062,7 +2073,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .val('')
             .attr({
                 'min': '0.01',
-                'max': dueAmount.toFixed(2),
+                'max': dueAmount.toFixed(0),
                 'step': '0.01'
             })
             .prop('disabled', dueAmount <= 0)
@@ -2071,7 +2082,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (dueAmount <= 0) {
             $amountInput.attr('placeholder', 'Invoice already paid');
         } else {
-            $amountInput.attr('placeholder', `Enter amount (0.01 to ${dueAmount.toFixed(2)})`);
+            $amountInput.attr('placeholder', `Enter amount (0.01 to ${dueAmount.toFixed(0)})`);
         }
 
         $('#payment_amount_error').hide();
@@ -2085,7 +2096,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Calculate and update next due
         const nextDue = Math.max(0, due - paid);
-        $('#next_due').val(nextDue.toFixed(2));
+        $('#next_due').val(nextDue.toFixed(0));
 
         // Validate amount
         if (paid > (due + 0.01)) {
@@ -2114,7 +2125,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         if (paid > (due + 0.01)) {
-            showToast(`Cannot pay more than due amount (৳${due.toFixed(2)})!`, 'danger');
+            showToast(`Cannot pay more than due amount (৳${due.toFixed(0)})!`, 'danger');
             return;
         }
 

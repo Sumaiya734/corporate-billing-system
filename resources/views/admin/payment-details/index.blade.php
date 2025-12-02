@@ -3,7 +3,7 @@
 @section('title', 'Payment Details')
 
 @section('content')
-<div class="page-body">
+<div class="container-fluid">
     <!-- Page Header -->
     <div class="page-header mb-4">
         <div class="row align-items-center">
@@ -49,9 +49,9 @@
                                 <span class="input-group-text bg-light border-end-0">
                                     <i class="fas fa-search text-primary"></i>
                                 </span>
-                                <input type="text" 
-                                       name="search" 
-                                       class="form-control border-start-0" 
+                                <input type="text"
+                                       name="search"
+                                       class="form-control border-start-0"
                                        placeholder="Name, ID, Phone or Email..."
                                        value="{{ request('search') }}"
                                        id="customerSearch">
@@ -61,7 +61,7 @@
                                 Search for customers first, then filter by their products
                             </small>
                         </div>
-                        
+
                         <div class="col-lg-3 col-md-6">
                             <label class="form-label fw-bold text-dark mb-1">
                                 <i class="fas fa-box me-1"></i>Filter by Product
@@ -70,18 +70,18 @@
                                 <option value="all" {{ request('product_id') == 'all' ? 'selected' : '' }}>
                                     📦 All Products
                                 </option>
-                                
+
                                 @if($search && $customerProducts->count() > 0)
                                     <!-- Show only customer's products when search is active -->
                                     <optgroup label="🎯 Customer's Products">
                                         @foreach($customerProducts as $product)
-                                        <option value="{{ $product->p_id }}" 
+                                        <option value="{{ $product->p_id }}"
                                                 {{ request('product_id') == $product->p_id ? 'selected' : '' }}>
                                             {{ $product->name }} (৳{{ number_format($product->price) }})
                                         </option>
                                         @endforeach
                                     </optgroup>
-                                    
+
                                     <!-- Show other products as disabled -->
                                     @if($allProducts->count() > $customerProducts->count())
                                         <optgroup label="📋 Other Products (not assigned)">
@@ -94,11 +94,11 @@
                                             @endforeach
                                         </optgroup>
                                     @endif
-                                    
+
                                 @else
                                     <!-- Show all products when no search -->
                                     @foreach($allProducts as $product)
-                                    <option value="{{ $product->p_id }}" 
+                                    <option value="{{ $product->p_id }}"
                                             {{ request('product_id') == $product->p_id ? 'selected' : '' }}>
                                         {{ $product->name }} (৳{{ number_format($product->price) }})
                                     </option>
@@ -118,7 +118,7 @@
                                 @endif
                             </small>
                         </div>
-                        
+
                         <div class="col-lg-3 col-md-6">
                             <label class="form-label fw-bold text-dark mb-1">
                                 <i class="fas fa-calendar-alt me-1"></i>Filter by Month
@@ -126,27 +126,24 @@
                             <select name="month" class="form-select">
                                 <option value="">📅 All Months</option>
                                 @foreach($months as $month)
-                                <option value="{{ $month }}" 
+                                <option value="{{ $month }}"
                                         {{ request('month') == $month ? 'selected' : '' }}>
                                     {{ \Carbon\Carbon::parse($month)->format('F Y') }}
                                 </option>
                                 @endforeach
                             </select>
                         </div>
-                        
-                        <div class="col-lg-2 col-md-6 d-flex align-items-center justify-content-end">
-                            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+
+                        <div class="col-lg-4 col-md-6 d-flex align-items-end justify-content-start gap-2 mt-3 mt-md-0">
+                            <button type="submit" class="btn btn-primary flex-grow-1 py-2 fw-bold">
                                 <i class="fas fa-filter me-2"></i> Apply Filters
                             </button>
-                        </div>
-                        
-                        @if(request('search') || request('product_id') != 'all' || request('month'))
-                        <div class="col-12 mt-2">
-                            <a href="{{ route('admin.payment-details.index') }}" class="btn btn-outline-danger">
-                                <i class="fas fa-times me-1"></i> Clear All Filters
+                            @if(request('search') || request('product_id') != 'all' || request('month'))
+                            <a href="{{ route('admin.payment-details.index') }}" class="btn btn-outline-danger flex-grow-1 py-2 fw-bold">
+                                <i class="fas fa-times me-1"></i> Clear
                             </a>
+                            @endif
                         </div>
-                        @endif
                     </form>
                 </div>
             </div>
@@ -171,7 +168,7 @@
                                     @endif
                                     @if(request('product_id') != 'all')
                                         @php
-                                            $selectedProduct = $allProducts->firstWhere('p_id', request('product_id')) 
+                                            $selectedProduct = $allProducts->firstWhere('p_id', request('product_id'))
                                                             ?? $customerProducts->firstWhere('p_id', request('product_id'));
                                         @endphp
                                         @if($selectedProduct)
@@ -193,7 +190,7 @@
                     </div>
                 </div>
             </div>
-        
+
             <!-- Customer Cards -->
             @foreach($customers as $customer)
             <div class="row mb-4">
@@ -259,7 +256,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Customer Body -->
                         <div class="card-body p-3">
                             <!-- Assigned Products -->
@@ -290,7 +287,7 @@
                                                                 ৳{{ number_format($customerProduct->custom_price ?? ($customerProduct->product->price ?? 0)) }}
                                                             </span>
                                                         </div>
-                                                        
+
                                                         <div class="product-details">
                                                             <div class="mb-1">
                                                                 <small class="text-muted d-block">
@@ -306,7 +303,7 @@
                                                                     @endif
                                                                 </small>
                                                             </div>
-                                                            
+
                                                             <div class="d-flex flex-wrap gap-1">
                                                                 <span class="badge bg-{{ $customerProduct->status == 'active' ? 'success' : ($customerProduct->status == 'pending' ? 'warning' : 'secondary') }}">
                                                                     {{ ucfirst($customerProduct->status) }}
@@ -324,7 +321,7 @@
                                     </div>
                                 </div>
                             @endif
-                            
+
                             <!-- Payment History -->
                             @if($customer->paymentHistory->count() > 0)
                                 <div class="row">
@@ -353,7 +350,7 @@
                                                     @foreach($customer->paymentHistory as $invoice)
                                                     @php
                                                         $product = $invoice->customerProduct->product ?? null;
-                                                        $isSelectedProduct = request('product_id') != 'all' && 
+                                                        $isSelectedProduct = request('product_id') != 'all' &&
                                                                         request('product_id') == ($product->p_id ?? null);
                                                     @endphp
                                                     <tr class="{{ $isSelectedProduct ? 'table-info' : '' }} align-middle">
@@ -464,7 +461,7 @@
                 </div>
             </div>
             @endforeach
-            
+
             <!-- Pagination -->
             <div class="row">
                 <div class="col-12">
@@ -475,7 +472,7 @@
                     </div>
                 </div>
             </div>
-            
+
         @else
             <!-- No Results -->
             <div class="row">
@@ -550,126 +547,349 @@
 
 <!-- Custom Styles -->
 <style>
-/* ----------- GLOBAL LOOK ----------- */
-body {
-    background: #f4f7fc !important;
-    font-family: "Inter", sans-serif;
-}
-.card {
-    border-radius: 14px !important;
-    overflow: hidden;
-    border: none !important;
-}
-.card-header {
-    border-bottom: none !important;
-}
+    :root {
+        --primary-color: #2c3e50;
+        --secondary-color: #3498db;
+        --success-color: #27ae60;
+        --warning-color: #f39c12;
+        --danger-color: #e74c3c;
+        --light-bg: #f8f9fa;
+        --dark-text: #2b2d42;
+        --muted-text: #6c757d;
+        --border-color: #dee2e6;
+        --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
 
-/* ----------- PAGE HEADER ----------- */
-.page-header h1 {
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -0.3px;
-}
-.page-header p {
-    font-size: 15px;
-}
+    body {
+        background-color: #f5f7fa;
+        font-size: 1rem;
+    }
 
-/* ----------- SEARCH FILTER CARD ----------- */
-.bg-gradient-primary {
-    background: linear-gradient(90deg, #0055ff, #3b82f6) !important;
-}
-#searchForm .form-control,
-#searchForm .form-select {
-    height: 46px;
-    border-radius: 10px;
-}
-#searchForm .input-group-text {
-    background: #eef2ff !important;
-    border-radius: 10px 0 0 10px;
-}
+    .page-header {
+        background: #ffffff;
+        padding: 1.2rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border-left: 3px solid var(--secondary-color);
+        box-shadow: var(--card-shadow);
+    }
 
-/* Hover elevation */
-.card:hover {
-    transform: translateY(-3px);
-    transition: .2s;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08) !important;
-}
+    .page-header h1 {
+        font-size: 1.4rem;
+        color: var(--dark-text);
+        margin-bottom: 0.5rem;
+    }
 
-/* ----------- CUSTOMER HEADER ----------- */
-.bg-gradient-customer {
-    background: linear-gradient(90deg, #0ea5e9, #2563eb) !important;
-}
-.customer-avatar {
-    width: 55px !important;
-    height: 55px !important;
-    box-shadow: 0 3px 8px rgba(255, 255, 255, 0.3);
-}
+    .page-header p {
+        font-size: 0.95rem;
+        color: var(--muted-text);
+        margin-bottom: 0;
+    }
 
-/* Customer summary box */
-.customer-summary .bg-opacity-25 {
-    border-radius: 12px;
-}
+    .card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 1rem;
+        font-size: 0.95rem;
+    }
 
-/* ----------- PRODUCT CARDS ----------- */
-.product-card {
-    border-radius: 12px !important;
-    background: #ffffff !important;
-    transition: .2s;
-}
-.product-card:hover {
-    transform: scale(1.03);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important;
-}
-.product-card .badge {
-    font-size: 12px;
-}
+    .card-header {
+        padding: 0.9rem 1.2rem;
+        border-bottom: 1px solid var(--border-color);
+    }
 
-/* ----------- PAYMENT HISTORY TABLE ----------- */
-.table thead.table-dark {
-    background: linear-gradient(90deg, #1e293b, #0f172a) !important;
-    border: none !important;
-}
-.table-hover tbody tr:hover {
-    background: rgba(59, 130, 246, 0.08);
-}
-.table tbody td {
-    padding: 10px 12px !important;
-    vertical-align: middle;
-}
+    .card-body {
+        padding: 1.2rem;
+    }
 
-/* Selected product highlight row */
-.table-info {
-    background: #e0f2fe !important;
-}
+    .bg-gradient-primary {
+        background: var(--primary-color);
+    }
 
-/* Notes tooltip */
-.notes-container small {
-    background: #eef2ff;
-    padding: 3px 8px;
-    border-radius: 6px;
-}
+    .bg-gradient-customer {
+        background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+    }
 
-/* ----------- EMPTY STATES ----------- */
-.empty-state-icon i,
-.search-prompt-icon i {
-    opacity: 0.2;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-}
+    .customer-avatar {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
 
-/* ----------- BADGES ----------- */
-.badge {
-    border-radius: 8px !important;
-    padding: 5px 9px !important;
-    font-weight: 600;
-}
+    .customer-header h5 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: white;
+        margin-bottom: 0.25rem;
+    }
 
-/* ----------- PAGINATION ----------- */
-.pagination .page-item .page-link {
-    border-radius: 8px;
-    padding: 8px 14px;
-}
+    .customer-header small {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+
+    .customer-contact {
+        font-size: 0.9rem;
+    }
+
+    .customer-summary .h5 {
+        font-size: 1.05rem;
+        font-weight: 600;
+    }
+
+    /* Table Styles */
+    .table {
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    .table-dark {
+        background: var(--primary-color);
+    }
+
+    .table-dark th {
+        border: none;
+        font-weight: 500;
+        font-size: 0.85rem;
+        padding: 0.6rem 0.9rem;
+    }
+
+    .table td, .table th {
+        padding: 0.6rem 0.9rem;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(52, 152, 219, 0.05);
+    }
+
+    .table-info {
+        background-color: rgba(52, 152, 219, 0.1);
+    }
+
+    /* Badge Styles */
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+
+    .badge.bg-primary {
+        background: var(--secondary-color) !important;
+    }
+
+    .badge.bg-success {
+        background: var(--success-color) !important;
+    }
+
+    .badge.bg-warning {
+        background: var(--warning-color) !important;
+        color: white;
+    }
+
+    .badge.bg-danger {
+        background: var(--danger-color) !important;
+    }
+
+    /* Form Styles */
+    .form-control, .form-select {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.7rem;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+    }
+
+    .form-label {
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--secondary-color);
+        box-shadow: 0 0 0 0.1rem rgba(52, 152, 219, 0.25);
+    }
+
+    .input-group .input-group-text {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.7rem;
+        border-radius: 4px 0 0 4px;
+    }
+
+    /* Button Styles */
+    .btn {
+        padding: 0.5rem 0.9rem;
+        font-size: 0.85rem;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        background: var(--secondary-color);
+        border: 1px solid var(--secondary-color);
+    }
+
+    .btn-outline-primary {
+        color: var(--secondary-color);
+        border-color: var(--secondary-color);
+    }
+
+    .btn-outline-primary:hover {
+        background: var(--secondary-color);
+        border-color: var(--secondary-color);
+    }
+
+    /* Alert Styles */
+    .alert {
+        border-radius: 6px;
+        border: none;
+        padding: 0.9rem 1.2rem;
+        font-size: 0.95rem;
+    }
+
+    .alert-info {
+        background: #e3f2fd;
+        color: #1565c0;
+        border-left: 3px solid #2196f3;
+    }
+
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        border-left: 3px solid #ffc107;
+    }
+
+    /* Product Card */
+    .product-card {
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+    }
+
+    .product-card .card-title {
+        font-size: 0.95rem;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+
+    .product-card .card-body {
+        padding: 0.9rem;
+    }
+
+    /* Empty State */
+    .empty-state-icon i {
+        font-size: 3rem;
+    }
+
+    /* Product Icon */
+    .product-icon {
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+    }
+
+    /* Feature Highlights */
+    .feature-highlights {
+        font-size: 0.95rem;
+        color: var(--muted-text);
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 0.9rem;
+        background: rgba(52, 152, 219, 0.1);
+        border-radius: 4px;
+        font-size: 0.85rem;
+
+    .feature-item i {
+        font-size: 0.95rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.4rem;
+        }
+
+        .customer-header h5 {
+            font-size: 1.15rem;
+        }
+
+        .customer-contact {
+            font-size: 0.9rem;
+        }
+
+        .table th, .table td {
+            padding: 0.5rem 0.6rem;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            padding: 0.4rem 0.7rem;
+            font-size: 0.85rem;
+        }
+
+        .feature-highlights {
+            font-size: 0.95rem;
+        }
+
+        .feature-item {
+            padding: 0.4rem 0.7rem;
+            font-size: 0.95rem;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+        }
+    }
+
+    /* Pagination */
+    .pagination {
+        --bs-pagination-padding-x: 0.6rem;
+        --bs-pagination-padding-y: 0.3rem;
+        --bs-pagination-font-size: 0.95rem;
+        --bs-pagination-border-radius: 4px;
+    }
+
+    .page-link {
+        border: 1px solid var(--border-color);
+        margin: 0 2px;
+        color: var(--secondary-color);
+    }
+
+    .page-item.active .page-link {
+        background: var(--secondary-color);
+        border-color: var(--secondary-color);
+    }
+
+    /* Tooltip */
+    .tooltip {
+        --bs-tooltip-font-size: 0.95rem;
+    }
+
+    /* Search Prompt */
+    .search-prompt-icon i {
+        font-size: 4rem;
+    }
+
+    h3 {
+        font-size: 1.25rem;
+    }
+
+    .lead {
+        font-size: 1rem;
+    }
+
+    .small, small {
+        font-size: 0.75em;
+    }
 </style>
-
 
 <!-- JavaScript -->
 <script>
@@ -679,12 +899,12 @@ body {
         const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
-        
+
         // Form elements
         const searchInput = document.getElementById('customerSearch');
         const productFilter = document.getElementById('productFilter');
         const searchForm = document.getElementById('searchForm');
-        
+
         // Auto-submit when product filter changes
         if (productFilter) {
             productFilter.addEventListener('change', function() {
@@ -693,7 +913,7 @@ body {
                 }
             });
         }
-        
+
         // Auto-submit when month filter changes
         const monthSelect = document.querySelector('select[name="month"]');
         if (monthSelect) {
@@ -703,7 +923,7 @@ body {
                 }
             });
         }
-        
+
         // Clear product filter when search changes
         if (searchInput) {
             let timeoutId;
@@ -715,26 +935,26 @@ body {
                     }
                 }, 500);
             });
-            
+
             // Auto-focus
             searchInput.focus();
             if (searchInput.value) {
                 searchInput.select();
             }
         }
-        
+
         // Add animation to table rows
         const tableRows = document.querySelectorAll('.table tbody tr');
         tableRows.forEach((row, index) => {
             row.style.animationDelay = `${index * 0.03}s`;
             row.classList.add('animate__animated', 'animate__fadeInUp');
         });
-        
+
         // Print functionality
         document.querySelector('.btn-outline-secondary')?.addEventListener('click', function() {
             window.print();
         });
-        
+
         // Export functionality (placeholder)
         document.querySelector('.btn-outline-primary')?.addEventListener('click', function() {
             alert('Export functionality will be implemented soon!');

@@ -3,7 +3,7 @@
 @section('title', 'Edit Invoice - Admin Dashboard')
 
 @section('content')
-<div class="page-body p-4">
+<div class="container-fluid p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="h3 mb-0 page-title">
@@ -80,60 +80,60 @@
                                 <div class="mb-3">
                                     <label for="subtotal" class="form-label">Subtotal (৳)</label>
                                     <input type="number" 
-                                           step="0.01" 
+                                           step="1" 
                                            min="0" 
                                            class="form-control" 
                                            id="subtotal" 
                                            name="subtotal" 
-                                           value="{{ old('subtotal', $invoice->subtotal) }}" 
+                                           value="{{ round(old('subtotal', $invoice->subtotal)) }}" 
                                            required>
                                 </div>
 
                                 <div class="mb-3">
                                     <label for="previous_due" class="form-label">Previous Due (৳)</label>
                                     <input type="number" 
-                                           step="0.01" 
+                                           step="1" 
                                            min="0" 
                                            class="form-control" 
                                            id="previous_due" 
                                            name="previous_due" 
-                                           value="{{ old('previous_due', $invoice->previous_due) }}" 
+                                           value="{{ round(old('previous_due', $invoice->previous_due)) }}" 
                                            required>
                                 </div>
 
                                 <div class="mb-3">
                                     <label for="total_amount" class="form-label">Total Amount (৳)</label>
                                     <input type="number" 
-                                           step="0.01" 
+                                           step="1" 
                                            min="0" 
                                            class="form-control" 
                                            id="total_amount" 
                                            name="total_amount" 
-                                           value="{{ old('total_amount', $invoice->total_amount) }}" 
+                                           value="{{ round(old('total_amount', $invoice->total_amount)) }}" 
                                            required>
                                 </div>
 
                                 <div class="mb-3">
                                     <label for="received_amount" class="form-label">Received Amount (৳)</label>
                                     <input type="number" 
-                                           step="0.01" 
+                                           step="1" 
                                            min="0" 
                                            class="form-control" 
                                            id="received_amount" 
                                            name="received_amount" 
-                                           value="{{ old('received_amount', $invoice->received_amount) }}" 
+                                           value="{{ round(old('received_amount', $invoice->received_amount)) }}" 
                                            required>
                                 </div>
 
                                 <div class="mb-3">
                                     <label for="next_due" class="form-label">Next Due (৳)</label>
                                     <input type="number" 
-                                           step="0.01" 
+                                           step="1" 
                                            min="0" 
                                            class="form-control" 
                                            id="next_due" 
                                            name="next_due" 
-                                           value="{{ old('next_due', $invoice->next_due) }}" 
+                                           value="{{ round(old('next_due', $invoice->next_due)) }}" 
                                            required>
                                 </div>
                             </div>

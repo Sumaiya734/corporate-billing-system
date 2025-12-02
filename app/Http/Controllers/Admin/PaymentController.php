@@ -142,7 +142,7 @@ class PaymentController extends Controller
         if ($amount > $due) {
             return response()->json([
                 'success' => false,
-                'message' => 'Payment amount (৳' . number_format($amount, 2) . ') cannot exceed due amount (৳' . number_format($due, 2) . ')'
+                'message' => 'Payment amount (৳' . number_format($amount, 0) . ') cannot exceed due amount (৳' . number_format($due, 0) . ')'
             ], 422);
         }
 
@@ -180,7 +180,7 @@ class PaymentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Payment of ৳' . number_format($amount, 2) . ' recorded successfully!'
+            'message' => 'Payment of ৳' . number_format($amount, 0) . ' recorded successfully!'
         ]);
     }
 }

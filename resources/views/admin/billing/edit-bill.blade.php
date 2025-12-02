@@ -3,7 +3,7 @@
 @section('title', 'Edit Payment - Admin Dashboard')
 
 @section('content')
-<div class="page-body p-4">
+<div class="container-fluid p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="h3 mb-0 page-title">
@@ -89,7 +89,7 @@
                                            value="{{ old('amount', $payment->amount) }}" 
                                            required>
                                     <div class="form-text">
-                                        Original amount: ৳{{ number_format($payment->amount, 2) }}
+                                        Original amount: ৳{{ number_format($payment->amount, 0) }}
                                     </div>
                                 </div>
 
@@ -171,7 +171,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete this payment of <strong>৳{{ number_format($payment->amount, 2) }}</strong>?</p>
+                <p>Are you sure you want to delete this payment of <strong>৳{{ number_format($payment->amount, 0) }}</strong>?</p>
                 <p class="text-danger">
                     <i class="fas fa-info-circle me-1"></i>This action cannot be undone. The invoice amounts will be recalculated.
                 </p>
@@ -259,7 +259,7 @@
             
             if (amount > maxAmount) {
                 e.preventDefault();
-                alert(`Payment amount cannot exceed ৳${maxAmount.toFixed(2)}`);
+                alert(`Payment amount cannot exceed ৳${maxAmount.toFixed(0)}`);
                 return;
             }
         });

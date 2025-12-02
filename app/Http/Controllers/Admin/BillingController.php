@@ -476,7 +476,7 @@ class BillingController extends Controller
             $billingHistory = $customer->invoices->map(function($invoice) {
                 return [
                     'month' => $invoice->issue_date->format('F Y'),
-                    'amount' => '৳' . number_format($invoice->total_amount, 2),
+                    'amount' => '৳' . number_format($invoice->total_amount, 0),
                     'status' => ucfirst($invoice->status),
                     'due_date' => $invoice->issue_date->format('Y-m-d') // Using issue_date since due_date doesn't exist
                 ];

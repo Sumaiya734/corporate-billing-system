@@ -7,205 +7,226 @@
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="h3 mb-0 text-dark">
+            <h1 class="h2 text-dark fw-bold mb-1">
                 <i class="fas fa-user-plus me-2 text-primary"></i>Add New Customer
-            </h2>
+            </h1>
+            <p class="text-muted mb-0">Register a new customer with complete profile and service details.</p>
         </div>
-        <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary">
+        <a href="{{ route('admin.customers.index') }}" class="btn btn-light border">
             <i class="fas fa-arrow-left me-1"></i>Back to Customers
         </a>
     </div>
 
     <!-- Customer Form -->
-    <div class="card shadow-sm">
+    <div class="card border-0 shadow-sm">
         <div class="card-header bg-white py-3">
-            <h5 class="card-title mb-0 text-primary">
-                <i class="fas fa-user-circle me-2"></i>Customer Information
-            </h5>
+            <h2 class="h5 mb-0 text-primary">
+                <i class="fas fa-user-circle me-2"></i>Customer Registration Form
+            </h2>
         </div>
         <div class="card-body p-4">
             @if(session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
-
-            @if(session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                <div class="alert alert-success alert-dismissible fade show d-flex align-items-start" role="alert">
+                    <i class="fas fa-check-circle fa-lg me-2 mt-1"></i>
+                    <div>{{ session('success') }}</div>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             @endif
 
             @if($errors->any())
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Please fix the following errors:
-                    <ul class="mb-0 mt-2">
-                        @foreach($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-exclamation-triangle fa-lg me-2 mt-1"></i>
+                        <div>
+                            <strong>Please correct the following errors:</strong>
+                            <ul class="mb-0 mt-2 ps-3">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             @endif
 
-            <form action="{{ route('admin.customers.store') }}" method="POST">
+            <form action="{{ route('admin.customers.store') }}" method="POST" enctype="multipart/form-data" id="customerForm">
                 @csrf
-                
-                <!-- Basic Information Section -->
-                <div class="form-section mb-4">
-                    <h6 class="section-header mb-3">
-                        <i class="fas fa-user me-2"></i>Basic Information
-                    </h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="name" class="form-label required">Full Name</label>
-                                <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                                       id="name" name="name" value="{{ old('name') }}" required 
-                                       placeholder="Enter full name">
-                                @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email Address</label>
-                                <input type="email" class="form-control @error('email') is-invalid @enderror" 
-                                       id="email" name="email" value="{{ old('email') }}" 
-                                       placeholder="Enter email address">
-                                @error('email')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Contact Information Section -->
-                <div class="form-section mb-4">
-                    <h6 class="section-header mb-3">
-                        <i class="fas fa-phone me-2"></i>Contact Information
-                    </h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="phone" class="form-label required">Phone Number</label>
-                                <input type="text" class="form-control @error('phone') is-invalid @enderror" 
-                                       id="phone" name="phone" value="{{ old('phone') }}" required 
-                                       placeholder="Enter phone number">
-                                @error('phone')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="customer_id" class="form-label">Customer ID</label>
-                                <input type="text" class="form-control @error('customer_id') is-invalid @enderror" 
-                                       id="customer_id" name="customer_id" value="{{ old('customer_id') }}" 
-                                       placeholder="Auto-generated if left blank">
-                                <small class="text-muted">Leave blank to auto-generate customer ID</small>
-                                @error('customer_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="address" class="form-label required">Residential Address</label>
-                                <textarea class="form-control @error('address') is-invalid @enderror" 
-                                          id="address" name="address" rows="3" required 
-                                          placeholder="Enter residential address">{{ old('address') }}</textarea>
-                                @error('address')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="connection_address" class="form-label required">Connection Address</label>
-                                <textarea class="form-control @error('connection_address') is-invalid @enderror" 
-                                          id="connection_address" name="connection_address" rows="3" required 
-                                          placeholder="Enter connection installation address">{{ old('connection_address') }}</textarea>
-                                @error('connection_address')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Identity Information Section -->
-                <div class="form-section mb-4">
-                    <h6 class="section-header mb-3">
-                        <i class="fas fa-id-card me-2"></i>Identity Information
-                    </h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="id_type" class="form-label">ID Type</label>
-                                <select class="form-select @error('id_type') is-invalid @enderror" 
-                                        id="id_type" name="id_type">
-                                    <option value="">Select ID Type (Optional)</option>
-                                    <option value="NID" {{ old('id_type') == 'NID' ? 'selected' : '' }}>National ID (NID)</option>
-                                    <option value="Passport" {{ old('id_type') == 'Passport' ? 'selected' : '' }}>Passport</option>
-                                    <option value="Driving License" {{ old('id_type') == 'Driving License' ? 'selected' : '' }}>Driving License</option>
-                                </select>
-                                <small class="text-muted">This field is optional</small>
-                                @error('id_type')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="id_number" class="form-label">ID Number</label>
-                                <input type="text" class="form-control @error('id_number') is-invalid @enderror" 
-                                       id="id_number" name="id_number" value="{{ old('id_number') }}" 
-                                       placeholder="Enter ID number">
-                                <small class="text-muted">This field is optional</small>
-                                @error('id_number')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Status Section -->
-                <div class="form-section mb-4">
-                    <h6 class="section-header mb-3">
-                        <i class="fas fa-cog me-2"></i>Account Settings
-                    </h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="account-status-card">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="is_active" 
-                                           name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_active">
-                                        <span class="status-label">Active Customer</span>
-                                        <small class="status-description">Customer account will be active immediately</small>
-                                    </label>
+                <!-- Profile & ID Images -->
+                <div class="row g-4 mb-5">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label fw-semibold d-flex align-items-center">
+                                <i class="fas fa-user me-1 text-muted"></i>
+                                Profile Picture <span class="text-danger ms-1">*</span>
+                            </label>
+                            <div class="border rounded-3 p-3 bg-light position-relative" id="profilePreviewContainer">
+                                <div class="text-center py-4" id="profilePlaceholder">
+                                    <i class="fas fa-user-circle fa-3x text-secondary mb-2"></i>
+                                    <p class="text-muted small mb-0">No image selected</p>
+                                </div>
+                                <img id="profilePreview" class="img-fluid d-none" alt="Profile Preview">
+                                <div class="mt-2 text-start">
+                                    <small class="text-muted">
+                                        JPG, PNG, or GIF • Max 2MB
+                                    </small>
                                 </div>
                             </div>
+                            <input type="file" class="form-control mt-2 @error('profile_image') is-invalid @enderror"
+                                   id="profile_image" name="profile_image" accept="image/*"
+                                   onchange="previewImage(this, 'profilePreview', 'profilePlaceholder', 'profileFileName')">
+                            <div class="mt-1" id="profileFileName" style="min-height: 1.2rem;"></div>
+                            @error('profile_image')
+                                <div class="text-danger mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
                     </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label fw-semibold d-flex align-items-center">
+                                <i class="fas fa-id-card me-1 text-muted"></i>
+                                ID Document <span class="text-danger ms-1">*</span>
+                            </label>
+                            <div class="border rounded-3 p-3 bg-light position-relative" id="idPreviewContainer">
+                                <div class="text-center py-4" id="idPlaceholder">
+                                    <i class="fas fa-file-image fa-3x text-secondary mb-2"></i>
+                                    <p class="text-muted small mb-0">No document selected</p>
+                                </div>
+                                <img id="idPreview" class="img-fluid d-none" alt="ID Preview">
+                                <div class="mt-2 text-start">
+                                    <small class="text-muted">
+                                        Clear image of NID/Passport • Max 3MB
+                                    </small>
+                                </div>
+                            </div>
+                            <input type="file" class="form-control mt-2 @error('id_image') is-invalid @enderror"
+                                   id="id_image" name="id_image" accept="image/*"
+                                   onchange="previewImage(this, 'idPreview', 'idPlaceholder', 'idFileName')">
+                            <div class="mt-1" id="idFileName" style="min-height: 1.2rem;"></div>
+                            @error('id_image')
+                                <div class="text-danger mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Basic & Contact Info -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('name') is-invalid @enderror"
+                                   name="name" value="{{ old('name') }}" required placeholder="e.g. Md. Imran Hossain">
+                            @error('name')<div class="text-danger">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-semibold">Email Address</label>
+                            <input type="email" class="form-control @error('email') is-invalid @enderror"
+                                   name="email" value="{{ old('email') }}" placeholder="customer@example.com">
+                            @error('email')<div class="text-danger">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-semibold">Phone Number <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('phone') is-invalid @enderror"
+                                   name="phone" value="{{ old('phone') }}" required placeholder="+8801XXXXXXXXX">
+                            @error('phone')<div class="text-danger">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-semibold">Customer ID</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control @error('customer_id') is-invalid @enderror"
+                                       name="customer_id" value="{{ old('customer_id') }}" 
+                                       placeholder="C-25-0001 (Auto-generated)" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="generateCustomerId()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">Auto-generated from name/phone. Click refresh to regenerate.</small>
+                            @error('customer_id')<div class="text-danger">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-semibold">Residential Address <span class="text-danger">*</span></label>
+                            <textarea class="form-control @error('address') is-invalid @enderror" 
+                                      name="address" rows="3" required 
+                                      placeholder="House #, Road, Area, City">{{ old('address') }}</textarea>
+                            @error('address')<div class="text-danger">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-semibold">Connection Address <span class="text-danger">*</span></label>
+                            <textarea class="form-control @error('connection_address') is-invalid @enderror" 
+                                      name="connection_address" rows="3" required 
+                                      placeholder="Where service will be installed">{{ old('connection_address') }}</textarea>
+                            @error('connection_address')<div class="text-danger">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Identity & Account -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">ID Type</label>
+                        <select class="form-select @error('id_type') is-invalid @enderror" name="id_type">
+                            <option value="">Select ID Type</option>
+                            <option value="NID" {{ old('id_type') == 'NID' ? 'selected' : '' }}>National ID (NID)</option>
+                            <option value="Passport" {{ old('id_type') == 'Passport' ? 'selected' : '' }}>Passport</option>
+                            <option value="Driving License" {{ old('id_type') == 'Driving License' ? 'selected' : '' }}>Driving License</option>
+                            <option value="Birth Certificate" {{ old('id_type') == 'Birth Certificate' ? 'selected' : '' }}>Birth Certificate</option>
+                        </select>
+                        @error('id_type')<div class="text-danger mt-1">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-semibold">ID Number</label>
+                            <input type="text" class="form-control @error('id_number') is-invalid @enderror"
+                                   name="id_number" value="{{ old('id_number') }}" 
+                                   placeholder="e.g. 1987 1234 5678">
+                            @error('id_number')<div class="text-danger">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-check form-switch mb-4 p-3 bg-light rounded-2">
+                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" 
+                           {{ old('is_active', true) ? 'checked' : '' }}>
+                    <label class="form-check-label fw-semibold" for="is_active">
+                        Activate Account Immediately
+                    </label>
+                    <p class="text-muted small mb-0 mt-1">
+                        Customer will be able to access services right after registration.
+                    </p>
                 </div>
 
                 <!-- Form Actions -->
-                <div class="d-flex justify-content-between align-items-center mt-4 pt-4 border-top">
-                    <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary btn-lg">
-                        <i class="fas fa-times me-1"></i>Cancel
+                <div class="d-flex flex-wrap gap-2 justify-content-between pt-3 border-top mt-4">
+                    <a href="{{ route('admin.customers.index') }}" class="btn btn-light">
+                        <i class="fas fa-times me-1"></i> Cancel
                     </a>
-                    <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="fas fa-save me-1"></i>Create Customer
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearForm()">
+                            <i class="fas fa-eraser me-1"></i> Clear
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-save me-1"></i> Create Customer
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -213,184 +234,118 @@
 </div>
 
 <style>
-.form-section {
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-    padding: 2rem;
-    border-radius: 12px;
-    border: 1px solid #e9ecef;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-}
-
-.section-header {
-    color: #2c3e50;
-    font-weight: 600;
-    padding-bottom: 0.75rem;
-    border-bottom: 2px solid #3498db;
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.required::after {
-    content: " *";
-    color: #e74c3c;
-}
-
 .form-label {
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    color: #374151;
 }
-
 .form-control, .form-select {
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    transition: all 0.3s ease;
+    border-color: #d1d5db;
+    padding: 0.625rem 0.875rem;
 }
-
 .form-control:focus, .form-select:focus {
-    border-color: #3498db;
-    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
-
-/* Account Status Card */
-.account-status-card {
-    background: white;
-    border: 2px solid #e9ecef;
-    border-radius: 12px;
-    padding: 1.5rem;
+.card {
+    border: 1px solid #e5e7eb;
 }
-
-.form-check-input:checked {
-    background-color: #27ae60;
-    border-color: #27ae60;
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid #e5e7eb;
 }
-
-.status-label {
-    font-weight: 600;
-    color: #2c3e50;
-    display: block;
-}
-
-.status-description {
-    color: #7f8c8d;
-    display: block;
-    margin-top: 0.25rem;
-}
-
-/* Buttons */
 .btn {
-    border-radius: 8px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
 }
-
-.btn-lg {
-    padding: 0.875rem 2.5rem;
-    font-size: 1.1rem;
-}
-
 .btn-primary {
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    border: none;
+    background-color: #2563eb;
+    border-color: #2563eb;
 }
-
 .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
-}
-
-.btn-outline-secondary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.2);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .form-section {
-        padding: 1.5rem;
-    }
+    background-color: #1d4ed8;
+    border-color: #1d4ed8;
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-generate customer ID in format: C-YY-XXXX
-    const nameInput = document.getElementById('name');
-    const phoneInput = document.getElementById('phone');
-    const customerIdInput = document.getElementById('customer_id');
+    // Image Preview with filename
+    window.previewImage = function(input, imgId, placeholderId, fileNameId) {
+        const file = input.files[0];
+        const preview = document.getElementById(imgId);
+        const placeholder = document.getElementById(placeholderId);
+        const fileNameDiv = document.getElementById(fileNameId);
+        
+        if (file) {
+            const maxSize = input.id === 'profile_image' ? 2 * 1024 * 1024 : 3 * 1024 * 1024;
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            
+            if (file.size > maxSize) {
+                alert(`File too large. Max size: ${maxSize === 2097152 ? '2' : '3'}MB.`);
+                input.value = '';
+                fileNameDiv.textContent = '';
+                return;
+            }
+            
+            if (!validTypes.includes(file.type)) {
+                alert('Invalid file type. Only JPG, PNG, GIF allowed.');
+                input.value = '';
+                fileNameDiv.textContent = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = e => preview.src = e.target.result;
+            reader.readAsDataURL(file);
+            
+            preview.classList.remove('d-none');
+            placeholder.classList.add('d-none');
+            fileNameDiv.textContent = `Selected: ${file.name}`;
+        } else {
+            preview.classList.add('d-none');
+            placeholder.classList.remove('d-none');
+            fileNameDiv.textContent = '';
+        }
+    };
 
-    async function generateCustomerId() {
-        if ((nameInput.value || phoneInput.value) && !customerIdInput.value) {
-            try {
-                // Get current year's last 2 digits
-                const year = new Date().getFullYear().toString().slice(-2);
-                
-                // Fetch the next available customer number from server
-                const response = await fetch('{{ route("admin.customers.next-id") }}', {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    customerIdInput.value = `C-${year}-${data.next_number}`;
-                } else {
-                    // Fallback to random number if server request fails
-                    const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-                    customerIdInput.value = `C-${year}-${randomNum}`;
+    // Generate Customer ID
+    window.generateCustomerId = async function() {
+        const btn = document.querySelector('button[onclick="generateCustomerId()"]');
+        const input = document.querySelector('[name="customer_id"]');
+        const originalIcon = btn.innerHTML;
+        
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch('{{ route("admin.customers.next-id") }}', {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 }
-            } catch (error) {
-                console.error('Error generating customer ID:', error);
-                // Fallback to random number
-                const year = new Date().getFullYear().toString().slice(-2);
-                const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-                customerIdInput.value = `C-${year}-${randomNum}`;
-            }
+            });
+            const data = await res.json();
+            const year = new Date().getFullYear().toString().slice(-2);
+            input.value = `C-${year}-${data.next_number.toString().padStart(4, '0')}`;
+        } catch (e) {
+            input.value = 'C-' + new Date().getFullYear().toString().slice(-2) + '-' + Math.floor(Math.random()*9000+1000);
+        } finally {
+            btn.innerHTML = originalIcon;
+            btn.disabled = false;
         }
-    }
+    };
 
-    nameInput.addEventListener('blur', generateCustomerId);
-    phoneInput.addEventListener('blur', generateCustomerId);
-
-    // Form validation enhancement
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
-        const requiredFields = form.querySelectorAll('[required]');
-        let isValid = true;
-
-        requiredFields.forEach(field => {
-            if (!field.value.trim()) {
-                isValid = false;
-                field.classList.add('is-invalid');
-            }
-        });
-
-        if (!isValid) {
-            e.preventDefault();
-            // Scroll to first error
-            const firstError = form.querySelector('.is-invalid');
-            if (firstError) {
-                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                firstError.focus();
-            }
+    // Clear Form
+    window.clearForm = function() {
+        if (confirm('Clear all entered data?')) {
+            document.getElementById('customerForm').reset();
+            ['profile', 'id'].forEach(type => {
+                document.getElementById(`${type}Preview`).classList.add('d-none');
+                document.getElementById(`${type}Placeholder`).classList.remove('d-none');
+                document.getElementById(`${type}FileName`).textContent = '';
+            });
         }
-    });
-
-    // Real-time validation
-    const inputs = form.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        input.addEventListener('input', function() {
-            if (this.classList.contains('is-invalid')) {
-                this.classList.remove('is-invalid');
-            }
-        });
-    });
+    };
 });
 </script>
 @endsection

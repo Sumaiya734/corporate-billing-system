@@ -700,6 +700,9 @@ class MonthlyBillController extends Controller
                 ]);
             }
 
+            // Auto-generate invoices for all customers who are due but don't have invoices yet
+            $this->autoGenerateMissingInvoicesBeforeClosing($monthDate);
+
             // Get all invoices for this month
             $allInvoices = Invoice::whereYear('issue_date', $monthDate->year)
                 ->whereMonth('issue_date', $monthDate->month)
@@ -725,7 +728,7 @@ class MonthlyBillController extends Controller
                 $closedNote = "\n[Month Closed: " . now()->format('Y-m-d H:i:s') . " by " . (\Illuminate\Support\Facades\Auth::user()->name ?? 'System') . "]";
                 
                 if ($dueAmount > 0) {
-                    $closedNote .= " Due amount of ৳" . number_format($dueAmount, 2) . " carried forward to next billing cycle.";
+                    $closedNote .= " Due amount of ৳" . number_format($dueAmount, 0) . " carried forward to next billing cycle.";
                     $totalCarriedForward += $dueAmount;
                     $affectedInvoices++;
                 } else {
@@ -752,7 +755,7 @@ class MonthlyBillController extends Controller
                     'affected_invoices' => $affectedInvoices,
                     'closed_at' => now(),
                     'closed_by' => \Illuminate\Support\Facades\Auth::id(),
-                    'notes' => "Month closed with {$affectedInvoices} invoices having outstanding dues totaling ৳" . number_format($totalCarriedForward, 2)
+                    'notes' => "Month closed with {$affectedInvoices} invoices having outstanding dues totaling ৳" . number_format($totalCarriedForward, 0)
                 ]
             );
 
@@ -763,7 +766,7 @@ class MonthlyBillController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Successfully closed {$displayMonth}. ৳" . number_format($totalCarriedForward, 2) . " carried forward from {$affectedInvoices} invoices.",
+                'message' => "Successfully closed {$displayMonth}. ৳" . number_format($totalCarriedForward, 0) . " carried forward from {$affectedInvoices} invoices.",
                 'carried_forward_amount' => $totalCarriedForward,
                 'affected_invoices' => $affectedInvoices,
                 'total_invoices' => $totalInvoices,
@@ -899,7 +902,7 @@ class MonthlyBillController extends Controller
             $closedNote = "\n[User Confirmed: " . now()->format('Y-m-d H:i:s') . " by " . (\Illuminate\Support\Facades\Auth::user()->name ?? 'System') . "]";
             
             if ($dueAmount > 0) {
-                $closedNote .= " Due amount of ৳" . number_format($dueAmount, 2) . " carried forward to next billing cycle.";
+                $closedNote .= " Due amount of ৳" . number_format($dueAmount, 0) . " carried forward to next billing cycle.";
                 
                 // Update current invoice - mark as confirmed but keep due amount visible
                 $invoice->update([
@@ -925,7 +928,7 @@ class MonthlyBillController extends Controller
                         'previous_due' => $existingNextInvoice->previous_due + $dueAmount,
                         'total_amount' => $existingNextInvoice->subtotal + $existingNextInvoice->previous_due + $dueAmount,
                         'next_due' => ($existingNextInvoice->subtotal + $existingNextInvoice->previous_due + $dueAmount) - $existingNextInvoice->received_amount,
-                        'notes' => ($existingNextInvoice->notes ?? '') . "\nAdded ৳" . number_format($dueAmount, 2) . " carried forward from invoice {$invoice->invoice_number}"
+                        'notes' => ($existingNextInvoice->notes ?? '') . "\nAdded ৳" . number_format($dueAmount, 0) . " carried forward from invoice {$invoice->invoice_number}"
                     ]);
                 } else {
                     // Create new invoice for next month with carried forward amount as previous_due
@@ -1374,5 +1377,101 @@ class MonthlyBillController extends Controller
         }
         
         return response()->json($response);
+    }
+
+    /**
+     * Auto-generate invoices for all customers who are due but don't have invoices yet
+     */
+    private function autoGenerateMissingInvoicesBeforeClosing(Carbon $monthDate)
+    {
+        try {
+            // Get system settings
+            $systemSettings = $this->getSystemSettings();
+            $serviceCharge = $systemSettings['fixed_monthly_charge'] ?? 0.00;
+            $vatPercentage = $systemSettings['vat_percentage'] ?? 0.00;
+
+            // Get all active customers with products who are due for billing in this month
+            $dueCustomers = $this->getDueCustomersForMonth($monthDate);
+
+            if ($dueCustomers->isEmpty()) {
+                return;
+            }
+
+            // Get existing invoices for this month
+            $existingInvoices = Invoice::whereYear('issue_date', $monthDate->year)
+                ->whereMonth('issue_date', $monthDate->month)
+                ->get();
+
+            // Get existing invoice customer product IDs
+            $existingCpIds = $existingInvoices->pluck('cp_id')->toArray();
+
+            // Generate invoices for due customers who don't have invoices yet
+            $generatedCount = 0;
+            foreach ($dueCustomers as $customer) {
+                try {
+                    // Create invoices for each product (one per product)
+                    foreach (($customer->product_details ?? []) as $product) {
+                        // Skip if invoice already exists for this customer product
+                        if (in_array($product['cp_id'], $existingCpIds)) {
+                            continue;
+                        }
+
+                        // Create new invoice for this product
+                        $this->createSingleProductInvoice($customer, $product, $monthDate, $serviceCharge, $vatPercentage);
+                        $generatedCount++;
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Auto-generation failed for customer {$customer->c_id}: " . $e->getMessage());
+                }
+            }
+
+            if ($generatedCount > 0) {
+                Log::info("Auto-generated {$generatedCount} invoices for {$monthDate->format('F Y')} before closing month");
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Auto-generate missing invoices before closing error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Create a single product invoice for a customer
+     */
+    private function createSingleProductInvoice($customer, $product, Carbon $monthDate, $serviceCharge = 0.00, $vatPercentage = 0.00)
+    {
+        try {
+            $productAmount = $product['monthly_price'] * $product['billing_cycle_months'];
+
+            // Get previous due amount from unpaid invoices for THIS SPECIFIC PRODUCT
+            $previousDue = Invoice::where('cp_id', $product['cp_id'])
+                ->where('status', '!=', 'paid')
+                ->where('next_due', '>', 0)
+                ->sum('next_due');
+
+            $totalAmount = $productAmount + $previousDue;
+
+            $invoice = Invoice::create([
+                'cp_id' => $product['cp_id'],
+                'issue_date' => $monthDate->format('Y-m-d'),
+                'previous_due' => $previousDue,
+                'service_charge' => 0.00,
+                'vat_percentage' => 0.00,
+                'vat_amount' => 0.00,
+                'subtotal' => $productAmount,
+                'total_amount' => $totalAmount,
+                'received_amount' => 0,
+                'next_due' => $totalAmount,
+                'status' => 'unpaid',
+                'notes' => $this->generateBillingNotesForProduct($customer, $product, $monthDate, $previousDue),
+                'created_by' => \Illuminate\Support\Facades\Auth::id()
+            ]);
+
+            Log::info("Created invoice {$invoice->invoice_number} for customer {$customer->name} - Product ID: {$product['p_id']} with amount ৳{$totalAmount}");
+
+            return $invoice;
+        } catch (\Exception $e) {
+            Log::error("Failed to create invoice for customer {$customer->c_id}, product {$product['p_id']}: " . $e->getMessage());
+            throw $e;
+        }
     }
 }

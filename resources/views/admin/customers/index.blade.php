@@ -490,48 +490,48 @@
 
                                 <!-- Actions Column -->
                                <td class="text-center pe-4">
-    <div class="action-buttons d-flex justify-content-center gap-1">
-        <!-- View Details -->
-        <a href="{{ route('admin.customers.show', $customer->c_id) }}" 
-           class="btn btn-sm btn-outline-info action-btn" 
-           title="View Details"
-           data-bs-toggle="tooltip" Target="_blank">
-            <i class="fas fa-eye"></i>
-        </a>
+                                    <div class="action-buttons d-flex justify-content-center gap-1">
+                                        <!-- View Details -->
+                                        <a href="{{ route('admin.customers.show', $customer->c_id) }}" 
+                                        class="btn btn-sm btn-outline-info action-btn" 
+                                        title="View Details"
+                                        data-bs-toggle="tooltip" Target="_blank">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
 
-        <!-- Edit Customer -->
-        <a href="{{ route('admin.customers.edit', $customer->c_id) }}" 
-           class="btn btn-sm btn-outline-warning action-btn" 
-           title="Edit Customer"
-           data-bs-toggle="tooltip">
-            <i class="fas fa-edit"></i>
-        </a>
+                                        <!-- Edit Customer -->
+                                        <a href="{{ route('admin.customers.edit', $customer->c_id) }}" 
+                                        class="btn btn-sm btn-outline-warning action-btn" 
+                                        title="Edit Customer"
+                                        data-bs-toggle="tooltip">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
 
-        <!-- Toggle Status -->
-        <form action="{{ route('admin.customers.toggle-status', $customer->c_id) }}" 
-              method="POST" 
-              class="d-inline">
-            @csrf
-            @method('PATCH')
-            <button type="submit" 
-                    class="btn btn-sm btn-outline-{{ $customer->is_active ? 'warning' : 'success' }} action-btn" 
-                    title="{{ $customer->is_active ? 'Deactivate' : 'Activate' }}"
-                    data-bs-toggle="tooltip">
-                <i class="fas fa-{{ $customer->is_active ? 'pause' : 'play' }}"></i>
-            </button>
-        </form>
+                                        <!-- Toggle Status -->
+                                        <!-- <form action="{{ route('admin.customers.toggle-status', $customer->c_id) }}" 
+                                            method="POST" 
+                                            class="d-inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" 
+                                                class="btn btn-sm btn-outline-{{ $customer->is_active ? 'warning' : 'success' }} action-btn" 
+                                                title="{{ $customer->is_active ? 'Deactivate' : 'Activate' }}"
+                                                data-bs-toggle="tooltip">
+                                                <i class="fas fa-{{ $customer->is_active ? 'pause' : 'play' }}"></i>
+                                            </button>
+                                        </form> -->
 
-        <!-- Delete Customer -->
-        <button type="button" 
-                class="btn btn-sm btn-outline-danger action-btn delete-customer-btn"
-                title="Delete Customer"
-                data-customer-id="{{ $customer->c_id }}"
-                data-customer-name="{{ $customer->name }}">
-            <i class="fas fa-trash"></i>
-        </button>
+                                        <!-- Delete Customer -->
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger action-btn delete-customer-btn"
+                                                title="Delete Customer"
+                                                data-customer-id="{{ $customer->c_id }}"
+                                                data-customer-name="{{ $customer->name }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
 
-    </div>
-</td>
+                                    </div>
+                                </td>
 
                             </tr>
                             @endforeach
@@ -816,10 +816,37 @@ document.addEventListener('DOMContentLoaded', function() {
         const action = `/admin/customers/${customerId}`;
         const row = delBtn.closest('tr');
         
-        showDeleteModal(message, action, row, function() {
-            // Reload page after successful deletion to update stats
-            setTimeout(() => location.reload(), 500);
-        });
+        // Check if showDeleteModal function exists
+        if (typeof showDeleteModal === 'function') {
+            showDeleteModal(message, action, row, function() {
+                // Reload page after successful deletion to update stats
+                setTimeout(() => location.reload(), 500);
+            });
+        } else {
+            // Fallback to native confirm dialog
+            if (confirm(`Are you sure you want to delete "${customerName}"? All associated data will be permanently removed.`)) {
+                // Create a form and submit it
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = action;
+                
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                
+                const methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                methodInput.value = 'DELETE';
+                
+                form.appendChild(csrfInput);
+                form.appendChild(methodInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
     });
 
     // Auto-submit form when status filter changes

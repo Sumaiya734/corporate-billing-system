@@ -573,9 +573,9 @@ class PaymentModal {
         const displayData = {
             'payment_invoice_number_display': invoiceNumber || 'N/A',
             'payment_customer_name_display': customerName || 'N/A',
-            'payment_total_amount_display': '৳ ' + (parseFloat(totalAmount) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2}),
-            'payment_due_amount_display': '৳ ' + (parseFloat(dueAmount) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2}),
-            'payment_due_amount_helper': '৳ ' + (parseFloat(dueAmount) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})
+            'payment_total_amount_display': '৳ ' + (parseFloat(totalAmount) || 0).toLocaleString('en-BD'),
+            'payment_due_amount_display': '৳ ' + (parseFloat(dueAmount) || 0).toLocaleString('en-BD'),
+            'payment_due_amount_helper': '৳ ' + (parseFloat(dueAmount) || 0).toLocaleString('en-BD')
         };
 
         Object.keys(displayData).forEach(id => {
@@ -611,7 +611,7 @@ class PaymentModal {
         const paymentAmountField = document.getElementById('payment_amount');
         if (paymentAmountField) {
             const dueAmt = parseFloat(dueAmount) || 0;
-            paymentAmountField.value = dueAmt > 0 ? dueAmt.toFixed(2) : '';
+            paymentAmountField.value = dueAmt > 0 ? dueAmt.toFixed(0) : '';
             paymentAmountField.max = dueAmt;
             paymentAmountField.min = 0.01;
             
@@ -640,12 +640,12 @@ class PaymentModal {
             const totalAmountText = document.getElementById('payment_total_amount_display')?.textContent;
             const totalAmount = totalAmountText ? parseFloat(totalAmountText.replace(/[^\d.]/g, '')) || 0 : 0;
             const nextDue = Math.max(0, totalAmount - paymentAmount);
-            nextDueField.value = nextDue.toFixed(2);
+            nextDueField.value = nextDue.toFixed(0);
         } else {
             const dueAmountText = document.getElementById('payment_due_amount_display')?.textContent;
             const dueAmount = dueAmountText ? parseFloat(dueAmountText.replace(/[^\d.]/g, '')) || 0 : 0;
             const nextDue = Math.max(0, dueAmount - paymentAmount);
-            nextDueField.value = nextDue.toFixed(2);
+            nextDueField.value = nextDue.toFixed(0);
         }
     }
 
@@ -659,7 +659,7 @@ class PaymentModal {
             const paymentAmountError = document.getElementById('payment_amount_error');
             if (paymentAmountError) {
                 paymentAmountError.style.display = 'block';
-                paymentAmountError.textContent = `Payment amount cannot exceed due amount (৳${dueAmount.toFixed(2)})`;
+                paymentAmountError.textContent = `Payment amount cannot exceed due amount (৳${dueAmount.toFixed(0)})`;
             }
         } else {
             input.classList.remove('is-invalid');
@@ -696,7 +696,7 @@ class PaymentModal {
         
         // Populate form with payment data
         document.getElementById('payment_id').value = paymentId;
-        document.getElementById('payment_amount').value = parseFloat(amount).toFixed(2);
+        document.getElementById('payment_amount').value = parseFloat(amount).toFixed(0);
         
         const paymentMethodSelect = document.querySelector('select[name="payment_method"]');
         if (paymentMethodSelect && paymentMethod) {
@@ -760,7 +760,7 @@ class PaymentModal {
         // Populate delete modal
         const deletePaymentAmount = document.getElementById('delete_payment_amount');
         if (deletePaymentAmount) {
-            deletePaymentAmount.textContent = '৳ ' + parseFloat(amount).toLocaleString('en-BD', {minimumFractionDigits: 2});
+            deletePaymentAmount.textContent = '৳ ' + parseFloat(amount).toLocaleString('en-BD');
         }
         
         const deletePaymentDate = document.getElementById('delete_payment_date');
@@ -915,7 +915,7 @@ class PaymentModal {
                     })}</small>
                 </td>
                 <td>
-                    <strong class="text-success">৳ ${parseFloat(payment.amount).toLocaleString('en-BD', {minimumFractionDigits: 2})}</strong>
+                    <strong class="text-success">৳ ${parseFloat(payment.amount).toLocaleString('en-BD')}</strong>
                 </td>
                 <td>
                     <span class="badge bg-light text-dark border">
@@ -1013,7 +1013,7 @@ class PaymentModal {
             }
             
             if (paymentAmount > dueAmount + 0.01) {
-                this.showToast(`Payment amount cannot exceed due amount (৳${dueAmount.toFixed(2)})`, 'error');
+                this.showToast(`Payment amount cannot exceed due amount (৳${dueAmount.toFixed(0)})`, 'error');
                 this.isSubmitting = false;
                 return;
             }

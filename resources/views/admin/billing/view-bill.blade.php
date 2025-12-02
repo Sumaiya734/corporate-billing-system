@@ -108,7 +108,7 @@
                                         @endif
                                     </td>
                                 </tr>
-                                <tr><td class="text-muted">Amount:</td><td class="fw-bold text-success">৳ {{ number_format($invoice['amount'],2) }}</td></tr>
+                                <tr><td class="text-muted">Amount:</td><td class="fw-bold number_format($invoice['amount'],0) }}</td></tr>
                             </table>
                         </div>
                     </div>
@@ -135,10 +135,10 @@
                                 <tr><th>Description</th><th class="text-end" style="width:90px;">Amount (৳)</th></tr>
                             </thead>
                             <tbody>
-                                <tr><td>Basic Speed Internet</td><td class="text-end">{{ number_format($invoice['services'][0]['price'],2) }}</td></tr>
+                                <tr><td>Basic Speed Internet</td><td class="text-end">{{ number_format($invoice['services'][0]['price'],0) }}</td></tr>
                                 <tr><td>Service Charge</td><td class="text-end">50.00</td></tr>
                                 <tr class="table-light"><td><strong>Subtotal</strong></td><td class="text-end"><strong>{{ number_format($invoice['breakdown']['service_charge']+$invoice['breakdown']['regular_product']+$invoice['breakdown']['special_products'],2) }}</strong></td></tr>
-                                <tr><td>VAT (7%)</td><td class="text-end">{{ number_format($invoice['breakdown']['vat'],2) }}</td></tr>
+                                <tr><td>VAT (7%)</td><td class="text-end">{{ number_format($invoice['breakdown']['vat'],0) }}</td></tr>
                             </tbody>
                             <tfoot class="table-light">
                                 <tr><td class="fw-bold">Total</td><td class="text-end fw-bold text-primary">৳ {{ number_format($invoice['amount'],2) }}</td></tr>

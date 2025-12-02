@@ -18,24 +18,31 @@ class PaymentDetailsController extends Controller
         $productId = $request->get('product_id', 'all');
         $month = $request->get('month', '');
         
-        // Base query for customers
-        $customersQuery = Customer::query();
+        // Initialize customers collection
+        $customers = collect();
         
-        // Apply search filter
+        // Only fetch customers when there's a search term
         if ($search) {
+            // Base query for customers
+            $customersQuery = Customer::query();
+            
+            // Apply search filter
             $customersQuery->where(function($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('customer_id', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             });
+            
+            // Get customers with their products
+            $customers = $customersQuery->with(['customerProducts.product'])
+                ->orderBy('name')
+                ->paginate(20)
+                ->withQueryString();
+        } else {
+            // Create an empty paginator when no search
+            $customers = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 20);
         }
-        
-        // Get customers with their products
-        $customers = $customersQuery->with(['customerProducts.product'])
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
         
         // Get ALL products for dropdown (when no search or for "all" option)
         $allProducts = Product::orderBy('name')->get();
@@ -63,32 +70,34 @@ class PaymentDetailsController extends Controller
             }
         }
         
-        // Get payment history for each customer
-        foreach ($customers as $customer) {
-            $paymentQuery = Invoice::whereHas('customerProduct', function($query) use ($customer, $productId) {
-                $query->where('c_id', $customer->c_id);
+        // Get payment history for each customer (only if we have customers)
+        if ($search && $customers->count() > 0) {
+            foreach ($customers as $customer) {
+                $paymentQuery = Invoice::whereHas('customerProduct', function($query) use ($customer, $productId) {
+                    $query->where('c_id', $customer->c_id);
+                    
+                    // Filter by product if not "all"
+                    if ($productId !== 'all') {
+                        $query->where('p_id', $productId);
+                    }
+                });
                 
-                // Filter by product if not "all"
-                if ($productId !== 'all') {
-                    $query->where('p_id', $productId);
+                // Filter by month if specified
+                if ($month) {
+                    $paymentQuery->where('issue_date', 'like', "{$month}%");
                 }
-            });
-            
-            // Filter by month if specified
-            if ($month) {
-                $paymentQuery->where('issue_date', 'like', "{$month}%");
+                
+                $customer->paymentHistory = $paymentQuery
+                    ->with(['customerProduct.product'])
+                    ->orderBy('issue_date', 'desc')
+                    ->get();
+                
+                // Calculate summary
+                $customer->totalBilled = $customer->paymentHistory->sum('total_amount');
+                $customer->totalPaid = $customer->paymentHistory->sum('received_amount');
+                $customer->totalDue = $customer->totalBilled - $customer->totalPaid;
+                $customer->totalInvoices = $customer->paymentHistory->count();
             }
-            
-            $customer->paymentHistory = $paymentQuery
-                ->with(['customerProduct.product'])
-                ->orderBy('issue_date', 'desc')
-                ->get();
-            
-            // Calculate summary
-            $customer->totalBilled = $customer->paymentHistory->sum('total_amount');
-            $customer->totalPaid = $customer->paymentHistory->sum('received_amount');
-            $customer->totalDue = $customer->totalBilled - $customer->totalPaid;
-            $customer->totalInvoices = $customer->paymentHistory->count();
         }
         
         // Get unique months for filter

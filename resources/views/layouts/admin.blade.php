@@ -202,27 +202,23 @@
 
             <div class="d-flex align-items-center ms-auto gap-3">
                 <div class="d-none d-md-flex align-items-center text-muted small">
-                    <i class="fa-regular fa-clock me-2"></i> {{ now()->format('F j, Y') }}
+                    <!-- <i class="fa-regular fa-clock me-2"></i> -->
+                     {{ now()->format('g:i A, F j, Y') }}
                 </div>
 
-                <div class="dropdown">
-                    <a href="#" class="d-flex align-items-center text-decoration-none" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                        <div class="me-2 text-secondary"><i class="fa-solid fa-user-circle fa-2x"></i></div>
-                        <div class="d-none d-md-block text-start">
-                            <div style="font-weight:700">{{ Auth::user()->name }}</div>
-                            <small class="text-muted">Administrator</small>
-                        </div>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-                        <li><a class="dropdown-item" href="#"><i class="fa-solid fa-user-gear me-2"></i>Profile</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <form method="POST" action="{{ route('admin.logout') }}">
-                                @csrf
-                                <button class="dropdown-item text-danger"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</button>
-                            </form>
-                        </li>
-                    </ul>
+                <div class="d-flex align-items-center">
+                    <div class="me-3 text-secondary d-none d-md-block">
+                        <div style="font-weight:700">{{ Auth::user()->name }}</div>
+                        <small class="text-muted">Administrator</small>
+                    </div>
+                    
+                    <form method="POST" action="{{ route('admin.logout') }}" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Logout">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                            <span class="d-none d-md-inline ms-1">Logout</span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

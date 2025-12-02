@@ -3,7 +3,7 @@
 @section('title', 'Customer Profile - ' . $customer->name)
 
 @section('content')
-<div class="page-body p-4">
+<div class="container-fluid p-4">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -187,7 +187,7 @@
                             <h5 class="fw-bold text-primary mb-3">
                             <i class="fas fa-box me-2"></i>Active Products
                             </h5>
-                            <a href="{{ route('admin.customer-to-products.index', $customer->c_id) }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ route('admin.customer-to-products.index', ['customer_id' => $customer->c_id]) }}" class="btn btn-sm btn-outline-primary">
                                 View
                             </a>   
                         </div>                                 
@@ -197,7 +197,7 @@
                                 <div class="list-group-item px-0">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div>
-                                            <h6 class="mb-1">{{ $cp->product->name }}</h6>
+                                            <h6 class="mb-1 {{ $cp->status !== 'active' ? 'text-decoration-line-through text-muted' : '' }}">{{ $cp->product->name }}</h6>
                                             <small class="text-muted d-block">
                                                 <i class="fas fa-tag me-1"></i>{{ ucfirst($cp->product->product_type ?? 'N/A') }}
                                             </small>
@@ -213,12 +213,12 @@
                                             </small>
                                         </div>
                                         <div class="text-end">
-                                            <div class="fw-bold text-primary">৳{{ number_format($cp->product->monthly_price ?? 0, 2) }}/mo</div>
+                                            <div class="fw-bold text-primary {{ $cp->status !== 'active' ? 'text-decoration-line-through' : '' }}">৳{{ number_format($cp->product->monthly_price ?? 0, 2) }}/mo</div>
                                             @if($cp->billing_cycle_months > 1)
                                                 <small class="text-muted d-block">৳{{ number_format(($cp->product->monthly_price ?? 0) * $cp->billing_cycle_months, 2) }}/cycle</small>
                                             @endif
                                             <span class="badge bg-{{ $cp->status === 'active' ? 'success' : 'secondary' }} mt-1">
-                                                {{ ucfirst($cp->status) }}
+                                                {{ $cp->status !== 'active' ? 'Deactivated' : ucfirst($cp->status) }}
                                             </span>
                                         </div>
                                     </div>
@@ -383,6 +383,10 @@ h5.text-primary {
 }
 .list-group-item:last-child {
     border-bottom: 0;
+}
+/* Deactivated product styling */
+.text-decoration-line-through {
+    text-decoration: line-through !important;
 }
 </style>
 @endsection

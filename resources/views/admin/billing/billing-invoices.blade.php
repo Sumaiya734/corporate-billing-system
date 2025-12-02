@@ -3,7 +3,7 @@
 @section('title', 'Billing & Invoices - Admin Dashboard')
 
 @section('content')
-<div class="page-body p-4">
+<div class="container-fluid p-4">
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -66,7 +66,7 @@
                     <div class="d-flex justify-content-between">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Monthly Revenue</div>
-                            <div class="h5 mb-0">৳ {{ number_format($currentMonthRevenue ?? 0, 2) }}</div>
+                            <div class="h5 mb-0">৳ {{ number_format($currentMonthRevenue ?? 0, 0) }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-white-300"></i>
@@ -81,7 +81,7 @@
                     <div class="d-flex justify-content-between">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Pending Payments</div>
-                            <div class="h5 mb-0">৳ {{ number_format($totalPendingAmount ?? 0, 2) }}</div>
+                            <div class="h5 mb-0">৳ {{ number_format($totalPendingAmount ?? 0, 0) }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-clock fa-2x text-white-300"></i>
@@ -191,7 +191,7 @@
                             </td>
                             <td>
                                 <span class="fw-bold text-dark" title="Sum of all invoice total_amount for this month (includes previous due + current charges)">
-                                    ৳ {{ number_format($month->total_amount ?? 0, 2) }}
+                                    ৳ {{ number_format($month->total_amount ?? 0, 0) }}
                                 </span>
                                 @if(($month->total_amount ?? 0) > 0)
                                 <br><small class="text-muted">From {{ \App\Models\Invoice::whereYear('issue_date', \Carbon\Carbon::parse($month->billing_month . '-01')->year)->whereMonth('issue_date', \Carbon\Carbon::parse($month->billing_month . '-01')->month)->count() }} invoices</small>
@@ -199,7 +199,7 @@
                             </td>
                             <td>
                                 <span class="fw-bold text-success" title="Total payments received for this month">
-                                    ৳ {{ number_format($month->received_amount ?? 0, 2) }}
+                                    ৳ {{ number_format($month->received_amount ?? 0, 0) }}
                                 </span>
                                 @if(($month->received_amount ?? 0) > 0 && ($month->total_amount ?? 0) > 0)
                                 <br>
@@ -208,7 +208,7 @@
                             </td>
                             <td>
                                 <span class="fw-bold text-{{ ($month->due_amount ?? 0) > 0 ? 'danger' : 'success' }}" title="Outstanding amount for this month">
-                                    ৳ {{ number_format($month->due_amount ?? 0, 2) }}
+                                    ৳ {{ number_format($month->due_amount ?? 0, 0) }}
                                 </span>
                             </td>
                             <td>
@@ -248,13 +248,13 @@
                         <tr class="fw-bold">
                             <td colspan="2" class="text-end">TOTALS:</td>
                             <td class="text-dark">
-                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('total_amount'), 2) }}
+                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('total_amount'), 0) }}
                             </td>
                             <td class="text-success">
-                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('received_amount'), 2) }}
+                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('received_amount'), 0) }}
                             </td>
                             <td class="text-danger">
-                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('due_amount'), 2) }}
+                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('due_amount'), 0) }}
                             </td>
                             <td colspan="3"></td>
                         </tr>
@@ -297,15 +297,15 @@
                             <small class="text-muted">Active Customers</small>
                         </div>
                         <div class="col-md-3">
-                            <h4 class="text-success">৳ {{ number_format($currentMonthStats->total_amount ?? 0, 2) }}</h4>
+                            <h4 class="text-success">৳ {{ number_format($currentMonthStats->total_amount ?? 0, 0) }}</h4>
                             <small class="text-muted">Expected Revenue</small>
                         </div>
                         <div class="col-md-3">
-                            <h4 class="text-info">৳ {{ number_format($currentMonthStats->received_amount ?? 0, 2) }}</h4>
+                            <h4 class="text-info">৳ {{ number_format($currentMonthStats->received_amount ?? 0, 0) }}</h4>
                             <small class="text-muted">Received</small>
                         </div>
                         <div class="col-md-3">
-                            <h4 class="text-warning">৳ {{ number_format($currentMonthStats->due_amount ?? 0, 2) }}</h4>
+                            <h4 class="text-warning">৳ {{ number_format($currentMonthStats->due_amount ?? 0, 0) }}</h4>
                             <small class="text-muted">Pending</small>
                         </div>
                     </div>
@@ -337,7 +337,7 @@
                                 <h5 class="mb-0">{{ number_format($totalInvoicesCount ?? 0) }}</h5>
                                 <small class="text-muted">Total Invoices</small>
                                 <div class="mt-2">
-                                    <small class="text-success">৳{{ number_format($totalInvoiceAmount ?? 0, 2) }}</small>
+                                    <small class="text-success">৳{{ number_format($totalInvoiceAmount ?? 0, 0) }}</small>
                                 </div>
                             </div>
                         </div>
@@ -347,7 +347,7 @@
                                 <h5 class="mb-0">{{ number_format($totalPaymentsCount ?? 0) }}</h5>
                                 <small class="text-muted">Total Payments</small>
                                 <div class="mt-2">
-                                    <small class="text-success">৳{{ number_format($totalRevenue ?? 0, 2) }}</small>
+                                    <small class="text-success">৳{{ number_format($totalRevenue ?? 0, 0) }}</small>
                                 </div>
                             </div>
                         </div>
@@ -390,13 +390,13 @@
                             <div class="col-md-6">
                                 <strong>Overall Statistics (All Time):</strong>
                                 <ul class="mb-0 mt-2 small">
-                                    <li>Total Invoiced: <strong class="text-primary">৳{{ number_format($totalInvoiceAmount ?? 0, 2) }}</strong> <small class="text-muted">({{ number_format($totalInvoicesCount ?? 0) }} invoices)</small></li>
-                                    <li>Total Collected: <strong class="text-success">৳{{ number_format($totalReceivedAmount ?? 0, 2) }}</strong> <small class="text-muted">({{ number_format($totalPaymentsCount ?? 0) }} payments)</small></li>
+                                    <li>Total Invoiced: <strong class="text-primary">৳{{ number_format($totalInvoiceAmount ?? 0, 0) }}</strong> <small class="text-muted">({{ number_format($totalInvoicesCount ?? 0) }} invoices)</small></li>
+                                    <li>Total Collected: <strong class="text-success">৳{{ number_format($totalReceivedAmount ?? 0, 0) }}</strong> <small class="text-muted">({{ number_format($totalPaymentsCount ?? 0) }} payments)</small></li>
                                     <li>Collection Rate: <strong class="text-info">{{ $totalInvoiceAmount > 0 ? number_format(($totalReceivedAmount / $totalInvoiceAmount) * 100, 1) : 0 }}%</strong></li>
-                                    <li>Outstanding: <strong class="text-danger">৳{{ number_format($totalPendingAmount ?? 0, 2) }}</strong></li>
+                                    <li>Outstanding: <strong class="text-danger">৳{{ number_format($totalPendingAmount ?? 0, 0) }}</strong></li>
                                 </ul>
                                 <div class="mt-2 p-2 bg-light rounded">
-                                    <small><strong>Verification:</strong> ৳{{ number_format($totalInvoiceAmount ?? 0, 2) }} - ৳{{ number_format($totalReceivedAmount ?? 0, 2) }} = ৳{{ number_format(($totalInvoiceAmount ?? 0) - ($totalReceivedAmount ?? 0), 2) }}</small>
+                                    <small><strong>Verification:</strong> ৳{{ number_format($totalInvoiceAmount ?? 0, 0) }} - ৳{{ number_format($totalReceivedAmount ?? 0, 0) }} = ৳{{ number_format(($totalInvoiceAmount ?? 0) - ($totalReceivedAmount ?? 0), 0) }}</small>
                                 </div>
                             </div>
                         </div>
@@ -428,7 +428,7 @@
                                         <small class="text-muted">{{ $payment->invoice->invoice_number ?? 'N/A' }}</small>
                                     </div>
                                     <div class="text-end">
-                                        <strong class="text-success">৳ {{ number_format($payment->amount ?? 0, 2) }}</strong>
+                                        <strong class="text-success">৳ {{ number_format($payment->amount ?? 0, 0) }}</strong>
                                         <br>
                                         <small class="text-muted">{{ \Carbon\Carbon::parse($payment->payment_date ?? now())->format('M j, Y') }}</small>
                                     </div>
@@ -460,7 +460,7 @@
                                         <small class="text-muted">{{ $invoice->invoice_number ?? 'N/A' }}</small>
                                     </div>
                                     <div class="text-end">
-                                        <strong class="text-danger">৳ {{ number_format($invoice->next_due ?? 0, 2) }}</strong>
+                                        <strong class="text-danger">৳ {{ number_format($invoice->next_due ?? 0, 0) }}</strong>
                                         <br>
                                         <small class="text-muted">Issued: {{ \Carbon\Carbon::parse($invoice->issue_date ?? now())->format('M j, Y') }}</small>
                                     </div>

@@ -120,12 +120,12 @@
                             </span>
                         </td>
                         <td class="text-end align-middle">
-                            <strong>৳ {{ number_format($monthlyPrice, 2) }}</strong>
+                            <strong>৳ {{ number_format($monthlyPrice, 0) }}</strong>
                             <br>
                             <small class="text-muted">/month</small>
                         </td>
                         <td class="text-end align-middle">
-                            <strong style="font-size: 1.1em;">৳ {{ number_format($amount, 2) }}</strong>
+                            <strong style="font-size: 1.1em;">৳ {{ number_format($amount, 0) }}</strong>
                         </td>
                     </tr>
                 @else
@@ -142,19 +142,19 @@
                 @if(isset($invoice->previous_due) && $invoice->previous_due > 0)
                 <tr>
                     <td colspan="3" class="text-end"><strong>Previous Due:</strong></td>
-                    <td class="text-end text-warning"><strong>৳ {{ number_format($invoice->previous_due, 2) }}</strong></td>
+                    <td class="text-end text-warning"><strong>৳ {{ number_format($invoice->previous_due, 0) }}</strong></td>
                 </tr>
                 @endif
 
                 <tr class="table-light">
                     <td colspan="3" class="text-end"><strong>Total Amount:</strong></td>
-                    <td class="text-end"><strong>৳ {{ number_format($invoice->total_amount ?? 0, 2) }}</strong></td>
+                    <td class="text-end"><strong>৳ {{ number_format($invoice->total_amount ?? 0, 0) }}</strong></td>
                 </tr>
 
                 @if(isset($invoice->received_amount) && $invoice->received_amount > 0)
                 <tr>
                     <td colspan="3" class="text-end"><strong>Received Amount:</strong></td>
-                    <td class="text-end text-success"><strong>৳ {{ number_format($invoice->received_amount, 2) }}</strong></td>
+                    <td class="text-end text-success"><strong>৳ {{ number_format($invoice->received_amount, 0) }}</strong></td>
                 </tr>
                 @endif
 
@@ -166,7 +166,7 @@
                 <tr class="{{ $dueAmount > 0 ? 'table-warning' : '' }}">
                     <td colspan="3" class="text-end"><strong>Amount Due:</strong></td>
                     <td class="text-end {{ $dueAmount > 0 ? 'text-danger' : 'text-muted' }}">
-                        <strong>৳ {{ number_format($dueAmount, 2) }}</strong>
+                        <strong>৳ {{ number_format($dueAmount, 0) }}</strong>
                     </td>
                 </tr>
             </tfoot>

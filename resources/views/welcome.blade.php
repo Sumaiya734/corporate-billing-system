@@ -35,7 +35,7 @@
 
     /* NAV */
     .navbar {
-      background: rgba(255,255,255,0.9);
+      background: rgba(242, 245, 247, 0.9);
       backdrop-filter: blur(6px);
       box-shadow: 0 6px 20px rgba(19, 24, 47, 0.06);
       padding: .6rem 1rem;
@@ -212,6 +212,7 @@
   color:var(--accent-1);
   font-weight:800;
   font-size:1.3rem;
+
 }
 
 .product-body .btn-outline-secondary,
@@ -319,12 +320,30 @@ footer{
         <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
         <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
         <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
-        <li class="nav-item ms-3">
+        <!-- Authentication Dropdown Menu -->
+        <li class="nav-item dropdown">
           @auth
-            <a href="#" class="btn btn-outline-secondary btn-sm" style="border-radius:10px;">{{ Auth::user()->name }}</a>
+            <div class="d-flex align-items-center gap-2">
+              <span class="navbar-text text-dark fw-medium">{{ Auth::user()->name }}</span>
+              @if(Auth::user()->role === 'customer')
+                <a href="{{ route('customer.dashboard') }}" class="btn btn-primary btn-sm">Dashboard</a>
+              @elseif(Auth::user()->role === 'admin')
+                <a href="{{ route('admin.dashboard') }}" class="btn btn-primary btn-sm">Dashboard</a>
+              @endif
+              <form method="POST" action="{{ Auth::user()->role === 'customer' ? route('customer.logout') : route('admin.logout') }}" class="d-inline">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger btn-sm">Logout</button>
+              </form>
+            </div>
           @else
-            <a href="{{ route('customer.login') }}" class="btn btn-ghost btn-sm">Customer Login</a>
-            <a href="{{ route('admin.login') }}" class="btn btn-cta btn-sm ms-2">Admin</a>
+            <a class="btn btn-primary text-white" href="#" id="userMenu"
+                role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Login
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                <li><a class="dropdown-item" href="{{ route('customer.login') }}">Customer Login</a></li>
+                <li><a class="dropdown-item" href="{{ route('admin.login') }}">Admin Login</a></li>
+            </ul>
           @endauth
         </li>
       </ul>
