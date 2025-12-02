@@ -119,11 +119,15 @@
 </div>
 
 <style>
+ 
 .submenu {
     padding-left: 15px;
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease;
+}
+.sidebar .nav-link {
+    font-size: 0.9rem;  /* make sidebar text a little smaller */
 }
 
 .submenu.show {
@@ -135,7 +139,7 @@
     padding: 8px 35px;
     color: #e4f2ff;
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     border-radius: 6px;
     transition: 0.2s;
     margin-bottom: 2px;

@@ -273,15 +273,6 @@
                         </table>
                     </div>
                     
-                    <!-- Pagination -->
-                    <div class="d-flex justify-content-between align-items-center mt-4">
-                        <div class="text-muted">
-                            Showing {{ $collections->firstItem() ?? 0 }} to {{ $collections->lastItem() ?? 0 }} of {{ $collections->total() }} entries
-                        </div>
-                        <nav>
-                            {{ $collections->links() }}
-                        </nav>
-                    </div>
                 </div>
             </div>
         </div>

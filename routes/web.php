@@ -13,12 +13,10 @@ use App\Http\Controllers\Admin\MonthlyBillController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PaymentDetailsController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\WelcomeController;
 
-// Public Routes
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
-
+Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
+Route::get('/home', [WelcomeController::class, 'index'])->name('home');
 // Add a general login route that redirects to admin login
 Route::get('/login', function () {
     return redirect()->route('admin.login');
