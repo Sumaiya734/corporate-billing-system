@@ -8,13 +8,17 @@
     <title>@yield('title', 'Dashboard') - Nanosoft Billing</title>
     
     <!-- Font Awesome: prefer local copy if present, else CDN -->
-    @php $faLocal = public_path('vendor/fontawesome/css/all.min.css'); @endphp
-    @if (file_exists($faLocal))
+    @php 
+        $faLocal = public_path('vendor/fontawesome/css/all.min.css'); 
+        $faLocalExists = file_exists($faLocal);
+    @endphp
+    @if ($faLocalExists)
         <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     @else
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     @endif
     <!-- Ensure fonts load using absolute paths when serving locally -->
+    @if ($faLocalExists)
     <style>
         /* Override @font-face sources to absolute paths so browser requests match server files */
         @font-face { font-family: "Font Awesome 6 Brands"; font-style: normal; font-weight: 400; font-display: swap; src: url('/vendor/fontawesome/webfonts/fa-brands-400.woff2') format('woff2'), url('/vendor/fontawesome/webfonts/fa-brands-400.ttf') format('truetype'); }
@@ -25,6 +29,7 @@
         @font-face { font-family: "Font Awesome 5 Free"; font-style: normal; font-weight: 400; font-display: swap; src: url('/vendor/fontawesome/webfonts/fa-regular-400.woff2') format('woff2'), url('/vendor/fontawesome/webfonts/fa-regular-400.ttf') format('truetype'); }
         @font-face { font-family: "FontAwesome"; font-style: normal; font-weight: 400; font-display: swap; src: url('/vendor/fontawesome/webfonts/fa-v4compatibility.woff2') format('woff2'), url('/vendor/fontawesome/webfonts/fa-v4compatibility.ttf') format('truetype'); }
     </style>
+    @endif
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">

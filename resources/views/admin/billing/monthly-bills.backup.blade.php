@@ -594,45 +594,58 @@
                                 <div class="card-footer bg-white">
                                             <div class="row align-items-center">
                                                 <div class="col-md-12 mb-3">
-                                                    <div class="alert alert-info mb-4">
-                                                        <i class="fas fa-info-circle me-2"></i>
-                                                        <strong>Note:</strong>
-                                                        <ul class="mb-0">
-                                                            <li>Customers with invoices are shown in the table below</li>
-                                                            <li>Customers who are due but don't have invoices yet are highlighted with a warning</li>
-                                                            @if(!($isCurrentMonth ?? false))
-                                                            <li>Use the "Generate Bills" button to create invoices for all customers or only those who are due</li>
-                                                            @else
-                                                            <li>Invoices for current month customers are automatically generated</li>
-                                                            @endif
-                                                            @if(!($isMonthClosed ?? false) && !($isFutureMonth ?? false))
-                                                            <li><strong>Remember to close this month</strong> before accessing the next month's billing</li>
-                                                            @endif
-                                                        </ul>
-                                                    </div>
-
-                                                    <div class="mt-2 p-2 bg-light rounded">
-                                                        <strong><i class="fas fa-calculator me-1"></i>Verification:</strong>
-                                                        @php
-                                                            // Calculate amounts from actual invoice data
-                                                            $totalBillingAmount = $invoices->sum('total_amount');
-                                                            $paidAmount = $invoices->sum('received_amount');
-                                                            $pendingAmount = $invoices->sum('next_due');
-                                                        @endphp
-                                                        <div class="mt-1">
-                                                            Total Billing (৳{{ number_format($totalBillingAmount, 2) }})
-                                                            - Paid (৳{{ number_format($paidAmount, 2) }})
-                                                            = Pending (৳{{ number_format($pendingAmount, 2) }})
+                                                    <div class="alert alert-info mb-0 small">
+                                                        <div class="alert alert-info mb-4">
+                                                            <strong><i class="fas fa-info-circle me-1"></i>How to read this table:</strong>
+                                                            <ul class="mb-0 mt-1">
+                                                                <li><strong>Product Amount</strong> = Current month charges (from products)</li>
+                                                                <li><strong>Previous Due</strong> = Unpaid balance from past months</li>
+                                                                <li><strong>Total Invoice</strong> = Product Amount + Previous Due</li>
+                                                                <li><strong>Received</strong> = Payments made against this invoice</li>
+                                                                <li><strong>Next Due</strong> = Total Invoice - Received (what customer still owes)</li>
+                                                            </ul>
                                                         </div>
-                                                        @php
-                                                            $calculatedPending = $totalBillingAmount - $paidAmount;
-                                                            $isBalanced = abs($calculatedPending - $pendingAmount) < 0.01;
-                                                        @endphp
-                                                        <div class="mt-1">
-                                                            <span class="badge {{ $isBalanced ? 'bg-success' : 'bg-danger' }}">
-                                                                <i class="fas fa-{{ $isBalanced ? 'check' : 'exclamation-triangle' }} me-1"></i>
-                                                                {{ $isBalanced ? 'Balanced ✓' : 'Mismatch!' }}
-                                                            </span>
+
+                                                        <div class="alert alert-info mb-4">
+                                                            <i class="fas fa-info-circle me-2"></i>
+                                                            <strong>Note:</strong>
+                                                            <ul class="mb-0">
+                                                                <li>Customers with invoices are shown in the table below</li>
+                                                                <li>Customers who are due but don't have invoices yet are highlighted with a warning</li>
+                                                                @if(!($isCurrentMonth ?? false))
+                                                                <li>Use the "Generate Bills" button to create invoices for all customers or only those who are due</li>
+                                                                @else
+                                                                <li>Invoices for current month customers are automatically generated</li>
+                                                                @endif
+                                                                @if(!($isMonthClosed ?? false) && !($isFutureMonth ?? false))
+                                                                <li><strong>Remember to close this month</strong> before accessing the next month's billing</li>
+                                                                @endif
+                                                            </ul>
+                                                        </div>
+
+                                                        <div class="mt-2 p-2 bg-light rounded">
+                                                            <strong><i class="fas fa-calculator me-1"></i>Verification:</strong>
+                                                            @php
+                                                                // Calculate amounts from actual invoice data
+                                                                $totalBillingAmount = $invoices->sum('total_amount');
+                                                                $paidAmount = $invoices->sum('received_amount');
+                                                                $pendingAmount = $invoices->sum('next_due');
+                                                            @endphp
+                                                            <div class="mt-1">
+                                                                Total Billing (৳{{ number_format($totalBillingAmount, 2) }})
+                                                                - Paid (৳{{ number_format($paidAmount, 2) }})
+                                                                = Pending (৳{{ number_format($pendingAmount, 2) }})
+                                                            </div>
+                                                            @php
+                                                                $calculatedPending = $totalBillingAmount - $paidAmount;
+                                                                $isBalanced = abs($calculatedPending - $pendingAmount) < 0.01;
+                                                            @endphp
+                                                            <div class="mt-1">
+                                                                <span class="badge {{ $isBalanced ? 'bg-success' : 'bg-danger' }}">
+                                                                    <i class="fas fa-{{ $isBalanced ? 'check' : 'exclamation-triangle' }} me-1"></i>
+                                                                    {{ $isBalanced ? 'Balanced ✓' : 'Mismatch!' }}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1864,7 +1877,8 @@ function updateUIAfterConfirmation(invoiceId, cpId, customerName, nextDue) {
 
 // Handle confirm user button clicks - populate modal when shown
 document.addEventListener('DOMContentLoaded', function() {
-    const confirmUserPaymentModal = document.getElementById('confirmUserPaymentModal');    if (confirmUserPaymentModal) {
+    const confirmUserPaymentModal = document.getElementById('confirmUserPaymentModal');
+    if (confirmUserPaymentModal) {
         confirmUserPaymentModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
 

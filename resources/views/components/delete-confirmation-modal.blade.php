@@ -1,5 +1,5 @@
 <!-- Custom Delete Confirmation Modal -->
-<!-- <div id="deleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+<div id="deleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
     <div style="background: white; border-radius: 10px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); animation: modalSlideIn 0.2s ease-out;">
         <div style="text-align: center; margin-bottom: 20px;">
             <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #dc3545;"></i>
@@ -15,7 +15,7 @@
             </button>
         </div>
     </div>
-</div> -->
+</div>
 
 <style>
     /* Modal animation */

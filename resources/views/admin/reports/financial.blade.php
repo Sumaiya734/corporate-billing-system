@@ -469,18 +469,169 @@
 
 @push('styles')
 <style>
-.border-left-primary { border-left: 0.25rem solid #4e73df !important; }
-.border-left-success { border-left: 0.25rem solid #1cc88a !important; }
-.border-left-warning { border-left: 0.25rem solid #f6c23e !important; }
-.border-left-info { border-left: 0.25rem solid #36b9cc !important; }
+/* General Style Enhancements */
+body {
+    background-color: #f8f9fa; /* Lighter gray background */
+    color: #343a40;
+}
 
-.chart-area { position: relative; height: 300px; width: 100%; }
-.chart-pie { position: relative; height: 250px; width: 100%; }
+.card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 1.5rem; /* Ensure consistent spacing */
+}
 
-.progress { border-radius: 10px; }
-.progress-bar { border-radius: 10px; }
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
 
-.table th { border-top: none; font-weight: 600; }
+.card .card-header {
+    background-color: #fff;
+    border-bottom: 1px solid #e9ecef;
+    font-weight: 600;
+    color: #343a40;
+    border-radius: 0.75rem 0.75rem 0 0;
+    padding: 1rem 1.5rem;
+}
+
+/* Stat Card Modernization */
+.stat-card.border-left-primary { border-left: 4px solid #4e73df; }
+.stat-card.border-left-success { border-left: 4px solid #1cc88a; }
+.stat-card.border-left-warning { border-left: 4px solid #f6c23e; }
+.stat-card.border-left-info { border-left: 4px solid #36b9cc; }
+
+.stat-card .card-body {
+    padding: 1.5rem;
+}
+
+.stat-card .text-xs {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.stat-card .h5 {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+/* Chart Containers */
+.chart-area {
+    position: relative;
+    width: 100%;
+    height: 300px;
+}
+.chart-pie {
+    position: relative;
+    width: 100%;
+    height: 250px;
+}
+.chart-bar {
+    position: relative;
+    height: 100px;
+    width: 100%;
+}
+
+/* Table Enhancements */
+.table-responsive {
+    border-radius: 0.5rem;
+    overflow-x: auto;
+}
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    border-top: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+.table tbody tr:hover {
+    background-color: #f1f3f5;
+}
+.table td, .table th {
+    vertical-align: middle;
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+.table .badge {
+    font-size: 0.8rem;
+    padding: 0.4em 0.7em;
+    font-weight: 600;
+}
+
+/* Progress Bar */
+.progress {
+    height: 10px;
+    border-radius: 50rem;
+    background-color: #e9ecef;
+}
+.progress-bar {
+    border-radius: 50rem;
+}
+
+/* Pagination */
+.pagination { 
+    margin-bottom: 0; 
+}
+.pagination .page-link {
+    border-radius: 0.375rem !important;
+    margin: 0 3px;
+    border: 1px solid #dee2e6;
+    color: #4e73df;
+    font-weight: 500;
+}
+.pagination .page-item.active .page-link {
+    background-color: #4e73df;
+    border-color: #4e73df;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(78, 115, 223, 0.3);
+}
+.pagination .page-link:hover {
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+.page-item.disabled .page-link {
+    color: #858796;
+}
+
+/* List Group */
+.list-group-item { 
+    border: none; 
+    border-bottom: 1px solid #eaecf4;
+    padding: 1rem 0;
+}
+.list-group-item:last-child { 
+    border-bottom: none; 
+}
+
+/* Loading Spinner for export buttons */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
 </style>
 @endpush
 
