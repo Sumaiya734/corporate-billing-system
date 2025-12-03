@@ -43,29 +43,33 @@ Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(funct
     Route::get('/dashboard/refresh', [DashboardController::class, 'refreshData'])->name('dashboard.refresh');
     
     // Product Management Routes
-    Route::prefix('products')->name('products.')->group(function () {
-        Route::get('/', [ProductController::class, 'index'])->name('index');
-        Route::get('/create', [ProductController::class, 'create'])->name('create');
-        Route::get('/types', [ProductController::class, 'productTypes'])->name('types');
-        Route::get('/test', function () {
-            return view('admin.products.test');
-        })->name('test');
-        Route::get('/debug/{id}', function ($id) {
-            $product = \App\Models\Product::where('p_id', $id)->first();
-            return response()->json([
-                'found' => $product ? true : false,
-                'product' => $product,
-                'all_products' => \App\Models\Product::select('p_id', 'name')->get()
-            ]);
-        })->name('debug');
-        Route::post('/', [ProductController::class, 'store'])->name('store');
-        Route::post('/add-type', [ProductController::class, 'addProductType'])->name('add-type');
-        Route::delete('/delete-type/{id}', [ProductController::class, 'deleteProductType'])->name('delete-type');
-        Route::get('/{id}', [ProductController::class, 'show'])->name('show');
-        Route::put('/{id}', [ProductController::class, 'update'])->name('update');
-        Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
-        Route::post('/{id}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggle-status');
-    });
+Route::prefix('products')->name('products.')->group(function () {
+    Route::get('/', [ProductController::class, 'index'])->name('index');
+    Route::get('/create', [ProductController::class, 'create'])->name('create');
+    Route::get('/types', [ProductController::class, 'productTypes'])->name('types');
+    
+    // ADD THIS EDIT ROUTE
+    Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
+    
+    Route::get('/test', function () {
+        return view('admin.products.test');
+    })->name('test');
+    Route::get('/debug/{id}', function ($id) {
+        $product = \App\Models\Product::where('p_id', $id)->first();
+        return response()->json([
+            'found' => $product ? true : false,
+            'product' => $product,
+            'all_products' => \App\Models\Product::select('p_id', 'name')->get()
+        ]);
+    })->name('debug');
+    Route::post('/', [ProductController::class, 'store'])->name('store');
+    Route::post('/add-type', [ProductController::class, 'addProductType'])->name('add-type');
+    Route::delete('/delete-type/{id}', [ProductController::class, 'deleteProductType'])->name('delete-type');
+    Route::get('/{id}', [ProductController::class, 'show'])->name('show');
+    Route::put('/{id}', [ProductController::class, 'update'])->name('update');
+    Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggle-status');
+});
 
     // Customer Management
     Route::get('/customers/next-id', [CustomerController::class, 'getNextCustomerId'])->name('customers.next-id');
