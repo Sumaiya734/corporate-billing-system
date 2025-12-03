@@ -14,6 +14,10 @@ use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PaymentDetailsController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\WelcomeController;
+use App\Http\Controllers\Admin\CustomerToProductController;
+
+// Customer search route for product assignment (outside auth group for AJAX access)
+Route::get('/admin/customers/suggestions', [CustomerProductController::class, 'getCustomerSuggestions'])->name('admin.customers.suggestions');
 
 Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
 Route::get('/home', [WelcomeController::class, 'index'])->name('home');
@@ -65,17 +69,13 @@ Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(funct
 
     // Customer Management
     Route::get('/customers/next-id', [CustomerController::class, 'getNextCustomerId'])->name('customers.next-id');
+    Route::get('/customers/suggestions', [CustomerProductController::class, 'getCustomerSuggestions'])->name('customers.suggestions');
     Route::resource('customers', CustomerController::class)->parameters([
         'customers' => 'customer'
     ]);
     Route::patch('/customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');
     Route::get('/customers/{customer}/billing-history', [CustomerController::class, 'billingHistory'])->name('customers.billing-history');
     Route::get('/customers/{customer}/profile', [CustomerController::class, 'profile'])->name('customers.profile');
-    
-    // Customer search route for product assignment
-    Route::get('/customers/search', [CustomerProductController::class, 'searchCustomers'])->name('customers.search');
-    Route::get('/customers/{customerId}/invoices', [CustomerProductController::class, 'getCustomerInvoices'])->name('customers.invoices');
-    Route::get('/customers/suggestions', [CustomerProductController::class, 'getCustomerSuggestions'])->name('customers.suggestions');
     
     // Add export route
     Route::get('/customers/export', [CustomerController::class, 'export'])->name('customers.export');
@@ -281,6 +281,8 @@ Route::get('/debug/routes', function () {
         echo "<strong>{$name}:</strong> {$url}<br>";
     }
 });
+
+
 
 Route::get('/debug/customer-to-products-routes', function() {
     echo "<h3>Customer Products Routes:</h3>";
