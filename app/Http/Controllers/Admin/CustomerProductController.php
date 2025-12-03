@@ -77,11 +77,10 @@ class CustomerProductController extends Controller
     public function assign()
     {
         try {
-            $products = Product::where('status', 'active')
-                ->orderBy('name')
-                ->get();
+            $products = Product::orderBy('name')->get();
+            $customers = collect(); // Pass an empty collection for customers
                 
-            return view('admin.customer-to-products.assign', compact('products'));
+            return view('admin.customer-to-products.assign', compact('products', 'customers'));
         } catch (\Exception $e) {
             Log::error('Error loading assign form: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to load assignment form.');
@@ -173,61 +172,68 @@ class CustomerProductController extends Controller
         try {
             DB::beginTransaction();
             
-            $request->validate([
+            $validated = $request->validate([
                 'customer_id' => 'required|exists:customers,c_id',
                 'products' => 'required|array|min:1',
-                'products.*.productId' => 'required|exists:products,p_id',
-                'products.*.price' => 'required|numeric|min:0',
-                'products.*.months' => 'required|integer|min:1',
-                'products.*.total' => 'required|numeric|min:0',
-                'products.*.assignDate' => 'required|date',
-                'products.*.dueDate' => 'nullable|date',
-                'products.*.invoiceNumber' => 'required|string'
+                'products.*.product_id' => 'required|exists:products,p_id',
+                'products.*.billing_cycle_months' => 'required|integer|min:1',
+                'products.*.monthly_price' => 'required|numeric|min:0',
+                'products.*.assign_date' => 'required|date',
+                'products.*.due_date_day' => 'required|integer|min:1|max:28',
+                'generate_invoice' => 'nullable|string',
             ]);
 
-            $customerId = $request->customer_id;
-            $products = $request->products;
+            $customerId = $validated['customer_id'];
+            $generateInvoice = isset($validated['generate_invoice']);
             
             $assignedProducts = [];
             $invoiceData = [];
 
-            foreach ($products as $productData) {
+            foreach ($validated['products'] as $productData) {
+                $assignDate = \Carbon\Carbon::parse($productData['assign_date'])->startOfDay();
+                $dueDay = $productData['due_date_day'];
+
+                // Calculate the first due date.
+                $firstDueDate = $assignDate->copy()->day($dueDay);
+                if ($firstDueDate->lt($assignDate)) {
+                    $firstDueDate->addMonth();
+                }
+                
                 // Create customer product assignment
                 $customerProduct = CustomerProduct::create([
                     'c_id' => $customerId,
-                    'p_id' => $productData['productId'],
-                    'custom_price' => $productData['total'], // Store total as custom price
-                    'assign_date' => $productData['assignDate'],
-                    'billing_cycle_months' => $productData['months'],
-                    'due_date' => $productData['dueDate'] ?? null,
+                    'p_id' => $productData['product_id'],
+                    'custom_price' => $productData['monthly_price'], // This is the total price for the cycle
+                    'assign_date' => $productData['assign_date'],
+                    'billing_cycle_months' => $productData['billing_cycle_months'],
+                    'due_date' => $firstDueDate->format('Y-m-d'),
                     'status' => 'active',
                     'is_active' => true,
                 ]);
 
-                // Store for response
                 $assignedProducts[] = $customerProduct;
 
-                // Create invoice record
-                $invoice = Invoice::create([
-                    'invoice_id' => $productData['invoiceNumber'],
-                    'cp_id' => $customerProduct->cp_id,
-                    'c_id' => $customerId,
-                    'issue_date' => $productData['assignDate'],
-                    'due_date' => $productData['dueDate'] ?? null,
-                    'subtotal' => $productData['total'],
-                    'total_amount' => $productData['total'],
-                    'received_amount' => 0,
-                    'next_due' => $productData['total'],
-                    'status' => 'unpaid'
-                ]);
-
-                $invoiceData[] = $invoice;
+                if ($generateInvoice) {
+                    // Create invoice record
+                    Invoice::create([
+                        'invoice_id' => $this->generateInvoiceNumber(),
+                        'cp_id' => $customerProduct->cp_id,
+                        'c_id' => $customerId,
+                        'issue_date' => $productData['assign_date'],
+                        'due_date' => $firstDueDate->format('Y-m-d'),
+                        'subtotal' => $productData['monthly_price'],
+                        'total_amount' => $productData['monthly_price'],
+                        'received_amount' => 0,
+                        'next_due' => $productData['monthly_price'], // Assuming this is amount due
+                        'status' => 'unpaid'
+                    ]);
+                }
             }
 
             DB::commit();
 
             return redirect()->route('admin.customer-to-products.index', ['customer_id' => $customerId])
-                ->with('success', count($products) . ' product(s) assigned successfully!');
+                ->with('success', count($validated['products']) . ' product(s) assigned successfully!');
 
         } catch (\Exception $e) {
             DB::rollBack();
