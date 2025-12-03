@@ -52,7 +52,7 @@
                                 <input type="text"
                                        name="search"
                                        class="form-control border-start-0"
-                                       placeholder="Name, ID, Phone or Email..."
+                                       placeholder="Name, ID, Phone, Invoice or Email..."
                                        value="{{ request('search') }}"
                                        id="customerSearch">
                             </div>
@@ -337,13 +337,13 @@
                                                     <tr>
                                                         <th class="py-2 px-3">Invoice #</th>
                                                         <th class="py-2 px-3">Product</th>
-                                                        <th class="py-2 px-3">Issue Date</th>
-                                                        <th class="py-2 px-3">Due Date</th>
-                                                        <th class="py-2 px-3 text-end">Amount</th>
+                                                        <th class="py-2 px-3">Subtotal</th>
+                                                        <th class="py-2 px-3">Start Date</th>
+                                                        <th class="py-2 px-3">End Date</th>
+                                                        <th class="py-2 px-3 text-end">Total Amount</th>
                                                         <th class="py-2 px-3 text-end">Paid</th>
                                                         <th class="py-2 px-3 text-end">Due</th>
                                                         <th class="py-2 px-3">Status</th>
-                                                        <th class="py-2 px-3">Notes</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -352,6 +352,52 @@
                                                         $product = $invoice->customerProduct->product ?? null;
                                                         $isSelectedProduct = request('product_id') != 'all' &&
                                                                         request('product_id') == ($product->p_id ?? null);
+
+                                                        // Determine billing cycle months from customer_to_products if available
+                                                        $billingCycleMonths = $invoice->customerProduct->billing_cycle_months ?? null;
+
+                                                        // Determine a reliable billing month to display (fallback):
+                                                        // prefer `billing_cycle_month` then `billing_month` then issue_date
+                                                        $rawBilling = $invoice->billing_cycle_month ?? $invoice->billing_month ?? null;
+                                                        if (!$rawBilling && !empty($invoice->issue_date)) {
+                                                            $rawBilling = \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m');
+                                                        }
+
+                                                        $displayBillingMonth = null;
+                                                        if ($rawBilling) {
+                                                            try {
+                                                                $displayBillingMonth = \Carbon\Carbon::parse($rawBilling)->format('F Y');
+                                                            } catch (\Exception $e) {
+                                                                $displayBillingMonth = null;
+                                                            }
+                                                        }
+
+                                                        // Final label to show under product name: prefer billingCycleMonths, else invoice month
+                                                        $displayBilling = null;
+                                                        if (!is_null($billingCycleMonths) && $billingCycleMonths !== '') {
+                                                            $displayBilling = (int)$billingCycleMonths === 1 ? 'Monthly' : ($billingCycleMonths . ' months');
+                                                        } elseif ($displayBillingMonth) {
+                                                            $displayBilling = $displayBillingMonth;
+                                                        }
+
+                                                        // Get subtotal and total_amount directly from invoice (no recalculation)
+                                                        $subtotal = $invoice->subtotal ?? 0;
+                                                        $totalAmount = $invoice->total_amount ?? 0;
+                                                        
+                                                        // Calculate start and end dates based on the invoice issue date and billing cycle
+                                                        $startDate = null;
+                                                        $endDate = null;
+                                                        
+                                                        if (!empty($invoice->issue_date)) {
+                                                            $issueDate = \Carbon\Carbon::parse($invoice->issue_date);
+                                                            $startDate = $issueDate->copy()->startOfMonth();
+                                                            $endDate = $issueDate->copy()->endOfMonth();
+                                                            
+                                                            // If we have billing cycle information, adjust the end date
+                                                            if ($billingCycleMonths && $billingCycleMonths > 1) {
+                                                                $endDate = $startDate->copy()->addMonths($billingCycleMonths)->subDay();
+                                                            }
+                                                        }
                                                     @endphp
                                                     <tr class="{{ $isSelectedProduct ? 'table-info' : '' }} align-middle">
                                                         <td class="py-2 px-3">
@@ -361,46 +407,76 @@
                                                         </td>
                                                         <td class="py-2 px-3">
                                                             @if($product)
-                                                                <div class="d-flex align-items-center">
+                                                                <div class="d-flex align-items-start">
                                                                     <div class="product-icon bg-primary bg-opacity-10 text-primary rounded-circle p-1 me-2">
                                                                         <i class="fas fa-box"></i>
                                                                     </div>
-                                                                    <div>
-                                                                        <div class="fw-bold">{{ $product->name }}</div>
+                                                                    <div class="flex-grow-1">
+                                                                        <div class="fw-bold mb-1">{{ $product->name }}</div>
+                                                                        @if(!empty($displayBilling))
+                                                                            <div class="billing-month-container mt-1">
+                                                                                <small class="text-muted">
+                                                                                    <i class="fas fa-calendar-alt me-1 text-info"></i>
+                                                                                    <span class="fst-italic text-info fw-medium">
+                                                                                        {{ $displayBilling }}
+                                                                                    </span>
+                                                                                </small>
+                                                                            </div>
+                                                                        @endif
                                                                         @if($isSelectedProduct)
-                                                                            <span class="badge bg-primary">Filtered</span>
+                                                                            <div class="mt-1">
+                                                                                <span class="badge bg-primary">Filtered</span>
+                                                                            </div>
                                                                         @endif
                                                                     </div>
                                                                 </div>
                                                             @else
-                                                                <span class="text-muted">N/A</span>
+                                                                <div class="text-muted">N/A</div>
+                                                                @if($billingMonth)
+                                                                    <div class="billing-month-container mt-1">
+                                                                        <small class="text-muted">
+                                                                            <i class="fas fa-calendar-alt me-1 text-info"></i>
+                                                                            <span class="fst-italic text-info fw-medium">
+                                                                                {{ \Carbon\Carbon::parse($billingMonth)->format('F Y') }}
+                                                                            </span>
+                                                                        </small>
+                                                                    </div>
+                                                                @endif
                                                             @endif
                                                         </td>
+                                                        <td class="py-2 px-3 text-end">
+                                                            <div class="fw-bold">৳{{ number_format($subtotal, 2) }}</div>
+                                                        </td>
                                                         <td class="py-2 px-3">
-                                                            @if($invoice->issue_date)
-                                                                <div class="fw-bold">{{ \Carbon\Carbon::parse($invoice->issue_date)->format('d M Y') }}</div>
-                                                                <small class="text-muted">{{ \Carbon\Carbon::parse($invoice->issue_date)->format('h:i A') }}</small>
+                                                            @if($startDate)
+                                                                <div class="fw-bold">{{ $startDate->format('d M Y') }}</div>
+                                                                <small class="text-muted">{{ $startDate->format('F Y') }}</small>
                                                             @else
                                                                 <span class="text-muted">N/A</span>
                                                             @endif
                                                         </td>
                                                         <td class="py-2 px-3">
-                                                            @if($invoice->customerProduct && $invoice->customerProduct->due_date)
-                                                                <div class="fw-bold {{ \Carbon\Carbon::parse($invoice->customerProduct->due_date)->isPast() ? 'text-danger' : 'text-success' }}">
-                                                                    {{ \Carbon\Carbon::parse($invoice->customerProduct->due_date)->format('d M Y') }}
+                                                            @if($endDate)
+                                                                <div class="fw-bold {{ $endDate->isPast() ? 'text-danger' : 'text-success' }}">
+                                                                    {{ $endDate->format('d M Y') }}
                                                                 </div>
+                                                                <small class="text-muted">{{ $endDate->format('F Y') }}</small>
                                                             @else
                                                                 <span class="text-muted">N/A</span>
                                                             @endif
                                                         </td>
                                                         <td class="py-2 px-3 text-end">
-                                                            <div class="fw-bold">৳{{ number_format($invoice->total_amount, 2) }}</div>
+                                                            <div class="fw-bold">৳{{ number_format($totalAmount, 2) }}</div>
+                                                            <div class="text-muted small">(due+subtotal)</div>
                                                         </td>
                                                         <td class="py-2 px-3 text-end">
                                                             <div class="text-success fw-bold">৳{{ number_format($invoice->received_amount, 2) }}</div>
                                                         </td>
                                                         <td class="py-2 px-3 text-end">
-                                                            <div class="text-danger fw-bold">৳{{ number_format($invoice->total_amount - $invoice->received_amount, 2) }}</div>
+                                                            @php
+                                                                $dueAmount = $totalAmount - $invoice->received_amount;
+                                                            @endphp
+                                                            <div class="text-danger fw-bold">৳{{ number_format($dueAmount, 2) }}</div>
                                                         </td>
                                                         <td class="py-2 px-3">
                                                             @php
@@ -416,26 +492,22 @@
                                                                 {{ ucfirst($invoice->status) }}
                                                             </span>
                                                         </td>
-                                                        <td class="py-2 px-3">
-                                                            @if($invoice->notes)
-                                                                <div class="notes-container">
-                                                                    <small class="text-muted" data-bs-toggle="tooltip" title="{{ $invoice->notes }}">
-                                                                        <i class="fas fa-sticky-note me-1"></i>
-                                                                        {{ Str::limit($invoice->notes, 30) }}
-                                                                    </small>
-                                                                </div>
-                                                            @endif
-                                                        </td>
                                                     </tr>
                                                     @endforeach
                                                 </tbody>
                                                 <tfoot class="table-light">
+                                                    @php
+                                                        $subtotalSum = $customer->paymentHistory->sum('subtotal') ?? 0;
+                                                        $totalAmountSum = $customer->paymentHistory->sum('total_amount') ?? 0;
+                                                    @endphp
                                                     <tr>
-                                                        <td colspan="4" class="py-2 px-3 text-end fw-bold">Totals:</td>
-                                                        <td class="py-2 px-3 text-end fw-bold">৳{{ number_format($customer->totalBilled, 2) }}</td>
+                                                        <td colspan="2" class="py-2 px-3 text-end fw-bold">Totals:</td>
+                                                        <td class="py-2 px-3 text-end fw-bold">৳{{ number_format($subtotalSum, 2) }}</td>
+                                                        <td colspan="2" class="py-2 px-3 text-end fw-bold"></td>
+                                                        <td class="py-2 px-3 text-end fw-bold">৳{{ number_format($totalAmountSum, 2) }}</td>
                                                         <td class="py-2 px-3 text-end fw-bold text-success">৳{{ number_format($customer->totalPaid, 2) }}</td>
                                                         <td class="py-2 px-3 text-end fw-bold text-danger">৳{{ number_format($customer->totalDue, 2) }}</td>
-                                                        <td colspan="2" class="py-2 px-3"></td>
+                                                        <td class="py-2 px-3"></td>
                                                     </tr>
                                                 </tfoot>
                                             </table>
@@ -513,7 +585,7 @@
                         </div>
                         <h3 class="text-primary mb-3">Search for Customer Payment Details</h3>
                         <p class="text-muted mb-4 lead">
-                            Enter a customer name, ID, phone number, or email in the search field above to view their payment history and details.
+                            Enter a customer name, ID, phone number, invoice number or email in the search field above to view their payment history and details.
                         </p>
                         <div class="feature-highlights d-flex flex-wrap justify-content-center gap-4 mb-4">
                             <div class="feature-item">
@@ -695,6 +767,32 @@
         background: var(--danger-color) !important;
     }
 
+    /* Billing Month Style */
+    .billing-month-container {
+        display: flex;
+        align-items: center;
+    }
+
+    .billing-month-container .text-muted {
+        display: flex;
+        align-items: center;
+        color: #0d6efd !important;
+        font-weight: 500;
+    }
+
+    .billing-month-container .text-info {
+        color: #0d6efd !important;
+    }
+
+    .billing-month-container .fst-italic {
+        font-style: normal;
+        font-weight: 600;
+        background-color: rgba(13, 110, 253, 0.08);
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        border-left: 2px solid #0d6efd;
+    }
+
     /* Form Styles */
     .form-control, .form-select {
         font-size: 0.9rem;
@@ -806,6 +904,7 @@
         background: rgba(52, 152, 219, 0.1);
         border-radius: 4px;
         font-size: 0.85rem;
+    }
 
     .feature-item i {
         font-size: 0.95rem;
@@ -846,6 +945,11 @@
 
         .badge {
             font-size: 0.75rem;
+        }
+
+        .billing-month-container .fst-italic {
+            font-size: 0.75rem;
+            padding: 0.05rem 0.3rem;
         }
     }
 
