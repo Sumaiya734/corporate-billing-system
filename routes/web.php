@@ -8,7 +8,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\CustomerProductController;
-use App\Http\Controllers\Customer\CustomerController;
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\MonthlyBillController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PaymentDetailsController;
