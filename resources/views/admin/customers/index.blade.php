@@ -363,7 +363,6 @@
                                     </div>
                                 </td>
 
-<<<<<<< HEAD
                                 <!-- Products Column - Now with compact display -->
                                 <td>
                                     @if($activeProducts->count() > 0)
@@ -388,106 +387,6 @@
                                                 <i class="fas fa-box-open text-muted opacity-25"></i>
                                             </div>
                                             <small class="text-muted">No products</small>
-=======
-                                <!-- Products Column - Now with colored boxes -->
-                                <td>
-                                    @if($activeProducts->count() > 0)
-                                        <div class="products-container">
-                                            <div class="row g-2">
-                                                @foreach($activeProducts as $index => $cp)
-                                                @php
-                                                    $colorIndex = $index % count($productColors);
-                                                    $colorClass = $productColors[$colorIndex];
-                                                    $bgClass = "bg-{$colorClass}-light";
-                                                    $borderClass = "border-{$colorClass}";
-                                                    $textClass = "text-{$colorClass}";
-                                                @endphp
-                                                <div class="col-12">
-                                                    <div class="product-card {{ $bgClass }} {{ $borderClass }} shadow-sm">
-                                                        <div class="card-body p-3">
-                                                            <div class="d-flex justify-content-between align-items-start">
-                                                                <div class="d-flex align-items-center">
-                                                                    <div class="product-icon me-3">
-                                                                        <div class="icon-circle {{ $bgClass }} {{ $textClass }}">
-                                                                            <i class="fas fa-box"></i>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div>
-                                                                        <div class="product-name fw-semibold text-dark mb-1">
-                                                                            {{ $cp->product->name ?? 'Unknown Product' }}
-                                                                        </div>
-                                                                        <div class="product-details">
-                                                                            <div class="d-flex align-items-center flex-wrap gap-2">
-                                                                                <span class="product-price {{ $textClass }} fw-bold">
-                                                                                    @php
-                                                                                        $price = $cp->product_price ?? $cp->product->monthly_price ?? 0;
-                                                                                        $isCustomPrice = $cp->product_price && $cp->product_price != $cp->product->monthly_price;
-                                                                                        $billingCycle = $cp->billing_cycle_months ?? 1;
-                                                                                    @endphp
-                                                                                    ৳{{ number_format($price, 2) }}/month
-                                                                                </span>
-                                                                                @if($isCustomPrice)
-                                                                                    <span class="badge bg-info badge-sm">
-                                                                                        <i class="fas fa-star me-1"></i>Custom
-                                                                                    </span>
-                                                                                @endif
-                                                                                @if($billingCycle > 1)
-                                                                                    <span class="badge bg-warning badge-sm">
-                                                                                        <i class="fas fa-calendar-alt me-1"></i>{{ $billingCycle }}M
-                                                                                    </span>
-                                                                                @endif
-                                                                                @if($cp->status === 'active')
-                                                                                    <span class="badge bg-success badge-sm">
-                                                                                        <i class="fas fa-circle me-1" style="font-size: 0.4rem;"></i>Active
-                                                                                    </span>
-                                                                                @endif
-                                                                            </div>
-                                                                            @if($cp->assign_date)
-                                                                                <div class="text-muted small mt-1">
-                                                                                    <i class="fas fa-calendar me-1"></i>
-                                                                                    Assigned: {{ \Carbon\Carbon::parse($cp->assign_date)->format('M d, Y') }}
-                                                                                </div>
-                                                                            @endif
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="dropdown">
-                                                                    <button class="btn btn-sm btn-link text-muted dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                                        <i class="fas fa-ellipsis-v"></i>
-                                                                    </button>
-                                                                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                                                                        <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>View Details</a></li>
-                                                                        <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Edit Product</a></li>
-                                                                        <li><hr class="dropdown-divider"></li>
-                                                                        <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash me-2"></i>Remove</a></li>
-                                                                    </ul>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                @endforeach
-                                            </div>
-                                            @if($activeProducts->count() > 2)
-                                                <div class="text-center mt-2">
-                                                    <small class="text-muted">
-                                                        <i class="fas fa-chevron-down me-1"></i>
-                                                        {{ $activeProducts->count() - 2 }} more products
-                                                    </small>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @else
-                                        <div class="no-product text-center py-4">
-                                            <div class="empty-state-icon mb-3">
-                                                <i class="fas fa-box-open fa-3x text-muted opacity-25"></i>
-                                            </div>
-                                            <h6 class="text-muted mb-2">No Active Products</h6>
-                                            <p class="text-muted small mb-3">This customer has no active products assigned</p>
-                                            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-plus me-1"></i>Assign Product
-                                            </a>
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
                                         </div>
                                     @endif
                                 </td>
@@ -570,15 +469,9 @@
                                                     {{ $customer->created_at->format('M j, Y') }}
                                                 </div>
                                                 <small class="text-muted d-block">{{ $customer->created_at->diffForHumans() }}</small>
-<<<<<<< HEAD
                                                 <!-- <div class="duration-badge bg-light text-muted mt-2 p-1 rounded">
                                                     <small>{{ $customer->created_at->diffInDays(now()) }} days</small>
                                                 </div> -->
-=======
-                                                <div class="duration-badge bg-light text-muted mt-2 p-1 rounded">
-                                                    <small>{{ $customer->created_at->diffInDays(now()) }} days</small>
-                                                </div>
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
                                             </div>
                                         </div>
                                     </div>
@@ -606,7 +499,6 @@
                                                 <span class="d-block small mt-1">Edit</span>
                                             </a>
 
-<<<<<<< HEAD
                                             <!-- Deactivate Customer Button -->
                                             <form action="{{ route('admin.customers.toggle-status', $customer->c_id) }}" method="POST" class="d-inline">
                                                 @csrf
@@ -627,31 +519,6 @@
                                                 <i class="fas fa-trash"></i>
                                                 <span class="d-block small mt-1">Delete</span>
                                             </button>
-=======
-                                            <!-- More Actions Dropdown -->
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle action-btn shadow-sm" 
-                                                        type="button" 
-                                                        data-bs-toggle="dropdown">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end shadow">
-                                                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-invoice-dollar me-2"></i>Create Invoice</a></li>
-                                                    <li><a class="dropdown-item" href="#"><i class="fas fa-chart-line me-2"></i>View Reports</a></li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li><a class="dropdown-item" href="#"><i class="fas fa-envelope me-2"></i>Send Email</a></li>
-                                                    <li><a class="dropdown-item" href="#"><i class="fas fa-sms me-2"></i>Send SMS</a></li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <button class="dropdown-item text-danger delete-customer-btn"
-                                                                data-customer-id="{{ $customer->c_id }}"
-                                                                data-customer-name="{{ $customer->name }}">
-                                                            <i class="fas fa-trash me-2"></i>Delete Customer
-                                                        </button>
-                                                    </li>
-                                                </ul>
-                                            </div>
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
                                         </div>
                                     </div>
                                 </td>
@@ -782,7 +649,6 @@
     --teal-light: rgba(6, 214, 160, 0.1);
     --indigo-light: rgba(58, 12, 163, 0.1);
     --pink-light: rgba(247, 37, 133, 0.1);
-<<<<<<< HEAD
 }
 
 /* Enhanced Card Styling */
@@ -950,57 +816,6 @@
 .customer-row {
     transition: all 0.3s ease;
     border-left: 4px solid transparent;
-=======
-}
-
-/* Enhanced Card Styling */
-.card {
-    border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
-}
-
-.hover-lift {
-    transition: all 0.3s ease;
-}
-
-.hover-lift:hover {
-    transform: translateY(-5px);
-}
-
-/* Stat Icons */
-.stat-icon {
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-}
-
-.stat-icon:hover {
-    transform: scale(1.1);
-}
-
-/* Customer Avatar */
-.avatar-circle {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1.2rem;
-    background: linear-gradient(135deg, var(--primary) 0%, #3a0ca3 100%);
-    color: white;
-    box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 .customer-row:hover {
@@ -1009,7 +824,6 @@
     box-shadow: inset 4px 0 0 var(--primary);
 }
 
-<<<<<<< HEAD
 .payment-due {
     background: linear-gradient(135deg, #fff5f7 0%,rgba(201, 120, 120, 0.52) 100%);
     border-left-color: var(--danger) !important;
@@ -1038,146 +852,12 @@
     width: 50px;
     border-radius: 6px;
     transition: all 0.3s ease;
-=======
-.new-badge {
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { transform: translate(-50%, -50%) scale(1); }
-    50% { transform: translate(-50%, -50%) scale(1.1); }
-    100% { transform: translate(-50%, -50%) scale(1); }
-}
-
-/* Product Cards - Color Variations */
-.product-card {
-    border-radius: 10px;
-    border-left: 4px solid;
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
-
-.product-card:hover {
-    transform: translateX(5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
-}
-
-/* Color Classes for Products */
-.bg-primary-light { background-color: var(--primary-light) !important; }
-.bg-success-light { background-color: var(--success-light) !important; }
-.bg-warning-light { background-color: var(--warning-light) !important; }
-.bg-danger-light { background-color: var(--danger-light) !important; }
-.bg-info-light { background-color: var(--info-light) !important; }
-.bg-purple-light { background-color: var(--purple-light) !important; }
-.bg-teal-light { background-color: var(--teal-light) !important; }
-.bg-indigo-light { background-color: var(--indigo-light) !important; }
-.bg-pink-light { background-color: var(--pink-light) !important; }
-
-.border-primary { border-color: var(--primary) !important; }
-.border-success { border-color: var(--success) !important; }
-.border-warning { border-color: var(--warning) !important; }
-.border-danger { border-color: var(--danger) !important; }
-.border-info { border-color: var(--info) !important; }
-.border-purple { border-color: var(--purple) !important; }
-.border-teal { border-color: var(--teal) !important; }
-.border-indigo { border-color: var(--indigo) !important; }
-.border-pink { border-color: var(--pink) !important; }
-
-.text-primary { color: var(--primary) !important; }
-.text-success { color: var(--success) !important; }
-.text-warning { color: var(--warning) !important; }
-.text-danger { color: var(--danger) !important; }
-.text-info { color: var(--info) !important; }
-.text-purple { color: var(--purple) !important; }
-.text-teal { color: var(--teal) !important; }
-.text-indigo { color: var(--indigo) !important; }
-.text-pink { color: var(--pink) !important; }
-
-/* Product Icon */
-.product-icon .icon-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-<<<<<<< HEAD
     padding: 0.5rem 0;
     font-size: 0.8rem;
-=======
-    font-size: 1rem;
-}
-
-/* Table Styling */
-.table {
-    --bs-table-bg: transparent;
-}
-
-.table th {
-    background-color: #f8fafc;
-    border-bottom: 2px solid #e2e8f0;
-    font-weight: 600;
-    color: #64748b;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 1.2rem 0.75rem;
-}
-
-.table td {
-    padding: 1.2rem 0.75rem;
-    vertical-align: top;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-/* Customer Row States */
-.customer-row {
-    transition: all 0.3s ease;
-    border-left: 4px solid transparent;
-}
-
-.customer-row:hover {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-left-color: var(--primary);
-    box-shadow: inset 4px 0 0 var(--primary);
-}
-
-.payment-due {
-    background: linear-gradient(135deg, #fff5f7 0%, #fed7e2 100%);
-    border-left-color: var(--danger) !important;
-}
-
-.payment-due:hover {
-    background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%);
-}
-
-.new-customer {
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    border-left-color: var(--info) !important;
-}
-
-.new-customer:hover {
-    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-}
-
-.inactive-customer {
-    opacity: 0.7;
-    background-color: #f8f9fa;
-}
-
-/* Action Buttons */
-.action-btn {
-    width: 60px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0.75rem 0;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 .action-btn:hover {
@@ -1193,13 +873,8 @@
 
 /* Badge Styling */
 .badge-sm {
-<<<<<<< HEAD
     font-size: 0.65rem;
     padding: 0.25rem 0.5rem;
-=======
-    font-size: 0.7rem;
-    padding: 0.3rem 0.6rem;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
     font-weight: 500;
 }
 
@@ -1214,7 +889,6 @@
 
 /* Icon Circles */
 .icon-circle {
-<<<<<<< HEAD
     width: 30px;
     height: 30px;
     border-radius: 6px;
@@ -1222,15 +896,6 @@
     align-items: center;
     justify-content: center;
     font-size: 0.8rem;
-=======
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 /* Status Items */
@@ -1238,16 +903,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-<<<<<<< HEAD
     padding: 0.2rem 0.4rem;
     border-radius: 4px;
     margin-top: 0.3rem;
     font-size: 0.7rem;
-=======
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    margin-top: 0.5rem;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 .status-item.danger {
@@ -1263,10 +922,7 @@
 /* Bill Amount Animation */
 .bill-amount h3 {
     transition: all 0.3s ease;
-<<<<<<< HEAD
     font-size: 1.2rem;
-=======
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 .bill-amount:hover h3 {
@@ -1277,18 +933,11 @@
 /* Filter Buttons */
 .filter-btn {
     border-radius: 20px;
-<<<<<<< HEAD
     padding: 0.4rem 0.8rem;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
     font-size: 0.85rem;
-=======
-    padding: 0.5rem 1rem;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 .filter-btn:hover {
@@ -1306,10 +955,7 @@
 .due-alert {
     animation: shake 0.5s ease-in-out;
     border-left: 4px solid var(--danger);
-<<<<<<< HEAD
     padding: 0.5rem 0.75rem;
-=======
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 @keyframes shake {
@@ -1330,7 +976,6 @@
         font-size: 1rem;
     }
     
-<<<<<<< HEAD
     .product-item {
         padding: 4px 8px;
         margin-bottom: 4px;
@@ -1341,56 +986,31 @@
         width: 40px;
         padding: 0.4rem 0;
         font-size: 0.7rem;
-=======
-    .product-card {
-        margin-bottom: 0.5rem;
-    }
-    
-    .action-btn {
-        width: 50px;
-        padding: 0.5rem 0;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
     }
     
     .table-responsive {
         font-size: 0.85rem;
-<<<<<<< HEAD
     }
     
     .bill-amount h3 {
         font-size: 1rem;
-=======
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
     }
 }
 
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
-<<<<<<< HEAD
     width: 6px;
     height: 6px;
-=======
-    width: 8px;
-    height: 8px;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 ::-webkit-scrollbar-track {
     background: #f1f1f1;
-<<<<<<< HEAD
     border-radius: 3px;
-=======
-    border-radius: 4px;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 ::-webkit-scrollbar-thumb {
     background: #c1c1c1;
-<<<<<<< HEAD
     border-radius: 3px;
-=======
-    border-radius: 4px;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -1404,7 +1024,6 @@
 
 /* Pagination Styling */
 .pagination .page-link {
-<<<<<<< HEAD
     border-radius: 6px;
     margin: 0 1px;
     border: 1px solid #e2e8f0;
@@ -1412,13 +1031,6 @@
     font-weight: 500;
     padding: 0.3rem 0.7rem;
     font-size: 0.9rem;
-=======
-    border-radius: 8px;
-    margin: 0 2px;
-    border: 1px solid #e2e8f0;
-    color: #64748b;
-    font-weight: 500;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 .pagination .page-item.active .page-link {
@@ -1430,11 +1042,8 @@
 /* Insight Icons */
 .insight-icon {
     transition: all 0.3s ease;
-<<<<<<< HEAD
     width: 36px;
     height: 36px;
-=======
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 .insight-icon:hover {
@@ -1444,12 +1053,8 @@
 /* Tooltip Customization */
 .tooltip {
     --bs-tooltip-bg: var(--primary);
-<<<<<<< HEAD
     --bs-tooltip-border-radius: 6px;
     --bs-tooltip-font-size: 0.8rem;
-=======
-    --bs-tooltip-border-radius: 8px;
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 }
 
 /* Loading Animation */
@@ -1461,7 +1066,6 @@
 .customer-row {
     animation: fadeIn 0.5s ease-out forwards;
 }
-<<<<<<< HEAD
 
 /* Compact product container */
 .products-container {
@@ -1479,8 +1083,6 @@
     background: #adb5bd;
     border-radius: 2px;
 }
-=======
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
 </style>
 
 <script>
@@ -1605,7 +1207,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-<<<<<<< HEAD
     // Handle customer activate/deactivate
     document.querySelectorAll('form[action*="toggle-status"]').forEach(form => {
         form.addEventListener('submit', function(e) {
@@ -1621,8 +1222,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-=======
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
     // Calculate and show product count
     document.querySelectorAll('.products-container').forEach(container => {
         const productCards = container.querySelectorAll('.product-card');
