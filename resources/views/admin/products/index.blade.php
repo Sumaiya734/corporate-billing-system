@@ -3,33 +3,6 @@
 @section('title', 'Product Management - Admin Dashboard')
 
 @section('content')
-
-    <!-- Font Awesome Test -->
-    <div style="display: none; position: fixed; top: 10px; right: 10px; z-index: 9999; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ccc;" id="faTest">
-        <i class="fa-solid fa-check" style="color: green;"></i> FA Loaded
-    </div>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                const test = document.getElementById('faTest');
-                if (test) {
-                    const computed = window.getComputedStyle(test.querySelector('i'));
-                    const font = computed.fontFamily;
-                    if (font.includes('Font Awesome')) {
-                        console.log('✅ Font Awesome loaded:', font);
-                        test.style.display = 'block';
-                        setTimeout(() => test.style.display = 'none', 3000);
-                    } else {
-                        console.warn('❌ Font Awesome not detected');
-                        test.innerHTML = '<i class="fas fa-times" style="color: red;"></i> FA NOT Loaded';
-                        test.style.display = 'block';
-                    }
-                }
-            }, 1000);
-        });
-    </script>
-
     <!-- Toast container -->
     <div class="position-fixed top-0 end-0 p-3" style="z-index: 1080;">
         <div id="toastContainer"></div>
@@ -52,10 +25,10 @@
         </div>
     </div>
 
-    <!-- Statistics Cards - Using EMOJI fallback -->
+    <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6">
-            <div class="card stat-card bg-primary text-white mb-4 stat-card-clickable" data-filter="all" data-action="filter" role="button" title="Click to view all products">
+            <div class="card stat-card bg-primary text-white mb-4" role="button">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -74,7 +47,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card stat-card bg-success text-white mb-4 stat-card-clickable" data-action="show-types" role="button" title="Click to view all product types">
+            <div class="card stat-card bg-success text-white mb-4">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -93,7 +66,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card stat-card bg-info text-white mb-4 stat-card-clickable" data-action="show-popular" data-product="{{ $stats['most_popular'] ?? '' }}" role="button" title="Click to view most popular product details">
+            <div class="card stat-card bg-info text-white mb-4">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -112,7 +85,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card stat-card bg-secondary text-white stat-card-clickable" data-action="show-customers" role="button" title="Click to view active customers">
+            <div class="card stat-card bg-secondary text-white">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -159,7 +132,7 @@
                     </thead>
                     <tbody>
                         @forelse($products as $product)
-                        <tr data-type="{{ $product->product_type }}" id="product-row-{{ $product->p_id }}">
+                        <tr data-type="{{ $product->product_type_id }}" id="product-row-{{ $product->p_id }}">
                             <td class="fw-bold">{{ $product->p_id }}</td>
                             <td>
                                 <span class="badge bg-secondary" style="font-size: 0.85rem; font-family: monospace;">
@@ -200,14 +173,14 @@
                             </td>
                             <td class="text-center action-column">
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary edit-product" 
+                                    <button type="button" class="btn btn-outline-primary edit-product-btn" 
                                             data-id="{{ $product->p_id }}" 
                                             data-name="{{ $product->name }}"
                                             title="Edit Product">
                                         <span>✏️</span>
                                         <span class="d-none d-md-inline ms-1">Edit</span>
                                     </button>
-                                    <button type="button" class="btn btn-outline-danger delete-product" 
+                                    <button type="button" class="btn btn-outline-danger delete-product-btn" 
                                             data-id="{{ $product->p_id }}" 
                                             data-name="{{ $product->name }}"
                                             title="Delete Product">
@@ -236,21 +209,20 @@
         </div>
     </div>
 
-
-<!-- Edit product Modal -->
-<div class="modal fade" id="editproductModal" tabindex="-1" aria-labelledby="editproductModalLabel" aria-hidden="true">
+<!-- Edit Product Modal -->
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form id="editproductForm">
+            <form id="editProductForm">
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="p_id" id="edit_p_id">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editproductModalLabel">Edit product</h5>
+                    <h5 class="modal-title" id="editProductModalLabel">Edit Product</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <div class="modal-body" id="editproductModalBody">
+                <div class="modal-body" id="editProductModalBody">
                     <div class="text-center py-4" id="editLoading">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -303,9 +275,9 @@
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="updateproductBtn">
+                    <button type="submit" class="btn btn-primary" id="updateProductBtn">
                         <span class="spinner-border spinner-border-sm d-none" role="status"></span>
-                        Update product
+                        Update Product
                     </button>
                 </div>
             </form>
@@ -313,17 +285,30 @@
     </div>
 </div>
 
-<!-- Include Delete Confirmation Modal -->
-<x-delete-confirmation-modal />
+<!-- Simple Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteMessage">Are you sure you want to delete this product?</p>
+                <input type="hidden" id="deleteProductId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @section('styles')
 <style>
-    /* Font Awesome backup styles */
-    .fa-icon-fallback {
-        font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-    }
-    
     .product-icon {
         width: 40px;
         height: 40px;
@@ -336,41 +321,6 @@
 
     .bg-purple {
         background-color: #6f42c1 !important;
-    }
-
-    .bg-orange {
-        background-color: #fd7e14 !important;
-    }
-
-    .stat-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-    }
-
-    .stat-card-clickable {
-        cursor: pointer;
-    }
-
-    .stat-card-clickable:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-
-    .stat-card-clickable.active {
-        border: 2px solid #4361ee;
-        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-    }
-
-    .avatar-sm {
-        width: 50px;
-        height: 50px;
-    }
-
-    .filter-btn.active {
-        background-color: #4361ee;
-        color: white;
     }
 
     .table th {
@@ -395,40 +345,13 @@
         display: inline-flex;
     }
 
-    .action-column .btn {
-        min-width: 36px;
-        transition: all 0.2s ease;
-    }
-
-    .action-column .btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .action-column .btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    /* Responsive adjustments */
     @media (max-width: 768px) {
         .table-responsive {
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
         }
 
-        .action-column {
-            position: sticky;
-            right: 0;
-            background-color: white;
-            box-shadow: -2px 0 5px rgba(0,0,0,0.05);
-        }
-
-        .table thead th:last-child {
-            position: sticky;
-            right: 0;
-            background-color: #f8f9fa;
-            box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+        .action-column .btn span.d-none {
+            display: none !important;
         }
     }
 
@@ -438,18 +361,8 @@
             gap: 10px;
         }
 
-        .card-header .d-flex {
-            width: 100%;
-            flex-direction: column;
-        }
-
         .search-box {
             width: 100% !important;
-            min-width: auto !important;
-        }
-
-        .action-column .btn span {
-            display: none !important;
         }
     }
 </style>
@@ -457,24 +370,22 @@
 
 @section('scripts')
 <script>
-    console.log('🚀 product management script loaded');
-    
-    (function() {
-        console.log('📦 Initializing product management...');
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Product management page loaded');
         
-        // CSRF token
+        // CSRF token setup
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        console.log('🔑 CSRF Token:', csrfToken ? 'Found' : 'Missing');
-
-        // Toast helper
+        console.log('CSRF Token:', csrfToken);
+        
+        // Toast notification function
         function showToast(message, type = 'success') {
             const toastId = 'toast-' + Date.now();
             const wrapper = document.createElement('div');
             wrapper.innerHTML = `
-                <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+                <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0 mb-2" role="alert">
                     <div class="d-flex">
                         <div class="toast-body">${message}</div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
                     </div>
                 </div>
             `;
@@ -482,453 +393,363 @@
             const toastEl = document.getElementById(toastId);
             const toast = new bootstrap.Toast(toastEl);
             toast.show();
-
+            
             toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
         }
 
-        // Utility to show validation errors
-        function showValidationErrors(containerEl, errors) {
-            if (!containerEl) return;
-            containerEl.classList.remove('d-none');
-            if (typeof errors === 'string') {
-                containerEl.innerHTML = errors;
-                return;
+        // Debug function to test AJAX call
+        async function testAjaxCall(url, method = 'GET') {
+            console.log(`Testing ${method} request to: ${url}`);
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                console.log(`Response status: ${response.status}`);
+                console.log(`Response headers:`, Object.fromEntries(response.headers.entries()));
+                const data = await response.json();
+                console.log(`Response data:`, data);
+                return { success: true, data: data, status: response.status };
+            } catch (error) {
+                console.error(`AJAX error:`, error);
+                return { success: false, error: error };
             }
-            if (errors.message) {
-                containerEl.innerHTML = errors.message;
-                return;
-            }
-            const list = Object.values(errors).flat().map(e => `<div>• ${e}</div>`).join('');
-            containerEl.innerHTML = list;
         }
 
-        // Filter buttons
-        document.querySelectorAll('.filter-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                filterproducts(this.getAttribute('data-type'));
-            });
-        });
-
-        // Clickable stat cards
-        document.querySelectorAll('.stat-card-clickable').forEach(card => {
-            card.addEventListener('click', function() {
-                const action = this.getAttribute('data-action');
+        // EDIT PRODUCT FUNCTIONALITY
+        document.querySelectorAll('.edit-product-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const productId = this.getAttribute('data-id');
+                const productName = this.getAttribute('data-name');
+                console.log('=== EDIT BUTTON CLICKED ===');
+                console.log('Product ID:', productId);
+                console.log('Product Name:', productName);
                 
-                // Update stat card active state
-                document.querySelectorAll('.stat-card-clickable').forEach(c => c.classList.remove('active'));
-                this.classList.add('active');
+                // Test the route first
+                console.log('Testing edit route...');
+                const editRoute = `/admin/products/${productId}/edit`;
+                const testResult = await testAjaxCall(editRoute);
                 
-                // Handle different actions
-                switch(action) {
-                    case 'filter':
-                        const filterType = this.getAttribute('data-filter');
-                        // Update filter buttons
-                        document.querySelectorAll('.filter-btn').forEach(btn => {
-                            if (btn.getAttribute('data-type') === filterType) {
-                                btn.classList.add('active');
-                            } else {
-                                btn.classList.remove('active');
-                            }
-                        });
-                        filterproducts(filterType);
-                        document.querySelector('.card-header').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        showToast('Showing All Products', 'info');
-                        break;
-                        
-                    case 'show-types':
-                        showProductTypesModal();
-                        break;
-                        
-                    case 'show-popular':
-                        const productName = this.getAttribute('data-product');
-                        showPopularProductDetails(productName);
-                        break;
-                        
-                    case 'show-customers':
-                        showActiveCustomersModal();
-                        break;
+                if (!testResult.success) {
+                    console.log('Edit route failed, trying show route...');
+                    const showRoute = `/admin/products/${productId}`;
+                    await testAjaxCall(showRoute);
                 }
+                
+                // Now open the modal
+                openEditModal(productId, productName);
             });
         });
-        
-        // Show Product Types Modal
-        function showProductTypesModal() {
-            const types = @json($productTypes ?? []);
-            const products = @json($products ?? []);
+
+        async function openEditModal(productId, productName) {
+            console.log('=== OPENING EDIT MODAL ===');
+            console.log('Product ID:', productId);
             
-            let typeBreakdown = '<div class="list-group">';
-            types.forEach(type => {
-                const count = products.filter(p => p.product_type_id === type.id).length;
-                const percentage = products.length > 0 ? ((count / products.length) * 100).toFixed(1) : 0;
-                typeBreakdown += `
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">${type.name.charAt(0).toUpperCase() + type.name.slice(1)}</h6>
-                                <small class="text-muted">${count} products (${percentage}%)</small>
-                            </div>
-                            <div class="progress" style="width: 100px; height: 8px;">
-                                <div class="progress-bar bg-primary" style="width: ${percentage}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            typeBreakdown += '</div>';
-            
-            showInfoModal('Product Types Breakdown', typeBreakdown);
-        }
-        
-        // Show Popular Product Details
-        function showPopularProductDetails(productName) {
-            if (!productName || productName === 'N/A') {
-                showToast('No popular product data available', 'warning');
-                return;
-            }
-            
-            const products = @json($products ?? []);
-            const product = products.find(p => p.name === productName);
-            
-            if (!product) {
-                showToast('Product details not found', 'warning');
-                return;
-            }
-            
-            const content = `
-                <div class="card border-0">
-                    <div class="card-body">
-                        <div class="text-center mb-3">
-                            <div class="avatar-lg bg-success rounded-circle text-white d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                                <span style="font-size: 2rem;">🔥</span>
-                            </div>
-                            <h4>${product.name}</h4>
-                            <span class="badge bg-${product.type?.name === 'regular' ? 'primary' : 'warning'}">${product.type?.name || 'N/A'}</span>
-                        </div>
-                        <hr>
-                        <div class="row text-center">
-                            <div class="col-6 mb-3">
-                                <h5 class="text-success mb-0">৳${parseFloat(product.monthly_price).toFixed(2)}</h5>
-                                <small class="text-muted">Monthly Price</small>
-                            </div>
-                            <div class="col-6 mb-3">
-                                <h5 class="mb-0">PROD-${product.product_code}</h5>
-                                <small class="text-muted">Product Code</small>
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="mb-3">
-                            <strong>Description:</strong>
-                            <p class="text-muted mb-0">${product.description || 'No description available'}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            showInfoModal('Most Popular Product', content);
-        }
-        
-        // Show Active Customers Modal
-        function showActiveCustomersModal() {
-            const customerCount = {{ $stats['active_customers'] ?? 0 }};
-            
-            const content = `
-                <div class="text-center py-4">
-                    <div class="avatar-lg bg-info rounded-circle text-white d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                        <span style="font-size: 2rem;">👥</span>
-                    </div>
-                    <h2 class="mb-2">${customerCount}</h2>
-                    <p class="text-muted mb-4">Active customers currently using products</p>
-                    <div class="alert alert-info">
-                        <span class="me-2">ℹ️</span>
-                        These customers have active product subscriptions
-                    </div>
-                    <a href="{{ route('admin.customers.index') }}" class="btn btn-primary">
-                        <span class="me-2">👥</span>View All Customers
-                    </a>
-                </div>
-            `;
-            
-            showInfoModal('Active Customers', content);
-        }
-        
-        // Generic Info Modal
-        function showInfoModal(title, content) {
-            const modalHtml = `
-                <div class="modal fade" id="infoModal" tabindex="-1">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">${title}</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                ${content}
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Remove existing modal if any
-            const existingModal = document.getElementById('infoModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
-            
-            // Add new modal
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            const modal = new bootstrap.Modal(document.getElementById('infoModal'));
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
             modal.show();
             
-            // Clean up after modal is hidden
-            document.getElementById('infoModal').addEventListener('hidden.bs.modal', function() {
-                this.remove();
-            });
-        }
-
-        function filterproducts(type) {
-            const rows = document.querySelectorAll('tbody tr');
-            let visibleCount = 0;
-            
-            rows.forEach(row => {
-                const rowType = row.getAttribute('data-type');
-                const match = !type || type === 'all' || rowType === type;
-                row.style.display = match ? '' : 'none';
-                if (match) visibleCount++;
-            });
-            
-            // Update footer count
-            const footerDiv = document.querySelector('.card-footer div');
-            if (footerDiv) {
-                const totalProducts = document.querySelectorAll('tbody tr').length;
-                footerDiv.textContent = `Showing ${visibleCount} of ${totalProducts} products`;
-            }
-        }
-
-        // Search functionality
-        document.querySelector('.search-box')?.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            document.querySelectorAll('tbody tr').forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        });
-
-        // EDIT: Open modal with improved error handling
-        console.log('✅ Edit button listener attached');
-        
-        document.body.addEventListener('click', function(e) {
-            console.log('👆 Click detected on:', e.target);
-            
-            const editBtn = e.target.closest('.edit-product');
-            if (editBtn) {
-                console.log('✏️ Edit button clicked!', editBtn);
-                e.preventDefault();
-                const pId = editBtn.getAttribute('data-id');
-                const productName = editBtn.getAttribute('data-name');
-                console.log('📝 product ID:', pId, 'Name:', productName);
-                
-                // Disable button temporarily
-                editBtn.disabled = true;
-                const originalHtml = editBtn.innerHTML;
-                editBtn.innerHTML = '<span class="me-1">⏳</span>';
-                
-                openEditModal(pId, productName).finally(() => {
-                    editBtn.disabled = false;
-                    editBtn.innerHTML = originalHtml;
-                });
-            }
-        });
-
-        async function openEditModal(pId, productName) {
-            const errorsEl = document.getElementById('editErrors');
+            // Reset modal state
             const loadingEl = document.getElementById('editLoading');
             const fieldsEl = document.getElementById('editFields');
+            const errorsEl = document.getElementById('editErrors');
             
-            errorsEl.classList.add('d-none');
             loadingEl.style.display = '';
             fieldsEl.style.display = 'none';
-
-            const modalEl = document.getElementById('editproductModal');
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
-
+            errorsEl.classList.add('d-none');
+            
             try {
-                const url = `{{ url('admin/products') }}/${pId}`;
-                console.log('📡 Fetching product from:', url);
+                // First try the edit route
+                let url = `/admin/products/${productId}/edit`;
+                console.log('Fetching from edit route:', url);
                 
-                const res = await fetch(url, {
-                    headers: { 
+                let response = await fetch(url, {
+                    headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 });
                 
-                if (!res.ok) {
-                    const errorData = await res.json().catch(() => ({}));
-                    throw new Error(errorData.message || `Failed to fetch product (${res.status})`);
+                // If edit route fails, try the show route
+                if (!response.ok) {
+                    console.log(`Edit route failed with status ${response.status}, trying show route...`);
+                    url = `/admin/products/${productId}`;
+                    console.log('Fetching from show route:', url);
+                    
+                    response = await fetch(url, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
                 }
                 
-                const pkg = await res.json();
-
-                // Populate fields with validation
-                document.getElementById('edit_p_id').value = pkg.p_id || pId;
-                document.getElementById('edit_product_code').value = pkg.product_code || '';
-                document.getElementById('edit_name').value = pkg.name || '';
-                document.getElementById('edit_product_type_id').value = pkg.product_type_id || '';
-                document.getElementById('edit_monthly_price').value = pkg.monthly_price || '';
-                document.getElementById('edit_description').value = pkg.description || '';
-
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Response error text:', errorText);
+                    throw new Error(`Failed to fetch product data: ${response.status}`);
+                }
+                
+                const product = await response.json();
+                console.log('Product data received:', product);
+                
+                // Check if we got valid product data
+                if (!product) {
+                    throw new Error('No product data received');
+                }
+                
+                // Populate form fields
+                document.getElementById('edit_p_id').value = product.p_id || productId;
+                document.getElementById('edit_product_code').value = product.product_code || '';
+                document.getElementById('edit_name').value = product.name || '';
+                document.getElementById('edit_product_type_id').value = product.product_type_id || '';
+                document.getElementById('edit_monthly_price').value = product.monthly_price || '';
+                document.getElementById('edit_description').value = product.description || '';
+                
+                // Update modal title
+                document.getElementById('editProductModalLabel').textContent = `Edit Product: ${product.name || productName}`;
+                
+                // Show form fields
                 loadingEl.style.display = 'none';
                 fieldsEl.style.display = '';
                 
-                // Update modal title with product name
-                document.getElementById('editproductModalLabel').textContent = `Edit Product: ${pkg.name || productName}`;
-            } catch (err) {
-                console.error('Error loading product:', err);
+                console.log('Modal populated successfully');
+                
+            } catch (error) {
+                console.error('Error loading product:', error);
+                
+                // Show error in modal
                 loadingEl.innerHTML = `
                     <div class="alert alert-danger">
-                        <span class="me-2">⚠️</span>
-                        ${err.message || 'Failed to load product details. Please try again.'}
+                        <h6>Failed to load product details</h6>
+                        <p>Error: ${error.message}</p>
+                        <p>Please try the following:</p>
+                        <ol>
+                            <li>Check if the product exists</li>
+                            <li>Check your network connection</li>
+                            <li>Refresh the page and try again</li>
+                        </ol>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 `;
-                showToast('Failed to load product details', 'danger');
+                
+                showToast('Failed to load product details. Check console for details.', 'danger');
             }
         }
 
-        // UPDATE: submit update
-        document.getElementById('editproductForm')?.addEventListener('submit', async function(e) {
+        // Handle edit form submission
+        document.getElementById('editProductForm')?.addEventListener('submit', async function(e) {
             e.preventDefault();
-            await submitUpdate();
-        });
-
-        async function submitUpdate() {
-            const form = document.getElementById('editproductForm');
-            const pId = document.getElementById('edit_p_id').value;
-            const btn = document.getElementById('updateproductBtn');
-            const spinner = btn.querySelector('.spinner-border');
+            console.log('=== FORM SUBMISSION STARTED ===');
             
-            btn.disabled = true;
+            const productId = document.getElementById('edit_p_id').value;
+            const submitBtn = document.getElementById('updateProductBtn');
+            const spinner = submitBtn.querySelector('.spinner-border');
+            
+            submitBtn.disabled = true;
             spinner.classList.remove('d-none');
             document.getElementById('editErrors').classList.add('d-none');
-
-            const formData = new FormData(form);
-            const url = `{{ url('admin/products') }}/${pId}`;
-            console.log('📡 Updating product at:', url);
-
+            
+            const formData = new FormData(this);
+            const url = `/admin/products/${productId}`;
+            
+            console.log('Updating product at:', url);
+            console.log('Form data:', Object.fromEntries(formData.entries()));
+            
             try {
-                const res = await fetch(url, {
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': csrfToken,
                         'X-HTTP-Method-Override': 'PUT',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: formData
                 });
-
-                const json = await res.json();
-
-                if (!res.ok) {
-                    showValidationErrors(document.getElementById('editErrors'), json.errors || json.message || 'Failed to update product');
-                    return;
-                }
-
-                if (json.success) {
-                    bootstrap.Modal.getInstance(document.getElementById('editproductModal')).hide();
-                    showToast(json.message || 'product updated successfully!', 'success');
+                
+                console.log('Response status:', response.status);
+                
+                const data = await response.json();
+                console.log('Update response:', data);
+                
+                if (data.success) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editProductModal'));
+                    modal.hide();
+                    showToast(data.message || 'Product updated successfully!', 'success');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    showValidationErrors(document.getElementById('editErrors'), json.message || 'Unknown error occurred');
+                    // Show validation errors
+                    if (data.errors) {
+                        let errorHtml = '';
+                        Object.values(data.errors).forEach(errors => {
+                            errors.forEach(error => {
+                                errorHtml += `<div>• ${error}</div>`;
+                            });
+                        });
+                        document.getElementById('editErrors').innerHTML = errorHtml;
+                        document.getElementById('editErrors').classList.remove('d-none');
+                    } else {
+                        document.getElementById('editErrors').innerHTML = `<div>• ${data.message || 'Update failed'}</div>`;
+                        document.getElementById('editErrors').classList.remove('d-none');
+                    }
                 }
             } catch (error) {
-                console.error('Error:', error);
-                showValidationErrors(document.getElementById('editErrors'), 'Network error occurred');
+                console.error('Update error:', error);
+                document.getElementById('editErrors').innerHTML = `<div>• Network error occurred: ${error.message}</div>`;
+                document.getElementById('editErrors').classList.remove('d-none');
             } finally {
-                btn.disabled = false;
+                submitBtn.disabled = false;
                 spinner.classList.add('d-none');
+                console.log('=== FORM SUBMISSION COMPLETED ===');
             }
-        }
-
-        // DELETE: product with modal confirmation
-        console.log('✅ Delete button listener attached');
-        
-        document.body.addEventListener('click', function(e) {
-            const delBtn = e.target.closest('.delete-product');
-            if (!delBtn) return;
-            
-            console.log('🗑️ Delete button clicked!', delBtn);
-            e.preventDefault();
-            const pId = delBtn.getAttribute('data-id');
-            const productName = delBtn.getAttribute('data-name');
-            console.log('📝 product ID:', pId, 'Name:', productName);
-            
-            const message = `Are you sure you want to delete <strong>"${productName}"</strong>?<br><small class="text-danger">This action cannot be undone and will remove all associated data.</small>`;
-            const action = `{{ url('admin/products') }}/${pId}`;
-            const row = document.getElementById(`product-row-${pId}`);
-            
-            showDeleteModal(message, action, row, updateproductCount);
         });
 
-        // Helper function to update product count
-        function updateproductCount() {
-            const visibleRows = document.querySelectorAll('tbody tr:not([style*="display: none"])').length;
-            const footerDiv = document.querySelector('.card-footer div');
-            if (footerDiv) {
-                footerDiv.textContent = `Showing ${visibleRows} of ${visibleRows} products`;
-            }
-            
-            // Show empty state if no products
-            if (visibleRows === 0) {
-                const tbody = document.querySelector('tbody');
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No products found.</td></tr>';
-            }
-        }
-
-        // EXPORT functionality
-        document.getElementById('exportBtn')?.addEventListener('click', function() {
-            const rows = Array.from(document.querySelectorAll('table tbody tr:not([style*="display: none"])'));
-            const csv = [];
-            csv.push(['ID', 'Product Code', 'Name', 'Type', 'Price', 'Description'].join(','));
-            
-            rows.forEach(row => {
-                const cols = row.querySelectorAll('td');
-                if (cols.length >= 7) {
-                    const rowData = [
-                        `"${cols[0].textContent.trim()}"`,
-                        `"${cols[1].textContent.trim()}"`,
-                        `"${cols[2].querySelector('h6') ? cols[2].querySelector('h6').textContent.trim() : cols[2].textContent.trim()}"`,
-                        `"${cols[3].textContent.trim()}"`,
-                        `"${cols[5].textContent.trim().replace('/month','').replace('৳','').trim()}"`,
-                        `"${cols[4].querySelector('p') ? cols[4].querySelector('p').textContent.trim() : cols[4].textContent.trim()}"`
-                    ];
-                    csv.push(rowData.join(','));
-                }
+        // DELETE PRODUCT FUNCTIONALITY
+        document.querySelectorAll('.delete-product-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const productId = this.getAttribute('data-id');
+                const productName = this.getAttribute('data-name');
+                console.log('Delete clicked for product:', productId, productName);
+                
+                // Set up delete confirmation modal
+                document.getElementById('deleteMessage').innerHTML = 
+                    `Are you sure you want to delete <strong>"${productName}"</strong>?<br>
+                    <small class="text-danger">This action cannot be undone.</small>`;
+                document.getElementById('deleteProductId').value = productId;
+                
+                // Show delete confirmation modal
+                const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+                deleteModal.show();
             });
-            
-            const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv.join('\n'));
-            const a = document.createElement('a');
-            a.setAttribute('href', csvContent);
-            a.setAttribute('download', `products_export_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            showToast('Export started successfully!', 'success');
         });
 
-        // Initialize filter
-        filterproducts('all');
-        
-        console.log('✅ product management initialized successfully');
-        console.log('📊 Edit buttons found:', document.querySelectorAll('.edit-product').length);
-        console.log('📊 Delete buttons found:', document.querySelectorAll('.delete-product').length);
+        // Handle delete confirmation
+        document.getElementById('confirmDeleteBtn')?.addEventListener('click', async function() {
+            const productId = document.getElementById('deleteProductId').value;
+            const deleteBtn = this;
+            const row = document.getElementById(`product-row-${productId}`);
+            
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+            
+            try {
+                const response = await fetch(`/admin/products/${productId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const data = await response.json();
+                console.log('Delete response:', data);
+                
+                if (data.success) {
+                    // Close modal and remove row
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+                    modal.hide();
+                    
+                    if (row) {
+                        row.remove();
+                        showToast(data.message || 'Product deleted successfully!', 'success');
+                        
+                        // Update product count
+                        const visibleRows = document.querySelectorAll('tbody tr').length;
+                        const footerDiv = document.querySelector('.card-footer div');
+                        if (footerDiv) {
+                            footerDiv.textContent = `Showing ${visibleRows} of ${visibleRows} products`;
+                        }
+                        
+                        if (visibleRows === 0) {
+                            document.querySelector('tbody').innerHTML = 
+                                '<tr><td colspan="7" class="text-center py-4">No products found.</td></tr>';
+                        }
+                    }
+                } else {
+                    showToast(data.message || 'Failed to delete product', 'danger');
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                showToast('Network error occurred while deleting', 'danger');
+            } finally {
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = 'Delete';
+            }
+        });
 
+        // Search functionality
+        const searchBox = document.querySelector('.search-box');
+        if (searchBox) {
+            searchBox.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                document.querySelectorAll('tbody tr').forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        }
+
+        // Export functionality
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function() {
+                const rows = Array.from(document.querySelectorAll('table tbody tr:not([style*="display: none"])'));
+                const csv = [];
+                csv.push(['ID', 'Product Code', 'Name', 'Type', 'Price', 'Description'].join(','));
+                
+                rows.forEach(row => {
+                    const cols = row.querySelectorAll('td');
+                    if (cols.length >= 7) {
+                        const rowData = [
+                            `"${cols[0].textContent.trim()}"`,
+                            `"${cols[1].textContent.trim()}"`,
+                            `"${cols[2].querySelector('h6') ? cols[2].querySelector('h6').textContent.trim() : cols[2].textContent.trim()}"`,
+                            `"${cols[3].textContent.trim()}"`,
+                            `"${cols[5].textContent.trim().replace('/month','').replace('৳','').trim()}"`,
+                            `"${cols[4].querySelector('p') ? cols[4].querySelector('p').textContent.trim() : cols[4].textContent.trim()}"`
+                        ];
+                        csv.push(rowData.join(','));
+                    }
+                });
+                
+                const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv.join('\n'));
+                const a = document.createElement('a');
+                a.setAttribute('href', csvContent);
+                a.setAttribute('download', `products_export_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                showToast('Export started successfully!', 'success');
+            });
+        }
+
+        console.log('Product management initialized');
+        
+        // Test the routes on page load
+        setTimeout(async () => {
+            console.log('=== TESTING ROUTES ===');
+            
+            // Test edit route with first product
+            const firstProductId = document.querySelector('.edit-product-btn')?.getAttribute('data-id');
+            if (firstProductId) {
+                console.log('Testing routes for product ID:', firstProductId);
+                
+                const editRoute = `/admin/products/${firstProductId}/edit`;
+                console.log('Testing edit route:', editRoute);
+                await testAjaxCall(editRoute);
+                
+                const showRoute = `/admin/products/${firstProductId}`;
+                console.log('Testing show route:', showRoute);
+                await testAjaxCall(showRoute);
+            }
+        }, 1000);
     });
 </script>
 @endsection
