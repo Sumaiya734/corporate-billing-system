@@ -3,7 +3,7 @@
 @section('title', 'Product Management - Admin Dashboard')
 
 @section('content')
-<div class="page-body p-4">
+
     <!-- Font Awesome Test -->
     <div style="display: none; position: fixed; top: 10px; right: 10px; z-index: 9999; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ccc;" id="faTest">
         <i class="fa-solid fa-check" style="color: green;"></i> FA Loaded
@@ -235,7 +235,7 @@
             </div>
         </div>
     </div>
-</div>
+
 
 <!-- Edit product Modal -->
 <div class="modal fade" id="editproductModal" tabindex="-1" aria-labelledby="editproductModalLabel" aria-hidden="true">

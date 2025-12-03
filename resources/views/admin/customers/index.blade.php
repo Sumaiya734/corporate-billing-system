@@ -3,7 +3,7 @@
 @section('title', 'All Customers - NetBill BD')
 
 @section('content')
-<div class="p-4">
+
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -581,7 +581,7 @@
             @endif
         </div>
     </div>
-</div>
+
 
 <!-- Include Delete Confirmation Modal -->
 <x-delete-confirmation-modal />

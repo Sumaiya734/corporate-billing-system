@@ -3,7 +3,7 @@
 @section('title', 'Customer Products')
 
 @section('content')
-<div class="container-fluid">
+
     <div class="row mb-4">
         <div class="col">
             <h1 class="page-title"><i class="fas fa-user-tag me-2"></i>Customer to Products</h1>
@@ -444,7 +444,7 @@
             <sup>*</sup> Default due date calculated from assign date
         </small>
     </div>
-</div>
+
 
 <!-- Custom Confirmation Modal -->
 <div id="deleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">

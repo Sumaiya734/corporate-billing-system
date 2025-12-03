@@ -3,7 +3,7 @@
 @section('title', 'Product Types - Admin Dashboard')
 
 @section('content')
-<div class="page-body p-4">
+
     <!-- Toast container -->
     <div class="position-fixed top-0 end-0 p-3" style="z-index: 1080;">
         <div id="toastContainer"></div>
@@ -130,7 +130,7 @@
             @endif
         </div>
     </div>
-</div>
+
 
 <!-- Include Delete Confirmation Modal -->
 <x-delete-confirmation-modal />

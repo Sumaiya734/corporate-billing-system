@@ -22,7 +22,7 @@
 @endsection
 
 @section('content')
-<div class="page-body px-4">
+
     @php
         // Get the first customer registration date to determine start month
         $firstCustomerDate = \DB::table('customers')->min('created_at');
@@ -406,7 +406,7 @@
             </div>
         </div>
     </div>
-</div>
+
 @endsection
 
 @push('styles')

@@ -3,7 +3,7 @@
 @section('title', 'Add New Customer')
 
 @section('content')
-<div class="p-4">
+
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -231,7 +231,7 @@
             </form>
         </div>
     </div>
-</div>
+
 
 <style>
 .form-label {

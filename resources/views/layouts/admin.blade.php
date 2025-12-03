@@ -196,7 +196,7 @@
 
                 <a class="navbar-brand ms-2" href="{{ route('home') }}">
                     <img src="{{ asset('assets/nanosoft logo.png') }}" alt="Nanosoft" style="height:36px; width:auto; margin-right:8px;">
-                    <span>Nanosoft Billing</span>
+                    
                 </a>
             </div>
 

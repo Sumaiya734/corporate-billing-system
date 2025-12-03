@@ -3,7 +3,7 @@
 @section('title', 'Billing & Invoices - Admin Dashboard')
 
 @section('content')
-<div class="container-fluid p-4">
+
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -473,7 +473,7 @@
             </div>
         </div>
     </div>
-</div>
+
 
 <!-- Add Month Modal -->
 <div class="modal fade" id="addBillingModal" tabindex="-1" aria-labelledby="addBillingModalLabel" aria-hidden="true">
