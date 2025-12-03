@@ -340,11 +340,14 @@
                                                         <th class="py-2 px-3">Subtotal</th>
                                                         <th class="py-2 px-3">Start Date</th>
                                                         <th class="py-2 px-3">End Date</th>
-                                                        <th class="py-2 px-3 text-end">Total Amount</th>
+                                                        <th class="py-2 px-3 text-end">
+                                                            Total Amount
+                                                            <div class="small text-muted fw-normal">(due+subtotal)</div>
+                                                        </th>
                                                         <th class="py-2 px-3 text-end">Paid</th>
                                                         <th class="py-2 px-3 text-end">Due</th>
                                                         <th class="py-2 px-3">Status</th>
-                                                    </tr>
+                                                    </tr>                                       
                                                 </thead>
                                                 <tbody>
                                                     @foreach($customer->paymentHistory as $invoice)
@@ -467,7 +470,6 @@
                                                         </td>
                                                         <td class="py-2 px-3 text-end">
                                                             <div class="fw-bold">৳{{ number_format($totalAmount, 2) }}</div>
-                                                            <div class="text-muted small">(due+subtotal)</div>
                                                         </td>
                                                         <td class="py-2 px-3 text-end">
                                                             <div class="text-success fw-bold">৳{{ number_format($invoice->received_amount, 2) }}</div>
