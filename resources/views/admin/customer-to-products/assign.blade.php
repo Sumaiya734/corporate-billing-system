@@ -808,7 +808,7 @@
 
 @section('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function () {
     let productCount = 1;
     let productAmounts = {};
     let selectedProducts = new Set();
@@ -844,9 +844,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateSubmitButton() {
-        // Defensive check to ensure submitBtn exists
-        if (!submitBtn) return;
-        
         const hasCustomer = !!customerIdInput.value;
         const productSelects = Array.from(document.querySelectorAll('.product-select'));
         const hasProducts = productSelects.some(sel => sel.value && sel.value !== '');
@@ -857,62 +854,90 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Customer Search with Auto-filtering
+    let searchTimeout;
     customerSearch.addEventListener('input', function () {
-        const query = this.value.trim().toLowerCase();
+        const query = this.value.trim();
+        
+        // Clear previous timeout
+        clearTimeout(searchTimeout);
         
         if (query.length === 0) {
             customerResults.style.display = 'none';
-            // Reset all items to be visible for next search
-            document.querySelectorAll('.customer-result-item').forEach(item => {
-                item.style.display = 'block';
-            });
+            customerResults.innerHTML = '';
             return;
         }
-
-        customerResults.style.display = 'block';
-        let hasMatch = false;
-
-        document.querySelectorAll('.customer-result-item').forEach(item => {
-            const name = (item.dataset.customerName || '').toLowerCase();
-            const phone = (item.dataset.customerPhone || '').toLowerCase();
-            const email = (item.dataset.customerEmail || '').toLowerCase();
-            const custId = (item.dataset.customerCustomerid || '').toLowerCase();
-
-            const matches = name.includes(query) || phone.includes(query) || email.includes(query) || custId.includes(query);
+        
+        // Wait for user to stop typing before making request
+        searchTimeout = setTimeout(() => {
+            // Show loading indicator
+            customerResults.style.display = 'block';
+            customerResults.innerHTML = `
+                <div class="p-3 text-center text-muted">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                    <div>Searching customers...</div>
+                </div>`;
             
-            if (matches) {
-                item.style.display = 'block';
-                hasMatch = true;
-            } else {
-                item.style.display = 'none';
-            }
-        });
-
-        // Show "no results" message if no matches
-        let noResultsMsg = customerResults.querySelector('.no-results-message');
-        if (!hasMatch) {
-            if (!noResultsMsg) {
-                noResultsMsg = document.createElement('div');
-                noResultsMsg.className = 'no-results-message p-3 text-center text-muted';
-                noResultsMsg.innerHTML = `
-                    <i class="fas fa-search fa-2x mb-2 opacity-50"></i>
-                    <div>No customers found for "<strong>${escapeHtml(query)}</strong>"</div>
-                    <small class="d-block mt-2">Try searching by name, phone, email, or ID</small>
-                `;
-                customerResults.appendChild(noResultsMsg);
-            } else {
-                noResultsMsg.innerHTML = `
-                    <i class="fas fa-search fa-2x mb-2 opacity-50"></i>
-                    <div>No customers found for "<strong>${escapeHtml(query)}</strong>"</div>
-                    <small class="d-block mt-2">Try searching by name, phone, email, or ID</small>
-                `;
-                noResultsMsg.style.display = 'block';
-            }
-        } else {
-            if (noResultsMsg) {
-                noResultsMsg.style.display = 'none';
-            }
-        }
+            // Use Laravel route helper to get the correct URL
+            const suggestionsUrl = "{{ route('admin.customers.suggestions') }}";
+            
+            // Make AJAX request to fetch customers
+            fetch(`${suggestionsUrl}?q=${encodeURIComponent(query)}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401 || response.status === 403) {
+                            window.location.reload();
+                        }
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(customers => {
+                    if (customers.length === 0) {
+                        customerResults.innerHTML = `
+                            <div class="no-results-message p-3 text-center text-muted">
+                                <i class="fas fa-search fa-2x mb-2 opacity-50"></i>
+                                <div>No customers found for "<strong>${escapeHtml(query)}</strong>"</div>
+                                <small class="d-block mt-2">Try searching by name, phone, email, or ID</small>
+                            </div>`;
+                    } else {
+                        let html = '';
+                        customers.forEach(customer => {
+                            html += `
+                                <div class="customer-result-item"
+                                     data-customer-id="${customer.c_id}"
+                                     data-customer-name="${customer.name}"
+                                     data-customer-phone="${customer.phone || 'No phone'}"
+                                     data-customer-email="${customer.email || 'No email'}"
+                                     data-customer-customerid="${customer.customer_id}">
+                                    <div class="customer-name">${customer.name}</div>
+                                    <div class="customer-details">
+                                        ${customer.phone ? `<i class="fas fa-phone me-1"></i>${customer.phone} •` : ''}
+                                        <i class="fas fa-id-card me-1"></i>ID: ${customer.customer_id}
+                                        ${customer.email ? `• <i class="fas fa-envelope me-1"></i>${customer.email}` : ''}
+                                    </div>
+                                    <div class="customer-address small text-muted mt-1">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        ${customer.address || 'No address provided'}
+                                    </div>
+                                </div>`;
+                        });
+                        customerResults.innerHTML = html;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching customers:', error);
+                    customerResults.innerHTML = `
+                        <div class="p-3 text-center text-danger">
+                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                            <div>Error loading customers. Please try again.</div>
+                        </div>`;
+                });
+        }, 300); // Debounce for 300ms
     });
     
     // Helper function to escape HTML
@@ -1238,21 +1263,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function checkExistingProducts(customerId, productId, index) {
         if (!customerId || !productId) return Promise.resolve(true);
-        const baseUrl = '{{ url("/") }}';
-        return fetch(`${baseUrl}/admin/customer-to-products/check-existing?customer_id=${customerId}&product_id=${productId}`)
+
+        const adminPos = window.location.pathname.indexOf('/admin/');
+        const basePath = window.location.pathname.substring(0, adminPos);
+        const url = `${window.location.origin}${basePath}/admin/customer-to-products/check-existing`;
+
+        return fetch(`${url}?customer_id=${customerId}&product_id=${productId}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
             .then(response => {
                 if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        window.location.reload();
+                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 return response.json();
             })
             .then(data => {
-                // Check if the response has the expected structure
-                if (!data.hasOwnProperty('success') || !data.hasOwnProperty('exists')) {
-                    console.error('Invalid response structure:', data);
-                    return true; // Allow submission on invalid response
-                }
-                
                 const select = document.querySelector(`.product-select[data-index="${index}"]`);
                 if (!select) return true;
                 
@@ -1266,7 +1297,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         warn.className = 'product-warning alert alert-warning mt-2';
                         row.appendChild(warn);
                     }
-                    warn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Product already assigned to this customer';
+                    warn.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${data.message}`;
                     warn.style.display = 'block';
                     select.classList.add('is-invalid');
                     return false;
@@ -1278,36 +1309,12 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => {
                 console.error('Error checking existing products:', err);
-                // Show a user-friendly error message
-                const select = document.querySelector(`.product-select[data-index="${index}"]`);
-                if (select) {
-                    const row = select.closest('.product-row');
-                    if (row) {
-                        let warn = row.querySelector('.product-warning');
-                        if (!warn) {
-                            warn = document.createElement('div');
-                            warn.className = 'product-warning alert alert-warning mt-2';
-                            row.appendChild(warn);
-                        }
-                        warn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error checking product assignment';
-                        warn.style.display = 'block';
-                        select.classList.add('is-invalid');
-                    }
-                }
                 return true; // Allow submission on error
             });
     }
 
     document.getElementById('assignProductForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        const form = this; // Store reference to the form
-        
-        // Defensive check to ensure submitBtn exists
-        if (!submitBtn) {
-            console.error('Submit button not found');
-            return;
-        }
-        
         if (!customerIdInput.value) {
             alert('Select a customer.');
             return;
@@ -1342,13 +1349,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Assigning...';
-                form.submit(); // Use the stored reference to the form
-            })
-            .catch(error => {
-                console.error('Error during form submission:', error);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-check me-2"></i>Assign Products';
-                alert('An error occurred during submission. Please try again.');
+                this.submit();
             });
     });
 
@@ -1556,14 +1557,17 @@ async function updateInvoicePreview() {
         </div>`;
     
     try {
-        // Fetch real invoice numbers from server
-        const baseUrl = '{{ url("/") }}';
-        const response = await fetch(`${baseUrl}/admin/customer-to-products/preview-invoice-numbers`, {
+        const adminPos = window.location.pathname.indexOf('/admin/');
+        const basePath = window.location.pathname.substring(0, adminPos);
+        const url = `${window.location.origin}${basePath}/admin/customer-to-products/preview-invoice-numbers`;
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
                 customer_id: customerIdInput.value,

@@ -3,7 +3,7 @@
 @section('title', 'Assign product - Store')
 
 @section('content')
-<div class="page-body">
+<div class="container-fluid">
     <div class="row mb-4">
         <div class="col">
             <h1 class="page-title"><i class="fas fa-plus-circle me-2"></i>Assign product to Customer</h1>
