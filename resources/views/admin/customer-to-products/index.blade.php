@@ -87,6 +87,7 @@
                             <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
                             <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="expired" {{ request('status') == 'expired' ? 'selected' : '' }}>Expired</option>
+                            <option value="paused" {{ request('status') == 'paused' ? 'selected' : '' }}>Paused</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -239,13 +240,15 @@
                                             $statusClass = [
                                                 'active' => 'bg-success',
                                                 'pending' => 'bg-warning',
-                                                'expired' => 'bg-danger'
+                                                'expired' => 'bg-danger',
+                                                'paused' => 'bg-info'
                                             ][$cp->status] ?? 'bg-secondary';
                                             
                                             $statusIcons = [
                                                 'active' => 'fa-check-circle',
                                                 'pending' => 'fa-clock',
-                                                'expired' => 'fa-times-circle'
+                                                'expired' => 'fa-times-circle',
+                                                'paused' => 'fa-pause-circle'
                                             ];
                                         @endphp
                                         <span class="badge {{ $statusClass }} status-badge">
@@ -263,6 +266,24 @@
                                                    title="Edit product">
                                                    <i class="fas fa-edit"></i>
                                                 </a>
+
+                                                <!-- Pause/Resume button -->
+                                                <form action="{{ route('admin.customer-to-products.toggle-status', $cp->cp_id) }}" 
+                                                      method="POST" 
+                                                      class="d-inline" 
+                                                      id="toggle-status-form-{{ $cp->cp_id }}">
+                                                    @csrf
+                                                    @method('POST')
+                                                    <button type="button" 
+                                                            class="btn btn-sm {{ $cp->status === 'active' ? 'btn-outline-warning' : 'btn-outline-success' }} toggle-status-btn" 
+                                                            title="{{ $cp->status === 'active' ? 'Pause product' : 'Resume product' }}"
+                                                            data-cp-id="{{ $cp->cp_id }}"
+                                                            data-product-name="{{ optional($cp->product)->name ?? 'Unknown product' }}"
+                                                            data-customer-name="{{ $customer->name }}"
+                                                            data-current-status="{{ $cp->status }}">
+                                                        <i class="fas {{ $cp->status === 'active' ? 'fa-pause' : 'fa-play' }}"></i>
+                                                    </button>
+                                                </form>
 
                                                 <button type="button" 
                                                         class="btn btn-sm btn-outline-danger delete-btn" 
@@ -739,6 +760,28 @@
                 const row = this.closest('tr');
                 
                 showDeleteModal(productName, customerName, action, row);
+            });
+        });
+        
+        // Handle toggle status button clicks
+        document.querySelectorAll('.toggle-status-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const cpId = this.getAttribute('data-cp-id');
+                const productName = this.getAttribute('data-product-name');
+                const customerName = this.getAttribute('data-customer-name');
+                const currentStatus = this.getAttribute('data-current-status');
+                const form = document.getElementById(`toggle-status-form-${cpId}`);
+                
+                const action = form.getAttribute('action');
+                const newStatus = currentStatus === 'active' ? 'pause' : 'resume';
+                
+                // Show confirmation dialog
+                if (confirm(`Are you sure you want to ${newStatus} "${productName}" for "${customerName}"?`)) {
+                    // Submit the form
+                    form.submit();
+                }
             });
         });
         

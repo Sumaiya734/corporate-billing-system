@@ -34,7 +34,25 @@ class CustomerController extends Controller
 
         $customers = $query->latest()->paginate(20);
 
-        return view('admin.customers.index', compact('customers'));
+        // Calculate statistics
+        $totalCustomers = Customer::count();
+        $activeCustomers = Customer::where('is_active', true)->count();
+        $inactiveCustomers = Customer::where('is_active', false)->count();
+        $customersWithProducts = Customer::whereHas('customerproducts', function($q) {
+            $q->where('customer_to_products.status', 'active')->where('customer_to_products.is_active', true);
+        })->count();
+        $customersWithDue = Customer::whereHas('invoices', function($q) {
+            $q->whereIn('invoices.status', ['unpaid', 'partial'])->where('invoices.next_due', '>', 0);
+        })->count();
+
+        return view('admin.customers.index', compact(
+            'customers',
+            'totalCustomers',
+            'activeCustomers',
+            'inactiveCustomers',
+            'customersWithProducts',
+            'customersWithDue'
+        ));
     }
 
     /**

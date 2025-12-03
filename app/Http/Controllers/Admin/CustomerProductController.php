@@ -1,5 +1,5 @@
 <?php
-// app/Http/Controllers/Admin/CustomerProductController.php
+// app/Http\Controllers\Admin\CustomerProductController.php
 
 namespace App\Http\Controllers\Admin;
 
@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class CustomerProductController extends Controller
@@ -23,10 +24,15 @@ class CustomerProductController extends Controller
             $status = $request->get('status');
             $productType = $request->get('product_type');
 
-            // Build query with search and filters - FIXED: Use customerproducts instead of activeCustomerproducts
-            $customersQuery = Customer::with(['customerProducts.product' => function($query) {
-                    $query->orderBy('product_type_id', 'desc');
-                }, 'customerProducts.invoices'])
+            // Build query with search and filters
+            $customersQuery = Customer::with([
+                    'customerProducts.product' => function($query) {
+                        $query->orderBy('product_type_id', 'desc');
+                    }, 
+                    'customerProducts.invoices' => function($query) {
+                        $query->orderBy('issue_date', 'desc')->take(3); // Limit invoices to last 3
+                    }
+                ])
                 ->whereHas('customerProducts', function($query) use ($search, $status, $productType) {
                     if ($status) {
                         $query->where('status', $status);
@@ -53,22 +59,31 @@ class CustomerProductController extends Controller
 
             $customers = $customersQuery->paginate(15);
             
+            // Calculate statistics using efficient queries
             $totalActiveProducts = CustomerProduct::where('status', 'active')->where('is_active', 1)->count();
             $totalPendingProducts = CustomerProduct::where('status', 'pending')->count();
             $totalExpiredProducts = CustomerProduct::where('status', 'expired')->count();
+            $totalPausedProducts = CustomerProduct::where('status', 'paused')->count();
             
             // Calculate total customers with products
-            $totalCustomers = $customers->count();
+            $totalCustomers = Customer::whereHas('customerProducts')->count();
             
-            // Calculate active products count
-            $activeProducts = CustomerProduct::where('status', 'active')->where('is_active', 1)->count();
+            // Calculate active products count (already calculated above)
+            $activeProducts = $totalActiveProducts;
             
             // Calculate monthly revenue from active customer products
             $monthlyRevenue = CustomerProduct::where('status', 'active')
                 ->where('is_active', 1)
                 ->get()
                 ->sum(function ($cp) {
-                    return $cp->product_price;
+                    // Calculate the actual monthly amount
+                    if ($cp->custom_price !== null && $cp->custom_price > 0) {
+                        // Custom price is total for the billing cycle
+                        return $cp->custom_price / max(1, $cp->billing_cycle_months);
+                    } else {
+                        // Use product's monthly price
+                        return $cp->product->monthly_price ?? 0;
+                    }
                 });
             
             // Calculate renewals due (products expiring in the next 30 days)
@@ -77,7 +92,17 @@ class CustomerProductController extends Controller
                 ->whereBetween('due_date', [now(), now()->addDays(30)])
                 ->count();
 
-            return view('admin.customer-to-products.index', compact('customers', 'totalActiveProducts', 'totalPendingProducts', 'totalExpiredProducts', 'totalCustomers', 'activeProducts', 'monthlyRevenue', 'renewalsDue'));
+            return view('admin.customer-to-products.index', compact(
+                'customers', 
+                'totalActiveProducts', 
+                'totalPendingProducts', 
+                'totalExpiredProducts', 
+                'totalPausedProducts',
+                'totalCustomers', 
+                'activeProducts', 
+                'monthlyRevenue', 
+                'renewalsDue'
+            ));
         } catch (\Exception $e) {
             Log::error('Error loading customer products: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to load customer products.');
@@ -116,6 +141,7 @@ class CustomerProductController extends Controller
                 })
                 ->select('invoice_id', 'invoice_number', 'issue_date', 'subtotal', 'total_amount', 'received_amount', 'status')
                 ->orderBy('issue_date', 'desc')
+                ->limit(10) // Limit to last 10 invoices
                 ->get();
             
             return response()->json(['invoices' => $invoices]);
@@ -125,7 +151,7 @@ class CustomerProductController extends Controller
         }
     }
 
-    /** 💾 Store assigned products  */
+    /** 💾 Store assigned products */
     public function store(Request $request)
     {
         // Log the request for debugging
@@ -138,6 +164,7 @@ class CustomerProductController extends Controller
             'products.*.billing_cycle_months' => 'required|integer|min:1|max:12',
             'products.*.assign_date' => 'required|date|before_or_equal:today',
             'products.*.due_date_day' => 'required|integer|min:1|max:28',
+            'products.*.custom_price' => 'nullable|numeric|min:0',
         ]);
 
         $customerId = $request->customer_id;
@@ -160,6 +187,12 @@ class CustomerProductController extends Controller
 
             foreach ($products as $index => $productData) {
                 $productId = $productData['product_id'];
+                $product = Product::find($productId);
+                
+                if (!$product) {
+                    $errors[] = "Product not found (ID: {$productId}).";
+                    continue;
+                }
                 
                 // Check if product is already assigned to this customer (active or inactive)
                 $existingProduct = CustomerProduct::where('c_id', $customerId)
@@ -167,7 +200,7 @@ class CustomerProductController extends Controller
                     ->first();
 
                 if ($existingProduct) {
-                    $productName = Product::find($productId)->name ?? 'Unknown product';
+                    $productName = $product->name;
                     
                     // Check if the existing product is active
                     if ($existingProduct->is_active && $existingProduct->status === 'active') {
@@ -179,14 +212,36 @@ class CustomerProductController extends Controller
                 }
 
                 // Calculate due_date based on assign_date and due_date_day
-                $assignDate = $productData['assign_date'];
+                $assignDate = Carbon::parse($productData['assign_date']);
                 $dueDateDay = (int) $productData['due_date_day'];
                 $billingCycleMonths = (int) $productData['billing_cycle_months'];
                 
-                // Calculate the due date as the end of billing period with the specified day
-                $assignDateCarbon = \Carbon\Carbon::parse($assignDate);
-                $dueDate = $assignDateCarbon->copy()->addMonths($billingCycleMonths);
-                $dueDate->day($dueDateDay);
+                // Calculate the first due date
+                // If assign date day is after due date day, due date is in next month
+                $dueDate = $assignDate->copy();
+                
+                // Set the day to the specified due date day
+                // If the day doesn't exist in the month (e.g., 31st in February), use the last day of the month
+                $daysInMonth = $dueDate->daysInMonth;
+                $effectiveDueDay = min($dueDateDay, $daysInMonth);
+                
+                if ($assignDate->day > $effectiveDueDay) {
+                    // Assign date is after due date day, so first due date is next month
+                    $dueDate->addMonth()->day($effectiveDueDay);
+                } else {
+                    // Assign date is on or before due date day
+                    $dueDate->day($effectiveDueDay);
+                }
+                
+                // Calculate product price
+                $customPrice = isset($productData['custom_price']) && $productData['custom_price'] > 0 
+                    ? (float) $productData['custom_price'] 
+                    : null;
+                
+                // Calculate effective price
+                $effectivePrice = $customPrice !== null 
+                    ? $customPrice 
+                    : ($product->monthly_price * $billingCycleMonths);
                 
                 // Generate unique customer-product ID in format: C-YY-XXXX-PYY
                 $year = date('y'); // Last 2 digits of year
@@ -197,11 +252,12 @@ class CustomerProductController extends Controller
                 $customerProduct = CustomerProduct::create([
                     'c_id' => $customerId,
                     'p_id' => $productId,
-                    'custom_price' => $productData['monthly_price'] ?? null,
+                    'custom_price' => $customPrice,
+                    'product_price' => $effectivePrice, // Store the total price for this billing cycle
                     'customer_product_id' => $customerProductId,
-                    'assign_date' => $assignDate,
+                    'assign_date' => $assignDate->format('Y-m-d'),
                     'billing_cycle_months' => $billingCycleMonths,
-                    'due_date' => $dueDate,
+                    'due_date' => $dueDate->format('Y-m-d'),
                     'status' => 'active',
                     'is_active' => 1,
                 ]);
@@ -210,7 +266,10 @@ class CustomerProductController extends Controller
                 Log::info("Product assigned successfully:", [
                     'customer_id' => $customerId,
                     'product_id' => $productId,
-                    'cp_id' => $customerProduct->cp_id
+                    'cp_id' => $customerProduct->cp_id,
+                    'assign_date' => $assignDate->format('Y-m-d'),
+                    'due_date' => $dueDate->format('Y-m-d'),
+                    'product_price' => $effectivePrice
                 ]);
                 
                 // Automatically generate invoices for current and future billing periods
@@ -271,6 +330,7 @@ class CustomerProductController extends Controller
             ]);
             
             $assignDate = Carbon::parse($customerProduct->assign_date);
+            $dueDate = Carbon::parse($customerProduct->due_date);
             $billingCycleMonths = $customerProduct->billing_cycle_months;
             
             // Get the customer and product details
@@ -285,79 +345,68 @@ class CustomerProductController extends Controller
                 return $generatedInvoices;
             }
             
-            // Calculate the end date for invoice generation (6 months from now)
-            $endDate = Carbon::now()->addMonths(6);
+            // Determine the next billing date (first due date)
+            $nextBillingDate = $dueDate->copy();
             
-            // Generate invoices for each billing period
-            $currentPeriodStart = $assignDate->copy();
+            // Generate invoices for up to 12 months (1 year)
+            $monthsToGenerate = 12;
             
-            // Generate invoice for the current period if it's due
-            $currentMonthStart = Carbon::now()->startOfMonth();
-            
-            // Generate invoices for up to 6 months
-            for ($i = 0; $i < 6; $i++) {
-                $invoiceMonth = $currentMonthStart->copy()->addMonths($i);
+            for ($i = 0; $i < $monthsToGenerate; $i++) {
+                // Calculate billing date for this period
+                $billingDate = $nextBillingDate->copy()->addMonths($i * $billingCycleMonths);
                 
-                Log::info('Checking billing for month', [
+                // Stop if billing date is more than 1 year from now
+                if ($billingDate->greaterThan(now()->addYear())) {
+                    break;
+                }
+                
+                Log::info('Checking billing for period', [
                     'iteration' => $i,
-                    'invoice_month' => $invoiceMonth->format('Y-m')
+                    'billing_date' => $billingDate->format('Y-m-d'),
+                    'billing_cycle_months' => $billingCycleMonths
                 ]);
                 
-                // Check if this product should be billed in this month
-                if ($this->shouldBillInMonth($customerProduct, $invoiceMonth)) {
-                    Log::info('Product should be billed in this month', [
+                // Check if invoice already exists for this billing period
+                $existingInvoice = Invoice::where('cp_id', $customerProduct->cp_id)
+                    ->whereDate('issue_date', $billingDate->format('Y-m-d'))
+                    ->first();
+                
+                if (!$existingInvoice) {
+                    Log::info('No existing invoice found, creating new one', [
                         'product_id' => $customerProduct->cp_id,
-                        'month' => $invoiceMonth->format('Y-m')
+                        'billing_date' => $billingDate->format('Y-m-d')
                     ]);
                     
-                    // Check if invoice already exists for this period
-                    $existingInvoice = Invoice::where('cp_id', $customerProduct->cp_id)
-                        ->whereYear('issue_date', $invoiceMonth->year)
-                        ->whereMonth('issue_date', $invoiceMonth->month)
-                        ->first();
-                    
-                    if (!$existingInvoice) {
-                        Log::info('No existing invoice found, creating new one', [
-                            'product_id' => $customerProduct->cp_id,
-                            'month' => $invoiceMonth->format('Y-m')
-                        ]);
+                    // Generate invoice for this period
+                    $invoice = $this->createInvoiceForPeriod($customerProduct, $product, $billingDate);
+                    if ($invoice) {
+                        $generatedInvoices[] = $invoice;
                         
-                        // Generate invoice for this period
-                        $invoice = $this->createInvoiceForPeriod($customerProduct, $product, $invoiceMonth);
-                        if ($invoice) {
-                            $generatedInvoices[] = $invoice;
-                            
-                            // Store the first invoice ID to link back to customer_product
-                            if ($firstInvoiceId === null) {
-                                $firstInvoiceId = $invoice->invoice_id;
-                            }
-                            
-                            Log::info('Invoice created successfully', [
-                                'invoice_id' => $invoice->invoice_id,
-                                'invoice_number' => $invoice->invoice_number
-                            ]);
-                        } else {
-                            Log::warning('Failed to create invoice', [
-                                'product_id' => $customerProduct->cp_id,
-                                'month' => $invoiceMonth->format('Y-m')
-                            ]);
-                        }
-                    } else {
-                        Log::info('Invoice already exists for this period', [
-                            'existing_invoice_id' => $existingInvoice->invoice_id,
-                            'invoice_number' => $existingInvoice->invoice_number
-                        ]);
-                        
-                        // If this is the first invoice found, use it
+                        // Store the first invoice ID to link back to customer_product
                         if ($firstInvoiceId === null) {
-                            $firstInvoiceId = $existingInvoice->invoice_id;
+                            $firstInvoiceId = $invoice->invoice_id;
                         }
+                        
+                        Log::info('Invoice created successfully', [
+                            'invoice_id' => $invoice->invoice_id,
+                            'invoice_number' => $invoice->invoice_number
+                        ]);
+                    } else {
+                        Log::warning('Failed to create invoice', [
+                            'product_id' => $customerProduct->cp_id,
+                            'billing_date' => $billingDate->format('Y-m-d')
+                        ]);
                     }
                 } else {
-                    Log::info('Product should NOT be billed in this month', [
-                        'product_id' => $customerProduct->cp_id,
-                        'month' => $invoiceMonth->format('Y-m')
+                    Log::info('Invoice already exists for this period', [
+                        'existing_invoice_id' => $existingInvoice->invoice_id,
+                        'invoice_number' => $existingInvoice->invoice_number
                     ]);
+                    
+                    // If this is the first invoice found, use it
+                    if ($firstInvoiceId === null) {
+                        $firstInvoiceId = $existingInvoice->invoice_id;
+                    }
                 }
             }
             
@@ -383,79 +432,20 @@ class CustomerProductController extends Controller
     }
     
     /**
-     * Determine if a customer product should be billed in a specific month
-     */
-    private function shouldBillInMonth($customerProduct, $billingMonth)
-    {
-        try {
-            $assignDate = Carbon::parse($customerProduct->assign_date);
-            $billingCycleMonths = $customerProduct->billing_cycle_months;
-            
-            Log::info('Checking if product should be billed', [
-                'product_id' => $customerProduct->cp_id,
-                'assign_date' => $assignDate->format('Y-m-d'),
-                'billing_month' => $billingMonth->format('Y-m'),
-                'billing_cycle_months' => $billingCycleMonths
-            ]);
-            
-            // Product must be assigned before or during the billing month
-            if ($assignDate->greaterThan($billingMonth->copy()->endOfMonth())) {
-                Log::info('Product assigned after billing month, not billing', [
-                    'assign_date' => $assignDate->format('Y-m-d'),
-                    'billing_month_end' => $billingMonth->copy()->endOfMonth()->format('Y-m-d')
-                ]);
-                return false;
-            }
-            
-            // For monthly billing, always bill if assigned in or before this month
-            if ($billingCycleMonths == 1) {
-                Log::info('Monthly billing product, should bill');
-                return true;
-            }
-            
-            // For other cycles, check if this month is a billing month
-            // Special case: If the product was assigned this month, we should bill for it immediately
-            if ($assignDate->year == $billingMonth->year && $assignDate->month == $billingMonth->month) {
-                Log::info('Product assigned this month, should bill immediately');
-                return true;
-            }
-            
-            // For products with longer billing cycles, check if this is a billing month
-            // Calculate months difference between assign date and billing month
-            $monthsSinceAssign = $assignDate->diffInMonths($billingMonth);
-            
-            Log::info('Months since assignment calculation', [
-                'months_since_assign' => $monthsSinceAssign,
-                'billing_cycle_months' => $billingCycleMonths,
-                'remainder' => ($monthsSinceAssign % $billingCycleMonths)
-            ]);
-            
-            // Check if this month is a multiple of the billing cycle from the assign date
-            $shouldBill = ($monthsSinceAssign % $billingCycleMonths) === 0;
-            Log::info('Should bill result', ['result' => $shouldBill]);
-            return $shouldBill;
-        } catch (\Exception $e) {
-            Log::error('Error checking if product should be billed: ' . $e->getMessage());
-            return false;
-        }
-    }
-    
-    /**
      * Create invoice for a specific billing period
      */
-    private function createInvoiceForPeriod($customerProduct, $product, $billingPeriodEnd)
+    private function createInvoiceForPeriod($customerProduct, $product, $issueDate)
     {
         try {
             Log::info('Creating invoice for period', [
                 'customer_product_id' => $customerProduct->cp_id,
                 'product_id' => $product->p_id,
-                'billing_period' => $billingPeriodEnd->format('Y-m')
+                'issue_date' => $issueDate->format('Y-m-d')
             ]);
             
             // Check if invoice already exists for this period
             $existingInvoice = Invoice::where('cp_id', $customerProduct->cp_id)
-                ->whereYear('issue_date', $billingPeriodEnd->year)
-                ->whereMonth('issue_date', $billingPeriodEnd->month)
+                ->whereDate('issue_date', $issueDate->format('Y-m-d'))
                 ->first();
                 
             if ($existingInvoice) {
@@ -466,26 +456,25 @@ class CustomerProductController extends Controller
                 return $existingInvoice;
             }
             
-            // Calculate amounts
-            // Use custom price if set, otherwise use product's standard price
-            if ($customerProduct->custom_price !== null) {
-                $productAmount = (float) $customerProduct->custom_price;
+            // Calculate invoice amount
+            // Use custom price if set (which is already the total for the billing cycle),
+            // otherwise calculate: monthly_price × billing_cycle_months
+            if ($customerProduct->custom_price !== null && $customerProduct->custom_price > 0) {
+                $subtotal = (float) $customerProduct->custom_price;
             } else {
-                $productAmount = $product->monthly_price * $customerProduct->billing_cycle_months;
+                $subtotal = $product->monthly_price * $customerProduct->billing_cycle_months;
             }
             
-            $serviceCharge = 50.00; // Default service charge
-            $vatPercentage = 5.00;  // Default VAT
-            
-            $subtotal = $productAmount + $serviceCharge;
-            $vatAmount = $subtotal * ($vatPercentage / 100);
-            $totalAmount = $subtotal + $vatAmount;
+            // No service charge or VAT for now - keep it simple
+            $serviceCharge = 0.00;
+            $vatPercentage = 0.00;
+            $vatAmount = 0.00;
+            $totalAmount = $subtotal;
             
             Log::info('Calculated invoice amounts', [
-                'product_amount' => $productAmount,
+                'subtotal' => $subtotal,
                 'service_charge' => $serviceCharge,
                 'vat_amount' => $vatAmount,
-                'subtotal' => $subtotal,
                 'total_amount' => $totalAmount
             ]);
             
@@ -511,7 +500,8 @@ class CustomerProductController extends Controller
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
                 'cp_id' => $customerProduct->cp_id,
-                'issue_date' => $billingPeriodEnd->format('Y-m-d'),
+                'issue_date' => $issueDate->format('Y-m-d'),
+                'due_date' => $issueDate->copy()->addDays(7)->format('Y-m-d'), // Due 7 days after issue
                 'previous_due' => $previousDue,
                 'service_charge' => $serviceCharge,
                 'vat_percentage' => $vatPercentage,
@@ -521,8 +511,8 @@ class CustomerProductController extends Controller
                 'received_amount' => 0,
                 'next_due' => $totalAmount,
                 'status' => 'unpaid',
-                'notes' => "Auto-generated invoice for {$product->name} - Due for " . $billingPeriodEnd->format('F Y'),
-                'created_by' => 1
+                'notes' => "Auto-generated invoice for {$product->name} - Billing cycle: {$customerProduct->billing_cycle_months} month(s)",
+                'created_by' => Auth::id() ?? 1 // Use authenticated user or default to 1
             ]);
             
             Log::info("Auto-generated invoice {$invoice->invoice_number} for customer product {$customerProduct->cp_id}");
@@ -535,73 +525,86 @@ class CustomerProductController extends Controller
     }
     
     /**
-     * Generate unique invoice number
+     * Generate unique invoice number with locking to prevent duplicates
      */
     private function generateInvoiceNumber()
     {
-        $prefix = 'INV';
-        $year = date('Y');
-        $lastInvoice = Invoice::whereYear('created_at', $year)->latest('invoice_id')->first();
-
-        if ($lastInvoice && preg_match('/INV-\d{4}-(\d+)/', $lastInvoice->invoice_number, $matches)) {
-            $lastNumber = intval($matches[1]);
-            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-        } else {
-            $newNumber = '0001';
+        DB::beginTransaction();
+        
+        try {
+            $prefix = 'INV';
+            $year = date('Y');
+            
+            // Get the last invoice with locking
+            $lastInvoice = Invoice::whereYear('created_at', $year)
+                ->lockForUpdate()
+                ->orderBy('invoice_id', 'desc')
+                ->first();
+            
+            if ($lastInvoice && preg_match('/INV-\d{4}-(\d+)/', $lastInvoice->invoice_number, $matches)) {
+                $lastNumber = intval($matches[1]);
+                $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+            } else {
+                $newNumber = '0001';
+            }
+            
+            DB::commit();
+            return $prefix . '-' . $year . '-' . $newNumber;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error generating invoice number: ' . $e->getMessage());
+            // Fallback to timestamp-based number
+            return 'INV-' . date('Y') . '-' . time();
         }
-
-        return $prefix . '-' . $year . '-' . $newNumber;
     }
 
-    // app/Http/Controllers/Admin/CustomerProductController.php
-
-/** 🔍 Check if product already exists for customer */
-public function checkExistingProduct(Request $request)
-{
-    try {
-        $customerId = $request->get('customer_id');
-        $productId = $request->get('product_id');
-        
-        if (!$customerId || !$productId) {
-            return response()->json([
-                'exists' => false,
-                'message' => 'Invalid request parameters.'
-            ]);
-        }
-
-        $existingProduct = CustomerProduct::where('c_id', $customerId)
-            ->where('p_id', $productId)
-            ->first();
+    /** 🔍 Check if product already exists for customer */
+    public function checkExistingProduct(Request $request)
+    {
+        try {
+            $customerId = $request->get('customer_id');
+            $productId = $request->get('product_id');
             
-        $productName = Product::find($productId)->name ?? 'Unknown product';
-
-        if ($existingProduct) {
-            if ($existingProduct->is_active && $existingProduct->status === 'active') {
+            if (!$customerId || !$productId) {
                 return response()->json([
-                    'exists' => true,
-                    'message' => 'This customer already has the "' . $productName . '" product actively assigned. Please choose a different product.'
-                ]);
-            } else {
-                return response()->json([
-                    'exists' => true,
-                    'message' => 'This customer previously had the "' . $productName . '" product. Please choose a different product.'
+                    'exists' => false,
+                    'message' => 'Invalid request parameters.'
                 ]);
             }
+
+            $existingProduct = CustomerProduct::where('c_id', $customerId)
+                ->where('p_id', $productId)
+                ->first();
+                
+            $productName = Product::find($productId)->name ?? 'Unknown product';
+
+            if ($existingProduct) {
+                if ($existingProduct->is_active && $existingProduct->status === 'active') {
+                    return response()->json([
+                        'exists' => true,
+                        'message' => 'This customer already has the "' . $productName . '" product actively assigned. Please choose a different product.'
+                    ]);
+                } else {
+                    return response()->json([
+                        'exists' => true,
+                        'message' => 'This customer previously had the "' . $productName . '" product. Please choose a different product.'
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'exists' => false,
+                'message' => 'Product is available for assignment.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error checking existing product: ' . $e->getMessage());
+            return response()->json([
+                'exists' => false,
+                'message' => 'Error checking product availability.'
+            ], 500);
         }
-
-        return response()->json([
-            'exists' => false,
-            'message' => 'Product is available for assignment.'
-        ]);
-
-    } catch (\Exception $e) {
-        Log::error('Error checking existing product: ' . $e->getMessage());
-        return response()->json([
-            'exists' => false,
-            'message' => 'Error checking product availability.'
-        ], 500);
     }
-}
 
     /** ✏️ Edit existing product */
     public function edit($id)
@@ -618,8 +621,8 @@ public function checkExistingProduct(Request $request)
             
             return view('admin.customer-to-products.edit', [
                 'customerProduct' => $customerProduct,
-                'customer' => $customerProduct->customer, // Pass customer separately
-                'product' => $customerProduct->product,   // Pass product separately
+                'customer' => $customerProduct->customer,
+                'product' => $customerProduct->product,
                 'products' => $products
             ]);
 
@@ -636,11 +639,14 @@ public function checkExistingProduct(Request $request)
             'assign_date' => 'required|date',
             'due_date_day' => 'required|integer|min:1|max:28',
             'billing_cycle_months' => 'required|integer|min:1|max:12',
-            'status' => 'required|in:active,pending,expired',
+            'status' => 'required|in:active,pending,expired,paused',
+            'custom_price' => 'nullable|numeric|min:0',
         ]);
 
         try {
-            $customerProduct = CustomerProduct::find($id);
+            DB::beginTransaction();
+            
+            $customerProduct = CustomerProduct::with('product')->find($id);
             
             if (!$customerProduct) {
                 return redirect()->route('admin.customer-to-products.index')
@@ -648,37 +654,65 @@ public function checkExistingProduct(Request $request)
             }
 
             // Calculate due_date based on assign_date and due_date_day
-            $assignDate = $request->assign_date;
+            $assignDate = Carbon::parse($request->assign_date);
             $dueDateDay = (int) $request->due_date_day;
             $billingCycleMonths = (int) $request->billing_cycle_months;
             
-            // Calculate the due date as the end of billing period with the specified day
-            $assignDateCarbon = \Carbon\Carbon::parse($assignDate);
-            $dueDate = $assignDateCarbon->copy()->addMonths($billingCycleMonths);
-            $dueDate->day($dueDateDay);
+            // Calculate the due date
+            $dueDate = $assignDate->copy();
+            $daysInMonth = $dueDate->daysInMonth;
+            $effectiveDueDay = min($dueDateDay, $daysInMonth);
             
+            if ($assignDate->day > $effectiveDueDay) {
+                $dueDate->addMonth()->day($effectiveDueDay);
+            } else {
+                $dueDate->day($effectiveDueDay);
+            }
+            
+            // Calculate new product price
+            $customPrice = isset($request->custom_price) && $request->custom_price > 0 
+                ? (float) $request->custom_price 
+                : null;
+            
+            // Calculate effective price
+            $effectivePrice = $customPrice !== null 
+                ? $customPrice 
+                : ($customerProduct->product->monthly_price * $billingCycleMonths);
+            
+            // Update the customer product
             $customerProduct->update([
-                'assign_date' => $assignDate,
+                'assign_date' => $assignDate->format('Y-m-d'),
                 'billing_cycle_months' => $billingCycleMonths,
-                'due_date' => $dueDate,
+                'due_date' => $dueDate->format('Y-m-d'),
                 'status' => $request->status,
                 'is_active' => $request->status === 'active' ? 1 : 0,
-                'custom_price' => $request->custom_total_amount ?? $customerProduct->custom_price,
+                'custom_price' => $customPrice,
+                'product_price' => $effectivePrice,
             ]);
+
+            // If status changed to active, generate invoices if needed
+            if ($request->status === 'active') {
+                $this->generateAutomaticInvoices($customerProduct, $customerProduct->c_id);
+            }
+
+            DB::commit();
 
             return redirect()->route('admin.customer-to-products.index')
                 ->with('success', 'Product updated successfully!');
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error updating product: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to update product.');
         }
     }
 
-    /** 🔄 Toggle product status (active/expired) */
+    /** 🔄 Toggle product status (active/paused) */
     public function toggleStatus($id)
     {
         try {
+            DB::beginTransaction();
+            
             $customerProduct = CustomerProduct::find($id);
             
             if (!$customerProduct) {
@@ -686,20 +720,28 @@ public function checkExistingProduct(Request $request)
                     ->with('error', 'Product assignment not found.');
             }
 
-            // Toggle between active and expired
-            $newStatus = $customerProduct->status === 'active' ? 'expired' : 'active';
+            // Toggle between active and paused
+            $newStatus = $customerProduct->status === 'active' ? 'paused' : 'active';
             
             $customerProduct->update([
                 'status' => $newStatus,
                 'is_active' => $newStatus === 'active' ? 1 : 0,
             ]);
 
-            $action = $newStatus === 'active' ? 'activated' : 'paused';
+            // If activating, generate invoices
+            if ($newStatus === 'active') {
+                $this->generateAutomaticInvoices($customerProduct, $customerProduct->c_id);
+            }
+
+            DB::commit();
+
+            $action = $newStatus === 'active' ? 'resumed' : 'paused';
             
             return redirect()->route('admin.customer-to-products.index')
                 ->with('success', "Product {$action} successfully!");
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error toggling product status: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to toggle product status.');
         }
@@ -709,6 +751,8 @@ public function checkExistingProduct(Request $request)
     public function destroy($id)
     {
         try {
+            DB::beginTransaction();
+            
             $customerProduct = CustomerProduct::find($id);
             
             if (!$customerProduct) {
@@ -717,12 +761,20 @@ public function checkExistingProduct(Request $request)
             }
 
             $productName = $customerProduct->product->name ?? 'Unknown product';
+            
+            // First delete related invoices
+            Invoice::where('cp_id', $customerProduct->cp_id)->delete();
+            
+            // Then delete the customer product
             $customerProduct->delete();
+
+            DB::commit();
 
             return redirect()->route('admin.customer-to-products.index')
                 ->with('success', "Product '{$productName}' removed successfully!");
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error deleting product: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to delete product.');
         }
@@ -732,22 +784,38 @@ public function checkExistingProduct(Request $request)
     public function renew($id)
     {
         try {
-            $customerProduct = CustomerProduct::find($id);
+            DB::beginTransaction();
+            
+            $customerProduct = CustomerProduct::with('product')->find($id);
             
             if (!$customerProduct) {
                 return redirect()->back()->with('error', 'Product assignment not found.');
             }
 
+            // Extend the billing cycle by adding months
+            $newDueDate = Carbon::parse($customerProduct->due_date)
+                ->addMonths($customerProduct->billing_cycle_months);
+            
             $customerProduct->update([
-                'billing_cycle_months' => $customerProduct->billing_cycle_months + 1,
+                'due_date' => $newDueDate->format('Y-m-d'),
                 'status' => 'active',
                 'is_active' => 1,
             ]);
+
+            // Generate invoice for the renewed period
+            $this->createInvoiceForPeriod(
+                $customerProduct, 
+                $customerProduct->product, 
+                $newDueDate
+            );
+
+            DB::commit();
 
             return redirect()->route('admin.customer-to-products.index')
                 ->with('success', 'Product renewed successfully!');
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error renewing product: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to renew product.');
         }
@@ -755,7 +823,6 @@ public function checkExistingProduct(Request $request)
 
     /**
      * Preview invoice numbers before assignment
-     * This generates the actual invoice numbers that will be used
      */
     public function previewInvoiceNumbers(Request $request)
     {
@@ -783,13 +850,17 @@ public function checkExistingProduct(Request $request)
                 $months = (int) $productData['months'];
                 $monthlyPrice = $months > 0 ? $totalAmount / $months : 0;
                 
+                // Calculate due date (7 days from assign date)
+                $dueDate = Carbon::parse($productData['assignDate'])->addDays(7);
+                
                 $invoices[] = [
                     'invoice_number' => $invoiceNumber,
                     'product_name' => $productData['productName'],
-                    'amount' => $totalAmount,
+                    'total_amount' => $totalAmount,
                     'months' => $months,
                     'monthly_price' => $monthlyPrice,
-                    'assign_date' => $productData['assignDate']
+                    'assign_date' => $productData['assignDate'],
+                    'due_date' => $dueDate->format('Y-m-d')
                 ];
             }
 
