@@ -844,6 +844,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateSubmitButton() {
+        // Defensive check to ensure submitBtn exists
+        if (!submitBtn) return;
+        
         const hasCustomer = !!customerIdInput.value;
         const productSelects = Array.from(document.querySelectorAll('.product-select'));
         const hasProducts = productSelects.some(sel => sel.value && sel.value !== '');
@@ -1237,8 +1240,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!customerId || !productId) return Promise.resolve(true);
         const baseUrl = '{{ url("/") }}';
         return fetch(`${baseUrl}/admin/customer-to-products/check-existing?customer_id=${customerId}&product_id=${productId}`)
-            .then(r => r.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                // Check if the response has the expected structure
+                if (!data.hasOwnProperty('success') || !data.hasOwnProperty('exists')) {
+                    console.error('Invalid response structure:', data);
+                    return true; // Allow submission on invalid response
+                }
+                
                 const select = document.querySelector(`.product-select[data-index="${index}"]`);
                 if (!select) return true;
                 
@@ -1252,7 +1266,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         warn.className = 'product-warning alert alert-warning mt-2';
                         row.appendChild(warn);
                     }
-                    warn.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${data.message}`;
+                    warn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Product already assigned to this customer';
                     warn.style.display = 'block';
                     select.classList.add('is-invalid');
                     return false;
@@ -1264,12 +1278,36 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => {
                 console.error('Error checking existing products:', err);
+                // Show a user-friendly error message
+                const select = document.querySelector(`.product-select[data-index="${index}"]`);
+                if (select) {
+                    const row = select.closest('.product-row');
+                    if (row) {
+                        let warn = row.querySelector('.product-warning');
+                        if (!warn) {
+                            warn = document.createElement('div');
+                            warn.className = 'product-warning alert alert-warning mt-2';
+                            row.appendChild(warn);
+                        }
+                        warn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error checking product assignment';
+                        warn.style.display = 'block';
+                        select.classList.add('is-invalid');
+                    }
+                }
                 return true; // Allow submission on error
             });
     }
 
     document.getElementById('assignProductForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        const form = this; // Store reference to the form
+        
+        // Defensive check to ensure submitBtn exists
+        if (!submitBtn) {
+            console.error('Submit button not found');
+            return;
+        }
+        
         if (!customerIdInput.value) {
             alert('Select a customer.');
             return;
@@ -1304,7 +1342,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Assigning...';
-                this.submit();
+                form.submit(); // Use the stored reference to the form
+            })
+            .catch(error => {
+                console.error('Error during form submission:', error);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check me-2"></i>Assign Products';
+                alert('An error occurred during submission. Please try again.');
             });
     });
 
@@ -1749,10 +1793,12 @@ function generateCustomerId() {
     const customerIdInput = document.getElementById('customer_id');
     
     if (nameInput && nameInput.value && phoneInput && phoneInput.value && customerIdInput && !customerIdInput.value) {
-        const namePart = nameInput.value.split(' ')[0].toUpperCase().substring(0, 4);
-        const phonePart = phoneInput.value.slice(-4);
-        const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        customerIdInput.value = `CUST${namePart}${phonePart}${randomPart}`;
+        // Get current year's last 2 digits
+        const year = new Date().getFullYear().toString().slice(-2);
+        
+        // Generate sequential number (similar to the server-side logic)
+        const randomPart = Math.floor(1000 + Math.random() * 9000);
+        customerIdInput.value = `C-${year}-${randomPart}`;
     }
 }
 </script>

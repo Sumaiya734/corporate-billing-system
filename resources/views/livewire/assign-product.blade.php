@@ -1,7 +1,7 @@
 <div>
     <div class="card">
         <div class="card-header bg-primary text-white">
-            <h5 class="card-title mb-0"><i class="fas fa-user-tag me-2"></i>product Assignment Form</h5>
+            <h5 class="card-title mb-0"><i class="fas fa-user-tag me-2"></i>Product Assignment Form</h5>
         </div>
         <div class="card-body">
             <form wire:submit.prevent="submit">
@@ -13,7 +13,7 @@
                         <!-- Customer Search Input -->
                         <div class="mb-3">
                             <input type="text" class="form-control" 
-                                   wire:model.debounce.300ms="search"
+                                   wire:model.live.debounce.300ms="search"
                                    placeholder="Search customers by name, phone, or customer ID..."
                                    @if($selectedCustomer) disabled @endif>
                             <div class="form-text">Start typing to search for customers (minimum 2 characters)</div>
@@ -24,8 +24,8 @@
                             <div class="customer-results-container">
                                 @foreach($customers as $customer)
                                     <div class="customer-result-item" 
-                                         wire:click="selectCustomer({{ $customer->id }})"
-                                         wire:key="customer-{{ $customer->id }}">
+                                         wire:click="selectCustomer({{ $customer->c_id }})"
+                                         wire:key="customer-{{ $customer->c_id }}">
                                         <div class="customer-name">
                                             <i class="fas fa-user me-2"></i>{{ $customer->name }}
                                         </div>
@@ -87,13 +87,13 @@
                     </div>
                 </div>
 
-                <!-- product Selection with Dynamic Adding/Removing -->
+                <!-- Product Selection with Dynamic Adding/Removing -->
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <label class="form-label fw-bold">Select products *</label>
+                            <label class="form-label fw-bold">Select Products *</label>
                             <button type="button" class="btn btn-primary btn-sm" wire:click="addRow">
-                                <i class="fas fa-plus me-1"></i>Add Another product
+                                <i class="fas fa-plus me-1"></i>Add Another Product
                             </button>
                         </div>
                         
@@ -102,13 +102,13 @@
                                 <div class="product-row mb-3" wire:key="product-row-{{ $index }}">
                                     <div class="row g-2 align-items-end">
                                         <div class="col-md-5">
-                                            <label class="form-label">product {{ $loop->iteration }} *</label>
+                                            <label class="form-label">Product {{ $loop->iteration }} *</label>
                                             <select class="form-select product-select @error('productSelections.' . $index) is-invalid @enderror" 
                                                     wire:model="productSelections.{{ $index }}"
                                                     wire:change="calculateTotal">
                                                 <option value="">Select a product...</option>
                                                 @foreach($products as $product)
-                                                    <option value="{{ $product->id }}">
+                                                    <option value="{{ $product->p_id }}">
                                                         {{ $product->name }} - ৳{{ number_format($product->monthly_price, 2) }}/month 
                                                         ({{ ucfirst($product->product_type) }})
                                                     </option>
@@ -146,7 +146,7 @@
                                         <div class="col-md-1">
                                             <label class="form-label">Amount</label>
                                             <div class="product-amount">
-                                                ৳ {{ number_format($this->getproductAmount($index), 2) }}
+                                                ৳ {{ number_format($this->getProductAmount($index), 2) }}
                                             </div>
                                         </div>
                                         <div class="col-md-1">
@@ -154,7 +154,7 @@
                                             <button type="button" class="btn btn-outline-danger btn-sm w-100 remove-product-btn" 
                                                     wire:click="removeRow({{ $index }})"
                                                     @if(count($rows) === 1) disabled @endif
-                                                    title="Remove product">
+                                                    title="Remove Product">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                         </div>
@@ -184,13 +184,13 @@
                                 @foreach($rows as $index)
                                     @if(!empty($productSelections[$index]))
                                         @php
-                                            $productAmount = $this->getproductAmount($index);
+                                            $productAmount = $this->getProductAmount($index);
                                         @endphp
                                         @if($productAmount > 0)
                                             <div class="summary-row">
                                                 <span>
                                                     <i class="fas fa-cube me-2"></i>
-                                                    product {{ $loop->iteration }} ({{ $billingMonths[$index] ?? 1 }} month{{ $billingMonths[$index] > 1 ? 's' : '' }})
+                                                    Product {{ $loop->iteration }} ({{ $billingMonths[$index] ?? 1 }} month{{ $billingMonths[$index] > 1 ? 's' : '' }})
                                                 </span>
                                                 <span class="fw-bold text-success">৳ {{ number_format($productAmount, 2) }}</span>
                                             </div>
@@ -217,7 +217,7 @@
                                 @if(!$selectedCustomer || $totalAmount === 0) disabled @endif
                                 wire:loading.attr="disabled">
                             <div wire:loading.remove wire:target="submit">
-                                <i class="fas fa-check-circle me-2"></i>Assign products
+                                <i class="fas fa-check-circle me-2"></i>Assign Products
                             </div>
                             <div wire:loading wire:target="submit">
                                 <i class="fas fa-spinner fa-spin me-2"></i>Processing...
