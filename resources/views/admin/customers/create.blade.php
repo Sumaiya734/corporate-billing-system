@@ -50,7 +50,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('admin.customers.store') }}" method="POST">
+            <form action="{{ route('admin.customers.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 
                 <!-- Basic Information Section -->
@@ -135,6 +135,130 @@
                                 @error('connection_address')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Images Section -->
+                <div class="form-section mb-4">
+                    <h6 class="section-header mb-3">
+                        <i class="fas fa-camera me-2"></i>Images
+                    </h6>
+                    <div class="row">
+                        <!-- Profile Picture -->
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-3">
+                                        <i class="fas fa-user-circle me-2 text-muted"></i>Profile Picture
+                                    </h6>
+                                    <div class="mb-3">
+                                        <label for="profile_picture" class="form-label">Upload Profile Picture</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light">
+                                                <i class="fas fa-image text-muted"></i>
+                                            </span>
+                                            <input type="file" 
+                                                   class="form-control @error('profile_picture') is-invalid @enderror" 
+                                                   id="profile_picture" 
+                                                   name="profile_picture" 
+                                                   accept="image/*">
+                                        </div>
+                                        @error('profile_picture')
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @enderror
+                                        <small class="form-text text-muted">
+                                            Max file size: 10MB | Allowed formats: JPG, PNG, GIF
+                                        </small>                                    </div>
+                                    <!-- Profile Preview -->
+                                    <div id="profilePreviewContainer" style="display: none;">
+                                        <label class="form-label">Preview:</label>
+                                        <div class="border rounded p-2 text-center">
+                                            <img id="profilePreviewImage" 
+                                                 src="" 
+                                                 alt="Profile Preview" 
+                                                 class="img-fluid rounded" 
+                                                 style="max-height: 150px;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- ID Card Front -->
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-3">
+                                        <i class="fas fa-id-card me-2 text-muted"></i>ID Card Front
+                                    </h6>
+                                    <div class="mb-3">
+                                        <label for="id_card_front" class="form-label">Upload Front Side</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light">
+                                                <i class="fas fa-image text-muted"></i>
+                                            </span>
+                                            <input type="file" 
+                                                   class="form-control @error('id_card_front') is-invalid @enderror" 
+                                                   id="id_card_front" 
+                                                   name="id_card_front" 
+                                                   accept="image/*">
+                                        </div>
+                                        @error('id_card_front')
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <!-- Front Preview -->
+                                    <div id="frontPreviewContainer" style="display: none;">
+                                        <label class="form-label">Preview:</label>
+                                        <div class="border rounded p-2 text-center">
+                                            <img id="frontPreviewImage" 
+                                                 src="" 
+                                                 alt="Front Preview" 
+                                                 class="img-fluid rounded" 
+                                                 style="max-height: 150px;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- ID Card Back -->
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-3">
+                                        <i class="fas fa-id-card me-2 text-muted"></i>ID Card Back
+                                    </h6>
+                                    <div class="mb-3">
+                                        <label for="id_card_back" class="form-label">Upload Back Side</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light">
+                                                <i class="fas fa-image text-muted"></i>
+                                            </span>
+                                            <input type="file" 
+                                                   class="form-control @error('id_card_back') is-invalid @enderror" 
+                                                   id="id_card_back" 
+                                                   name="id_card_back" 
+                                                   accept="image/*">
+                                        </div>
+                                        @error('id_card_back')
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <!-- Back Preview -->
+                                    <div id="backPreviewContainer" style="display: none;">
+                                        <label class="form-label">Preview:</label>
+                                        <div class="border rounded p-2 text-center">
+                                            <img id="backPreviewImage" 
+                                                 src="" 
+                                                 alt="Back Preview" 
+                                                 class="img-fluid rounded" 
+                                                 style="max-height: 150px;">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -390,6 +514,64 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.classList.remove('is-invalid');
             }
         });
+    });
+
+    // Image preview functionality
+    const profilePictureInput = document.getElementById('profile_picture');
+    const idCardFrontInput = document.getElementById('id_card_front');
+    const idCardBackInput = document.getElementById('id_card_back');
+    
+    const profilePreviewContainer = document.getElementById('profilePreviewContainer');
+    const frontPreviewContainer = document.getElementById('frontPreviewContainer');
+    const backPreviewContainer = document.getElementById('backPreviewContainer');
+    
+    const profilePreviewImage = document.getElementById('profilePreviewImage');
+    const frontPreviewImage = document.getElementById('frontPreviewImage');
+    const backPreviewImage = document.getElementById('backPreviewImage');
+
+    // Profile picture preview
+    profilePictureInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                profilePreviewImage.src = e.target.result;
+                profilePreviewContainer.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            profilePreviewContainer.style.display = 'none';
+        }
+    });
+
+    // ID Card Front preview
+    idCardFrontInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                frontPreviewImage.src = e.target.result;
+                frontPreviewContainer.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            frontPreviewContainer.style.display = 'none';
+        }
+    });
+
+    // ID Card Back preview
+    idCardBackInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                backPreviewImage.src = e.target.result;
+                backPreviewContainer.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            backPreviewContainer.style.display = 'none';
+        }
     });
 });
 </script>

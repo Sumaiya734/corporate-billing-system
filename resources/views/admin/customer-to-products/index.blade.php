@@ -9,8 +9,9 @@
             <h1 class="page-title"><i class="fas fa-user-tag me-2"></i>Customer to Products</h1>
         </div>
         <div class="col-auto">
-            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-primary" style="margin:10px" id="assign-products-link">
-                <i class="fas fa-plus me-2"></i>Assign Products
+
+            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-primary" style="margin:10px">
+         <i class="fas fa-plus me-2"></i>Assign Products
             </a>
             <a href="{{ route('admin.customers.index') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-1"></i>Back to Billing
@@ -1029,12 +1030,17 @@
                 hideDeleteModal();
             }
         });
+<<<<<<< HEAD
         
         toggleStatusModal.addEventListener('click', function(e) {
             if (e.target === toggleStatusModal) {
                 hideToggleStatusModal();
             }
         });
+=======
+
+
+>>>>>>> 115d0ebf8f2a811ac6e8ab221c675e0e5f65e552
         // Handle assign products link click to ensure navigation
         const assignLink = document.getElementById('assign-products-link');
         if (assignLink) {
@@ -1047,6 +1053,7 @@
                 }
             });
         }
+>>>>>>> 83ead503e426be14c37c53ab8f72f706b000f589
     });
 </script>
 @endsection
