@@ -119,24 +119,10 @@ class CustomerController extends Controller
      */
     public function show($id)
     {
-        $customer = Customer::with(['customerproducts.product', 'invoices.payments'])
+        $customer = Customer::with(['customerproducts.product', 'invoices', 'payments'])
             ->findOrFail($id);
-        
-        // Calculate statistics
-        $totalInvoices = $customer->invoices->count();
-        $totalPaid = $customer->invoices->sum('received_amount');
-        $totalDue = $customer->invoices->sum(function($invoice) {
-            return $invoice->total_amount - ($invoice->received_amount ?? 0);
-        });
-        
-        // Get recent invoices (limit to 5 most recent)
-        $recentInvoices = $customer->invoices()->latest()->take(5)->get();
-        
-        // Get recent payments through invoices
-        $recentPayments = $customer->invoices()->with('payments')->get()
-            ->pluck('payments')->flatten()->sortByDesc('payment_date')->take(5);
-        
-        return view('admin.customers.show', compact('customer', 'totalInvoices', 'totalPaid', 'totalDue', 'recentInvoices', 'recentPayments'));
+
+        return view('admin.customers.show', compact('customer'));
     }
 
     /**
@@ -309,7 +295,7 @@ class CustomerController extends Controller
      */
     public function billingHistory($id)
     {
-        $customer = Customer::with(['invoices'])->findOrFail($id);
+        $customer = Customer::with(['invoices', 'payments'])->findOrFail($id);
         return view('admin.customers.billing-history', compact('customer'));
     }
 
@@ -318,23 +304,8 @@ class CustomerController extends Controller
      */
     public function profile($id)
     {
-        $customer = Customer::with(['customerproducts.product', 'invoices.payments'])
+        $customer = Customer::with(['customerproducts.product', 'invoices', 'payments'])
             ->findOrFail($id);
-        
-        // Calculate statistics
-        $totalInvoices = $customer->invoices->count();
-        $totalPaid = $customer->invoices->sum('received_amount');
-        $totalDue = $customer->invoices->sum(function($invoice) {
-            return $invoice->total_amount - ($invoice->received_amount ?? 0);
-        });
-        
-        // Get recent invoices (limit to 5 most recent)
-        $recentInvoices = $customer->invoices()->latest()->take(5)->get();
-        
-        // Get recent payments through invoices
-        $recentPayments = $customer->invoices()->with('payments')->get()
-            ->pluck('payments')->flatten()->sortByDesc('payment_date')->take(5);
-        
-        return view('admin.customers.profile', compact('customer', 'totalInvoices', 'totalPaid', 'totalDue', 'recentInvoices', 'recentPayments'));
+        return view('admin.customers.profile', compact('customer'));
     }
 }

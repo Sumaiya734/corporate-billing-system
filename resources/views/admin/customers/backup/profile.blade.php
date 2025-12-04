@@ -3,7 +3,7 @@
 @section('title', 'Customer Profile - ' . $customer->name)
 
 @section('content')
-<div class="container-fluid p-4">
+
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -279,7 +279,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $invoice->i_id]) }}" class="btn btn-sm btn-outline-primary">
+                                        <a href="{{ route('admin.customer-to-products.index', $invoice->i_id) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                     </td>
@@ -327,7 +327,7 @@
                                     </td>
                                     <td>
                                         @if($payment->invoice && $payment->i_id)
-                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $payment->i_id]) }}">
+                                            <a href="{{ route('admin.billing.view-invoice', $payment->i_id) }}">
                                                 {{ $payment->invoice->invoice_id }}
                                             </a>
                                         @elseif($payment->i_id)
@@ -354,7 +354,7 @@
             @endif
         </div>
     </div>
-</div>
+
 @endsection
 
 @section('styles')

@@ -1,6 +1,9 @@
 /**
  * Universal Back Button Handler
  * Makes all back buttons navigate to the previous page in browser history
+ * 
+ * Exceptions:
+ * - Buttons with data-action="navigate" will follow their href attribute instead
  */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -18,6 +21,11 @@ document.addEventListener('DOMContentLoaded', function () {
     allButtons.forEach(button => {
         const buttonText = button.textContent.trim().toLowerCase();
         const hasBackIcon = button.querySelector('.fa-arrow-left');
+
+        // Skip buttons with data-action="navigate"
+        if (button.hasAttribute('data-action') && button.getAttribute('data-action') === 'navigate') {
+            return;
+        }
 
         // Check if button contains "back" text or has back arrow icon
         if (buttonText.includes('back') || hasBackIcon) {
