@@ -160,15 +160,12 @@
                         <label class="form-label small fw-semibold text-muted mb-1">Status Filter</label>
                         <select name="status" class="form-select shadow-sm" id="statusFilter">
                             <option value="">All Status</option>
-<<<<<<< HEAD
                             <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
                             <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="expired" {{ request('status') == 'expired' ? 'selected' : '' }}>Expired</option>
                             <option value="paused" {{ request('status') == 'paused' ? 'selected' : '' }}>Paused</option>
-=======
                             <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active Only</option>
                             <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive Only</option>
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
                         </select>
                     </div>
                     <div class="col-lg-2">
@@ -197,7 +194,7 @@
         </div>
     </div>
 
-<<<<<<< HEAD
+
     <!-- Customer Products Table -->
     <div class="table-container">
         <div class="table-responsive">
@@ -391,926 +388,857 @@
                 @if(request()->hasAny(['search', 'status', 'product_type']))
                     <span class="badge bg-info ms-2">Filtered Results</span>
                 @endif
-=======
-    <!-- Quick Filter Buttons -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-3">
-                    <div class="d-flex flex-wrap gap-2">
-                        <a href="{{ route('admin.customers.index') }}" 
-                           class="btn btn-sm btn-outline-primary filter-btn {{ !request()->has('filter') ? 'active' : '' }}">
-                            <i class="fas fa-list me-1"></i>All Customers
-                            <span class="badge bg-primary ms-1">{{ $totalCustomers }}</span>
-                        </a>
-                        <a href="{{ route('admin.customers.index', ['filter' => 'active']) }}" 
-                           class="btn btn-sm btn-outline-success filter-btn">
-                            <i class="fas fa-user-check me-1"></i>Active
-                            <span class="badge bg-success ms-1">{{ $activeCustomers }}</span>
-                        </a>
-                        <a href="{{ route('admin.customers.index', ['filter' => 'inactive']) }}" 
-                           class="btn btn-sm btn-outline-secondary filter-btn">
-                            <i class="fas fa-user-slash me-1"></i>Inactive
-                            <span class="badge bg-secondary ms-1">{{ $inactiveCustomers }}</span>
-                        </a>
-                        <a href="{{ route('admin.customers.index', ['filter' => 'with_due']) }}" 
-                           class="btn btn-sm btn-outline-danger filter-btn">
-                            <i class="fas fa-exclamation-triangle me-1"></i>With Due
-                            <span class="badge bg-danger ms-1">{{ $customersWithDue }}</span>
-                        </a>
-                        <a href="{{ route('admin.customers.index', ['filter' => 'new']) }}" 
-                           class="btn btn-sm btn-outline-info filter-btn">
-                            <i class="fas fa-star me-1"></i>New This Week
-                        </a>
-                        <a href="{{ route('admin.customers.index', ['filter' => 'high_value']) }}" 
-                           class="btn btn-sm btn-outline-warning filter-btn">
-                            <i class="fas fa-crown me-1"></i>High Value
-                        </a>
-                    </div>
-                </div>
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
             </div>
+            <nav aria-label="Customer pagination" class="pagination-container">
+                {{ $customers->appends(request()->query())->links('pagination.bootstrap-5') }}
+            </nav>
         </div>
-    </div>
+    @endif
 
-    <!-- Customers Table -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
-            <div class="d-flex align-items-center">
-                <div class="me-3">
-                    <i class="fas fa-list text-primary fs-4"></i>
-                </div>
-                <div>
-                    <h5 class="card-title mb-0 fw-bold">Customer Directory</h5>
-                    <p class="text-muted small mb-0">Showing {{ $customers->total() }} customers in system</p>
-                </div>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <div class="text-end">
-                    <div class="text-muted small">Page {{ $customers->currentPage() }} of {{ $customers->lastPage() }}</div>
-                    <div class="text-primary fw-semibold">{{ $customers->count() }} visible</div>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-cog me-1"></i>Options
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-columns me-2"></i>Customize View</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-download me-2"></i>Export Data</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>Quick Preview</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-sync-alt me-2"></i>Refresh</a></li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="card-body p-0">
-            @if($customers->count() > 0)
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0" id="customersTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="ps-4">Customer Information</th>
-                                <th>Active Products</th>
-                                <th class="text-center">Billing</th>
-                                <th class="text-center">Status</th>
-                                <th class="text-center">Registration</th>
-                                <th class="text-center pe-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php
-                                $productColors = [
-                                    'primary', 'success', 'warning', 'danger', 'info', 
-                                    'secondary', 'purple', 'teal', 'indigo', 'pink'
-                                ];
-                            @endphp
-                            @foreach($customers as $customer)
-                            @php
-                                // Get active products with relationships
-                                $activeProducts = $customer->customerproducts
-                                    ->where('status', 'active')
-                                    ->where('is_active', 1)
-                                    ->filter(function($cp) {
-                                        return $cp->product !== null;
-                                    });
-                                
-                                // Calculate monthly total using custom price if available
-                                $monthlyTotal = $activeProducts->sum(function($cp) {
-                                    $price = $cp->product_price ?? $cp->product->monthly_price ?? 0;
-                                    return $price;
-                                });
-                                
-                                // Check for due payments
-                                $hasDue = $customer->invoices()
-                                    ->whereIn('invoices.status', ['unpaid', 'partial'])
-                                    ->exists();
-                                
-                                $totalDue = $customer->invoices()
-                                    ->whereIn('invoices.status', ['unpaid', 'partial'])
-                                    ->sum(DB::raw('invoices.total_amount - invoices.received_amount'));
-                                
-                                $isNew = $customer->created_at->gt(now()->subDays(7));
-                                $initialLetter = strtoupper(substr($customer->name, 0, 1));
-                                
-                                // Determine customer tier based on monthly total
-                               
-                            @endphp
-                            <tr class="customer-row {{ $hasDue ? 'payment-due' : '' }} {{ $isNew ? 'new-customer' : '' }} {{ !$customer->is_active ? 'inactive-customer' : '' }}">
-                                
-                                <!-- Customer Information Column -->
-                                <td class="ps-4">
-                                    <div class="d-flex align-items-start">
-                                        <div class="customer-avatar me-3 position-relative">
-                                            <div class="avatar-circle bg-gradient-primary text-white">
-                                                {{ $initialLetter }}
-                                            </div>
-                                            @if($isNew)
-                                                <span class="new-badge position-absolute top-0 start-100 translate-middle badge bg-info rounded-pill" style="font-size: 0.6rem;">
-                                                    NEW
-                                                </span>
-                                            @endif
-                                            
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex align-items-center mb-2">
-                                                <a href="{{ route('admin.customers.show', $customer->c_id) }}" class="text-decoration-none customer-link" Target="_blank">
-                                                    <strong class="me-2 text-dark customer-name">{{ $customer->name }}</strong>
-                                                </a>
-                                                @if(!$customer->is_active)
-                                                    <span class="badge bg-secondary badge-sm">Inactive</span>
-                                                @endif
-                                               
-                                            </div>
-                                            <div class="customer-details">
-                                                <div class="text-muted small mb-1">
-                                                    <i class="fas fa-id-card me-1"></i>
-                                                    <span class="fw-medium customer-id">{{ $customer->customer_id }}</span>
-                                                </div>
-                                                <div class="text-muted small mb-1">
-                                                    <i class="fas fa-envelope me-1"></i>
-                                                    {{ $customer->email ?? 'No email' }}
-                                                </div>
-                                                <div class="text-muted small">
-                                                    <i class="fas fa-phone me-1"></i>
-                                                    {{ $customer->phone ?? 'No phone' }}
-                                                    @if($customer->address)
-                                                        <span class="ms-3">
-                                                            <i class="fas fa-map-marker-alt me-1"></i>
-                                                            {{ Str::limit($customer->address, 20) }}
-                                                        </span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
+  
 
-                                <!-- Products Column - Now with colored boxes -->
-                                <td>
-                                    @if($activeProducts->count() > 0)
-                                        <div class="products-container">
-                                            <div class="row g-2">
-                                                @foreach($activeProducts as $index => $cp)
-                                                @php
-                                                    $colorIndex = $index % count($productColors);
-                                                    $colorClass = $productColors[$colorIndex];
-                                                    $bgClass = "bg-{$colorClass}-light";
-                                                    $borderClass = "border-{$colorClass}";
-                                                    $textClass = "text-{$colorClass}";
-                                                @endphp
-                                                <div class="col-12">
-                                                    <div class="product-card {{ $bgClass }} {{ $borderClass }} shadow-sm">
-                                                        <div class="card-body p-3">
-                                                            <div class="d-flex justify-content-between align-items-start">
-                                                                <div class="d-flex align-items-center">
-                                                                    <div class="product-icon me-3">
-                                                                        <div class="icon-circle {{ $bgClass }} {{ $textClass }}">
-                                                                            <i class="fas fa-box"></i>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div>
-                                                                        <div class="product-name fw-semibold text-dark mb-1">
-                                                                            {{ $cp->product->name ?? 'Unknown Product' }}
-                                                                        </div>
-                                                                        <div class="product-details">
-                                                                            <div class="d-flex align-items-center flex-wrap gap-2">
-                                                                                <span class="product-price {{ $textClass }} fw-bold">
-                                                                                    @php
-                                                                                        $price = $cp->product_price ?? $cp->product->monthly_price ?? 0;
-                                                                                        $isCustomPrice = $cp->product_price && $cp->product_price != $cp->product->monthly_price;
-                                                                                        $billingCycle = $cp->billing_cycle_months ?? 1;
-                                                                                    @endphp
-                                                                                    ৳{{ number_format($price, 2) }}/month
-                                                                                </span>
-                                                                                @if($isCustomPrice)
-                                                                                    <span class="badge bg-info badge-sm">
-                                                                                        <i class="fas fa-star me-1"></i>Custom
-                                                                                    </span>
-                                                                                @endif
-                                                                                @if($billingCycle > 1)
-                                                                                    <span class="badge bg-warning badge-sm">
-                                                                                        <i class="fas fa-calendar-alt me-1"></i>{{ $billingCycle }}M
-                                                                                    </span>
-                                                                                @endif
-                                                                                @if($cp->status === 'active')
-                                                                                    <span class="badge bg-success badge-sm">
-                                                                                        <i class="fas fa-circle me-1" style="font-size: 0.4rem;"></i>Active
-                                                                                    </span>
-                                                                                @endif
-                                                                            </div>
-                                                                            @if($cp->assign_date)
-                                                                                <div class="text-muted small mt-1">
-                                                                                    <i class="fas fa-calendar me-1"></i>
-                                                                                    Assigned: {{ \Carbon\Carbon::parse($cp->assign_date)->format('M d, Y') }}
-                                                                                </div>
-                                                                            @endif
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="dropdown">
-                                                                    <button class="btn btn-sm btn-link text-muted dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                                        <i class="fas fa-ellipsis-v"></i>
-                                                                    </button>
-                                                                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                                                                        <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>View Details</a></li>
-                                                                        <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Edit Product</a></li>
-                                                                        <li><hr class="dropdown-divider"></li>
-                                                                        <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash me-2"></i>Remove</a></li>
-                                                                    </ul>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                @endforeach
-                                            </div>
-                                            @if($activeProducts->count() > 2)
-                                                <div class="text-center mt-2">
-                                                    <small class="text-muted">
-                                                        <i class="fas fa-chevron-down me-1"></i>
-                                                        {{ $activeProducts->count() - 2 }} more products
-                                                    </small>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @else
-                                        <div class="no-product text-center py-4">
-                                            <div class="empty-state-icon mb-3">
-                                                <i class="fas fa-box-open fa-3x text-muted opacity-25"></i>
-                                            </div>
-                                            <h6 class="text-muted mb-2">No Active Products</h6>
-                                            <p class="text-muted small mb-3">This customer has no active products assigned</p>
-                                            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-plus me-1"></i>Assign Product
-                                            </a>
-                                        </div>
-                                    @endif
-                                </td>
+<!-- <style>
+        /* Modern Color System */
+        :root {
+            --primary: #4361ee;
+            --secondary: #6c757d;
+            --success: #06d6a0;
+            --warning: #ffd166;
+            --danger: #ef476f;
+            --info: #118ab2;
+            --purple: #7209b7;
+            --teal: #06d6a0;
+            --indigo: #3a0ca3;
+            --pink: #f72585;
+            --light: #f8f9fa;
+            --dark: #212529;
+            
+            /* Light variants */
+            --primary-light: rgba(67, 97, 238, 0.1);
+            --success-light: rgba(6, 214, 160, 0.1);
+            --warning-light: rgba(255, 209, 102, 0.1);
+            --danger-light: rgba(239, 71, 111, 0.1);
+            --info-light: rgba(17, 138, 178, 0.1);
+            --purple-light: rgba(114, 9, 183, 0.1);
+            --teal-light: rgba(6, 214, 160, 0.1);
+            --indigo-light: rgba(58, 12, 163, 0.1);
+            --pink-light: rgba(247, 37, 133, 0.1);
+        }
 
-                                <!-- Billing Column -->
-                                <td class="text-center">
-                                    <div class="billing-card">
-                                        <div class="monthly-bill text-center mb-3">
-                                            <div class="bill-amount">
-                                                <h3 class="mb-0 fw-bold text-success">৳{{ number_format($monthlyTotal, 2) }}</h3>
-                                                <small class="text-muted">Monthly Recurring</small>
-                                            </div>
-                                        </div>
-                                        
-                                        @if($hasDue && $totalDue > 0)
-                                            <div class="due-alert alert alert-danger border-0 shadow-sm py-2 px-3 mb-0">
-                                                <div class="d-flex align-items-center justify-content-between">
-                                                    <div>
-                                                        <i class="fas fa-exclamation-circle me-2"></i>
-                                                        <strong class="small">৳{{ number_format($totalDue, 2 ) }} Due</strong>
-                                                    </div>
-                                                    <a href="#" class="btn btn-sm btn-outline-danger">
-                                                        <i class="fas fa-external-link-alt"></i>
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        @elseif($monthlyTotal > 0)
-                                            <div class="payment-status">
-                                                <div class="paid-badge bg-success-light text-success p-2 rounded text-center">
-                                                    <i class="fas fa-check-circle me-1"></i>
-                                                    <small class="fw-semibold">All Paid</small>
-                                                </div>
-                                            </div>
-                                        @else
-                                            <div class="no-bill text-muted small">
-                                                <i class="fas fa-ban me-1"></i>
-                                                No billing
-                                            </div>
-                                        @endif
-                                    </div>
-                                </td>
+        /* Enhanced Card Styling */
+        .card {
+            border-radius: 12px;
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
 
-                                <!-- Status Column -->
-                                <td class="text-center">
-                                    <div class="status-container">
-                                        <div class="status-badge mb-2">
-                                            <span class="badge bg-{{ $customer->is_active ? 'success' : 'secondary' }} rounded-pill px-3 py-2">
-                                                <i class="fas fa-{{ $customer->is_active ? 'check-circle' : 'pause-circle' }} me-1"></i>
-                                                {{ $customer->is_active ? 'Active' : 'Inactive' }}
-                                            </span>
-                                        </div>
-                                        <div class="status-indicators">
-                                            @if($hasDue)
-                                                <div class="status-item danger">
-                                                    <i class="fas fa-clock me-1"></i>
-                                                    <small class="fw-semibold">Payment Due</small>
-                                                </div>
-                                            @endif
-                                            @if($isNew)
-                                                <div class="status-item info">
-                                                    <i class="fas fa-bolt me-1"></i>
-                                                    <small class="fw-semibold">New Customer</small>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </td>
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+        }
 
-                                <!-- Registration Column -->
-                                <td class="text-center">
-                                    <div class="registration-card text-center">
-                                        <div class="date-display">
-                                            <div class="date-icon mb-2">
-                                                <div class="icon-circle bg-primary-light text-primary">
-                                                    <i class="fas fa-calendar-alt"></i>
-                                                </div>
-                                            </div>
-                                            <div class="date-info">
-                                                <div class="date fw-bold text-dark">
-                                                    {{ $customer->created_at->format('M j, Y') }}
-                                                </div>
-                                                <small class="text-muted d-block">{{ $customer->created_at->diffForHumans() }}</small>
-                                                <div class="duration-badge bg-light text-muted mt-2 p-1 rounded">
-                                                    <small>{{ $customer->created_at->diffInDays(now()) }} days</small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
+        .hover-lift {
+            transition: all 0.3s ease;
+        }
 
-                                <!-- Actions Column -->
-                                <td class="text-center pe-4">
-                                    <div class="action-menu">
-                                        <div class="btn-group-vertical">
-                                            <!-- View Details -->
-                                            <a href="{{ route('admin.customers.show', $customer->c_id) }}" 
-                                            class="btn btn-sm btn-outline-primary mb-2 action-btn shadow-sm" 
-                                            title="View Details"
-                                            data-bs-toggle="tooltip" Target="_blank">
-                                                <i class="fas fa-eye"></i>
-                                                <span class="d-block small mt-1">View</span>
-                                            </a>
+        .hover-lift:hover {
+            transform: translateY(-5px);
+        }
 
-                                            <!-- Edit Customer -->
-                                            <a href="{{ route('admin.customers.edit', $customer->c_id) }}" 
-                                            class="btn btn-sm btn-outline-warning mb-2 action-btn shadow-sm" 
-                                            title="Edit Customer"
-                                            data-bs-toggle="tooltip">
-                                                <i class="fas fa-edit"></i>
-                                                <span class="d-block small mt-1">Edit</span>
-                                            </a>
+        /* Stat Icons */
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
 
-                                            <!-- More Actions Dropdown -->
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle action-btn shadow-sm" 
-                                                        type="button" 
-                                                        data-bs-toggle="dropdown">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end shadow">
-                                                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-invoice-dollar me-2"></i>Create Invoice</a></li>
-                                                    <li><a class="dropdown-item" href="#"><i class="fas fa-chart-line me-2"></i>View Reports</a></li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li><a class="dropdown-item" href="#"><i class="fas fa-envelope me-2"></i>Send Email</a></li>
-                                                    <li><a class="dropdown-item" href="#"><i class="fas fa-sms me-2"></i>Send SMS</a></li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <button class="dropdown-item text-danger delete-customer-btn"
-                                                                data-customer-id="{{ $customer->c_id }}"
-                                                                data-customer-name="{{ $customer->name }}">
-                                                            <i class="fas fa-trash me-2"></i>Delete Customer
-                                                        </button>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
+        .stat-icon:hover {
+            transform: scale(1.1);
+        }
 
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+        /* Customer Avatar */
+        .avatar-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            background: linear-gradient(135deg, var(--primary) 0%, #3a0ca3 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
 
-                <!-- Pagination -->
-                @if ($customers->hasPages())
-                    <div class="card-footer bg-white border-top-0 pt-4 pb-3">
-                        <div class="d-flex justify-content-between align-items-center flex-wrap">
-                            <div class="text-muted small mb-2 mb-md-0">
-                                Showing <strong>{{ $customers->firstItem() }}</strong> to <strong>{{ $customers->lastItem() }}</strong> of <strong>{{ $customers->total() }}</strong> customers
-                            </div>
-                            <nav aria-label="Customer pagination" class="pagination-container">
-                                {{ $customers->appends(request()->query())->links('pagination.bootstrap-5') }}
-                            </nav>
-                        </div>
-                    </div>
-                @endif
+        .customer-avatar {
+            position: relative;
+        }
 
-            @else
-                <!-- Empty State -->
-                <div class="text-center py-5">
-                    <div class="empty-state-icon mb-4">
-                        <i class="fas fa-users fa-5x text-muted opacity-10"></i>
-                    </div>
-                    <h3 class="text-muted mb-3">No Customers Found</h3>
-                    <p class="text-muted mb-4">
-                        @if(request()->has('search') || request()->has('status') || request()->has('filter'))
-                            No customers match your current search criteria.
-                        @else
-                            Get started by adding your first customer to the system.
-                        @endif
-                    </p>
-                    <div class="d-flex justify-content-center gap-3">
-                        <a href="{{ route('admin.customers.create') }}" class="btn btn-primary btn-lg shadow-sm">
-                            <i class="fas fa-user-plus me-2"></i>Add First Customer
-                        </a>
-                        @if(request()->has('search') || request()->has('status') || request()->has('filter'))
-                            <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary btn-lg shadow-sm">
-                                <i class="fas fa-times me-2"></i>Clear Filters
-                            </a>
-                        @endif
-                    </div>
-                </div>
-            @endif
-        </div>
-    </div>
+            .new-badge {
+                animation: pulse 2s infinite;
+            }
 
-    <!-- Customer Insights Footer -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
-                    <h6 class="mb-3 fw-semibold">
-                        <i class="fas fa-chart-pie me-2 text-primary"></i>Customer Insights
-                    </h6>
-                    <div class="row">
-                        <div class="col-md-4 mb-3 mb-md-0">
-                            <div class="d-flex align-items-center">
-                                <div class="insight-icon bg-primary-light rounded-circle p-2 me-3">
-                                    <i class="fas fa-user-check text-primary"></i>
-                                </div>
-                                <div>
-                                    <div class="text-muted small">Most Common</div>
-                                    <div class="fw-bold">{{ $customers->count() > 0 ? $customers->first()->name : 'N/A' }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3 mb-md-0">
-                            <div class="d-flex align-items-center">
-                                <div class="insight-icon bg-success-light rounded-circle p-2 me-3">
-                                    <i class="fas fa-money-bill-wave text-success"></i>
-                                </div>
-                                <div>
-                                    <div class="text-muted small">Average Monthly Bill</div>
-                                    <div class="fw-bold">৳{{ number_format($customers->avg('total_monthly_bill') ?? 0, 2) }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="d-flex align-items-center">
-                                <div class="insight-icon bg-info-light rounded-circle p-2 me-3">
-                                    <i class="fas fa-chart-line text-info"></i>
-                                </div>
-                                <div>
-                                    <div class="text-muted small">Growth Rate</div>
-                                    <div class="fw-bold text-success">+12.5%</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+            @keyframes pulse {
+                0% { transform: translate(-50%, -50%) scale(1); }
+                50% { transform: translate(-50%, -50%) scale(1.1); }
+                100% { transform: translate(-50%, -50%) scale(1); }
+            }
+
+            /* Product Cards - Color Variations */
+            .product-card {
+                border-radius: 10px;
+                border-left: 4px solid;
+                transition: all 0.3s ease;
+                overflow: hidden;
+            }
+
+        .product-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+        }
+
+            /* Color Classes for Products */
+            .bg-primary-light { background-color: var(--primary-light) !important; }
+            .bg-success-light { background-color: var(--success-light) !important; }
+            .bg-warning-light { background-color: var(--warning-light) !important; }
+            .bg-danger-light { background-color: var(--danger-light) !important; }
+            .bg-info-light { background-color: var(--info-light) !important; }
+            .bg-purple-light { background-color: var(--purple-light) !important; }
+            .bg-teal-light { background-color: var(--teal-light) !important; }
+            .bg-indigo-light { background-color: var(--indigo-light) !important; }
+            .bg-pink-light { background-color: var(--pink-light) !important; }
+
+            .border-primary { border-color: var(--primary) !important; }
+            .border-success { border-color: var(--success) !important; }
+            .border-warning { border-color: var(--warning) !important; }
+            .border-danger { border-color: var(--danger) !important; }
+            .border-info { border-color: var(--info) !important; }
+            .border-purple { border-color: var(--purple) !important; }
+            .border-teal { border-color: var(--teal) !important; }
+            .border-indigo { border-color: var(--indigo) !important; }
+            .border-pink { border-color: var(--pink) !important; }
+
+        .text-primary { color: var(--primary) !important; }
+            .text-success { color: var(--success) !important; }
+            .text-warning { color: var(--warning) !important; }
+            .text-danger { color: var(--danger) !important; }
+            .text-info { color: var(--info) !important; }
+            .text-purple { color: var(--purple) !important; }
+            .text-teal { color: var(--teal) !important; }
+            .text-indigo { color: var(--indigo) !important; }
+            .text-pink { color: var(--pink) !important; }
+
+            /* Product Icon */
+            .product-icon .icon-circle {
+                width: 40px;
+                height: 40px;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1rem;
+            }
+
+            /* Table Styling */
+            .table {
+                --bs-table-bg: transparent;
+            }
+
+        .table th {
+            background-color: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+            font-weight: 600;
+            color: #64748b;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1.2rem 0.75rem;
+        }
+
+        .table td {
+            padding: 1.2rem 0.75rem;
+            vertical-align: top;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        /* Customer Row States */
+        .customer-row {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }   
+
+        .customer-row:hover {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-left-color: var(--primary);
+            box-shadow: inset 4px 0 0 var(--primary);
+        }
+
+        .payment-due {
+            background: linear-gradient(135deg, #fff5f7 0%, #fed7e2 100%);
+            border-left-color: var(--danger) !important;
+        }
+
+        .payment-due:hover {
+            background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%);
+        }
+
+        .new-customer {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-left-color: var(--info) !important;
+        }
+        
+        .new-customer:hover {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+        }
+
+
+        .inactive-customer {
+            opacity: 0.7;
+            background-color: #f8f9fa;
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            width: 60px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 0;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Customer Name Link */
+        .customer-link:hover .customer-name {
+            color: var(--primary) !important;
+            text-decoration: underline;
+        }
+
+        /* Badge Styling */
+        .badge-sm {
+            font-size: 0.7rem;
+            padding: 0.3rem 0.6rem;
+            font-weight: 500;
+        }
+
+        .tier-badge {
+            animation: glow 2s infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { box-shadow: 0 0 5px rgba(255, 193, 7, 0.5); }
+            to { box-shadow: 0 0 10px rgba(255, 193, 7, 0.8); }
+        }
+
+        /* Icon Circles */
+        .icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        /* Status Items */
+        .status-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+        }
+
+        .status-item.danger {
+            background-color: var(--danger-light);
+            color: var(--danger);
+        }
+
+        .status-item.info {
+            background-color: var(--info-light);
+            color: var(--info);
+        }
+
+        /* Bill Amount Animation */
+        .bill-amount h3 {
+            transition: all 0.3s ease;
+        }
+
+        .bill-amount:hover h3 {
+            transform: scale(1.05);
+            color: var(--success) !important;
+        }
+
+        /* Filter Buttons */
+        .filter-btn {
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+                
+        .filter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Due Alert */
+        .due-alert {
+            animation: shake 0.5s ease-in-out;
+            border-left: 4px solid var(--danger);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-3px); }
+            75% { transform: translateX(3px); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .card-body {
+                padding: 1rem !important;
+            }
+            
+            .avatar-circle {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+            
+            .product-card {
+                margin-bottom: 0.5rem;
+            }
+                    
+            .action-btn {
+                width: 50px;
+                padding: 0.5rem 0;
+            }
+            
+            .table-responsive {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+            ::-webkit-scrollbar-thumb {
+                background: #c1c1c1;
+                border-radius: 4px;
+            }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: #a8a8a8;
+            }
+
+            /* Empty State */
+            .empty-state-icon {
+                opacity: 0.3;
+            }
+
+        /* Pagination Styling */
+        .pagination .page-link {
+            border-radius: 8px;
+            margin: 0 2px;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .pagination .page-item.active .page-link {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Insight Icons */
+        .insight-icon {
+            transition: all 0.3s ease;
+        }
+
+        .insight-icon:hover {
+            transform: rotate(15deg) scale(1.1);
+        }
+                
+        /* Tooltip Customization */
+        .tooltip {
+            --bs-tooltip-bg: var(--primary);
+            --bs-tooltip-border-radius: 8px;
+        }
+
+        /* Loading Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .customer-row {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+</style> -->
+
+<style>
+    /* Modern Color System */
+    :root {
+        --primary: #4361ee;
+        --secondary: #6c757d;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --info: #3b82f6;
+        --light: #f8f9fa;
+        --dark: #1f2937;
+        
+        /* Light variants */
+        --primary-light: #eef2ff;
+        --success-light: #d1fae5;
+        --warning-light: #fef3c7;
+        --danger-light: #fee2e2;
+        --info-light: #dbeafe;
+    }
+
+    /* Base Card Styling */
+    .card {
+        border-radius: 0.75rem;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Customer Table Styles */
+    #customersTable {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    #customersTable thead th {
+        background-color: #f9fafb;
+        border-bottom: 2px solid #e5e7eb;
+        color: #4b5563;
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 1rem;
+        white-space: nowrap;
+    }
+
+    #customersTable tbody td {
+        padding: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: top;
+    }
+
+    /* Customer Avatar */
+    .customer-avatar .avatar-circle {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+        background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
+        color: white;
+    }
+
+    /* Product Cards */
+    .product-card {
+        background: white;
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .product-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(67, 97, 238, 0.1);
+    }
+
+    /* Status Badges */
+    .status-badge {
+        font-size: 0.75rem;
+        font-weight: 500;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    /* Action Buttons */
+    .action-btn {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        border: 1px solid #e5e7eb;
+    }
+
+    .action-btn:hover {
+        border-color: var(--primary);
+        background-color: var(--primary-light);
+        color: var(--primary);
+        transform: translateY(-1px);
+    }
+
+    /* Empty States */
+    .no-product {
+        background-color: #f9fafb;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .empty-state-icon {
+        color: #9ca3af;
+        margin-bottom: 1rem;
+    }
+
+    /* Payment Status */
+    .due-alert {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border: 1px solid #fecaca;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .paid-badge {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        border: 1px solid #6ee7b7;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    /* Filter Buttons */
+    .filter-btn {
+        border-radius: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        border: 1px solid #e5e7eb;
+        background: white;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .filter-btn:hover {
+        border-color: var(--primary);
+        background-color: var(--primary-light);
+    }
+
+    .filter-btn.active {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    /* Stat Cards */
+    .stat-icon {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Product Type Colors */
+    .bg-primary-light { background-color: var(--primary-light) !important; }
+    .bg-success-light { background-color: var(--success-light) !important; }
+    .bg-warning-light { background-color: var(--warning-light) !important; }
+    .bg-danger-light { background-color: var(--danger-light) !important; }
+    .bg-info-light { background-color: var(--info-light) !important; }
+
+    .border-primary { border-left-color: var(--primary) !important; }
+    .border-success { border-left-color: var(--success) !important; }
+    .border-warning { border-left-color: var(--warning) !important; }
+    .border-danger { border-left-color: var(--danger) !important; }
+    .border-info { border-left-color: var(--info) !important; }
+
+    /* Customer Row States */
+    .customer-row {
+        transition: all 0.2s ease;
+    }
+
+    .customer-row:hover {
+        background-color: #f9fafb;
+    }
+
+    .payment-due {
+        border-left: 3px solid var(--danger);
+        background-color: #fef2f2;
+    }
+
+    .new-customer {
+        border-left: 3px solid var(--info);
+        background-color: #eff6ff;
+    }
+
+    .inactive-customer {
+        opacity: 0.6;
+    }
+
+    /* Insights Cards */
+    .insight-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* Table Container */
+    .table-container {
+        background: white;
+        border-radius: 0.75rem;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+    }
+
+    /* Pagination */
+    .pagination .page-link {
+        border-radius: 0.5rem;
+        margin: 0 0.125rem;
+        border: 1px solid #e5e7eb;
+        color: #4b5563;
+        min-width: 2.5rem;
+        height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pagination .page-item.active .page-link {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 1rem !important;
+        }
+        
+        .avatar-circle {
+            width: 2rem;
+            height: 2rem;
+            font-size: 0.75rem;
+        }
+        
+        .action-btn {
+            width: 2rem;
+            height: 2rem;
+            font-size: 0.75rem;
+        }
+        
+        #customersTable {
+            font-size: 0.875rem;
+        }
+        
+        #customersTable thead th,
+        #customersTable tbody td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+
+    /* Scrollbar Styling */
+    .table-responsive::-webkit-scrollbar {
+        height: 6px;
+        width: 6px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+
+    /* Animation */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .customer-row {
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Dropdown Menus */
+    .dropdown-menu {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        padding: 0.5rem;
+    }
+
+    .dropdown-item {
+        border-radius: 0.25rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+
+    .dropdown-item:hover {
+        background-color: #f9fafb;
+    }
+    
+    /* Badge Styles */
+    .badge {
+        font-size: 0.6875rem;
+        font-weight: 500;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+    }
+
+    /* Form Controls */
+    .form-control, .form-select {
+        border-radius: 0.5rem;
+        border: 1px solid #d1d5db;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    /* Alert Messages */
+    .alert {
+        border-radius: 0.5rem;
+        border: 1px solid transparent;
+        padding: 1rem 1.25rem;
+    }
+
+    .alert-success {
+        background-color: #d1fae5;
+        border-color: #a7f3d0;
+        color: #065f46;
+    }
+
+    .alert-danger {
+        background-color: #fee2e2;
+        border-color: #fecaca;
+        color: #991b1b;
+    }
+</style>
+
+<!-- Toast Notification Container -->
+<div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 10001; width: 350px;"></div>
 
 <!-- Include Delete Confirmation Modal -->
 <x-delete-confirmation-modal />
 
-<style>
-/* Modern Color System */
-:root {
-    --primary: #4361ee;
-    --secondary: #6c757d;
-    --success: #06d6a0;
-    --warning: #ffd166;
-    --danger: #ef476f;
-    --info: #118ab2;
-    --purple: #7209b7;
-    --teal: #06d6a0;
-    --indigo: #3a0ca3;
-    --pink: #f72585;
-    --light: #f8f9fa;
-    --dark: #212529;
-    
-    /* Light variants */
-    --primary-light: rgba(67, 97, 238, 0.1);
-    --success-light: rgba(6, 214, 160, 0.1);
-    --warning-light: rgba(255, 209, 102, 0.1);
-    --danger-light: rgba(239, 71, 111, 0.1);
-    --info-light: rgba(17, 138, 178, 0.1);
-    --purple-light: rgba(114, 9, 183, 0.1);
-    --teal-light: rgba(6, 214, 160, 0.1);
-    --indigo-light: rgba(58, 12, 163, 0.1);
-    --pink-light: rgba(247, 37, 133, 0.1);
-}
-
-/* Enhanced Card Styling */
-.card {
-    border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
-}
-
-.hover-lift {
-    transition: all 0.3s ease;
-}
-
-.hover-lift:hover {
-    transform: translateY(-5px);
-}
-
-/* Stat Icons */
-.stat-icon {
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-}
-
-.stat-icon:hover {
-    transform: scale(1.1);
-}
-
-/* Customer Avatar */
-.avatar-circle {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1.2rem;
-    background: linear-gradient(135deg, var(--primary) 0%, #3a0ca3 100%);
-    color: white;
-    box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
-}
-
-.customer-avatar {
-    position: relative;
-}
-
-.new-badge {
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { transform: translate(-50%, -50%) scale(1); }
-    50% { transform: translate(-50%, -50%) scale(1.1); }
-    100% { transform: translate(-50%, -50%) scale(1); }
-}
-
-/* Product Cards - Color Variations */
-.product-card {
-    border-radius: 10px;
-    border-left: 4px solid;
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
-
-.product-card:hover {
-    transform: translateX(5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
-}
-
-/* Color Classes for Products */
-.bg-primary-light { background-color: var(--primary-light) !important; }
-.bg-success-light { background-color: var(--success-light) !important; }
-.bg-warning-light { background-color: var(--warning-light) !important; }
-.bg-danger-light { background-color: var(--danger-light) !important; }
-.bg-info-light { background-color: var(--info-light) !important; }
-.bg-purple-light { background-color: var(--purple-light) !important; }
-.bg-teal-light { background-color: var(--teal-light) !important; }
-.bg-indigo-light { background-color: var(--indigo-light) !important; }
-.bg-pink-light { background-color: var(--pink-light) !important; }
-
-.border-primary { border-color: var(--primary) !important; }
-.border-success { border-color: var(--success) !important; }
-.border-warning { border-color: var(--warning) !important; }
-.border-danger { border-color: var(--danger) !important; }
-.border-info { border-color: var(--info) !important; }
-.border-purple { border-color: var(--purple) !important; }
-.border-teal { border-color: var(--teal) !important; }
-.border-indigo { border-color: var(--indigo) !important; }
-.border-pink { border-color: var(--pink) !important; }
-
-.text-primary { color: var(--primary) !important; }
-.text-success { color: var(--success) !important; }
-.text-warning { color: var(--warning) !important; }
-.text-danger { color: var(--danger) !important; }
-.text-info { color: var(--info) !important; }
-.text-purple { color: var(--purple) !important; }
-.text-teal { color: var(--teal) !important; }
-.text-indigo { color: var(--indigo) !important; }
-.text-pink { color: var(--pink) !important; }
-
-/* Product Icon */
-.product-icon .icon-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-}
-
-/* Table Styling */
-.table {
-    --bs-table-bg: transparent;
-}
-
-.table th {
-    background-color: #f8fafc;
-    border-bottom: 2px solid #e2e8f0;
-    font-weight: 600;
-    color: #64748b;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 1.2rem 0.75rem;
-}
-
-.table td {
-    padding: 1.2rem 0.75rem;
-    vertical-align: top;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-/* Customer Row States */
-.customer-row {
-    transition: all 0.3s ease;
-    border-left: 4px solid transparent;
-}
-
-.customer-row:hover {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-left-color: var(--primary);
-    box-shadow: inset 4px 0 0 var(--primary);
-}
-
-.payment-due {
-    background: linear-gradient(135deg, #fff5f7 0%, #fed7e2 100%);
-    border-left-color: var(--danger) !important;
-}
-
-.payment-due:hover {
-    background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%);
-}
-
-.new-customer {
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    border-left-color: var(--info) !important;
-}
-
-.new-customer:hover {
-    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-}
-
-.inactive-customer {
-    opacity: 0.7;
-    background-color: #f8f9fa;
-}
-
-/* Action Buttons */
-.action-btn {
-    width: 60px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0.75rem 0;
-}
-
-.action-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-/* Customer Name Link */
-.customer-link:hover .customer-name {
-    color: var(--primary) !important;
-    text-decoration: underline;
-}
-
-/* Badge Styling */
-.badge-sm {
-    font-size: 0.7rem;
-    padding: 0.3rem 0.6rem;
-    font-weight: 500;
-}
-
-.tier-badge {
-    animation: glow 2s infinite alternate;
-}
-
-@keyframes glow {
-    from { box-shadow: 0 0 5px rgba(255, 193, 7, 0.5); }
-    to { box-shadow: 0 0 10px rgba(255, 193, 7, 0.8); }
-}
-
-/* Icon Circles */
-.icon-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-}
-
-/* Status Items */
-.status-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    margin-top: 0.5rem;
-}
-
-.status-item.danger {
-    background-color: var(--danger-light);
-    color: var(--danger);
-}
-
-.status-item.info {
-    background-color: var(--info-light);
-    color: var(--info);
-}
-
-/* Bill Amount Animation */
-.bill-amount h3 {
-    transition: all 0.3s ease;
-}
-
-.bill-amount:hover h3 {
-    transform: scale(1.05);
-    color: var(--success) !important;
-}
-
-/* Filter Buttons */
-.filter-btn {
-    border-radius: 20px;
-    padding: 0.5rem 1rem;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.filter-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.filter-btn.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-}
-
-/* Due Alert */
-.due-alert {
-    animation: shake 0.5s ease-in-out;
-    border-left: 4px solid var(--danger);
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-3px); }
-    75% { transform: translateX(3px); }
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .card-body {
-        padding: 1rem !important;
-    }
-    
-    .avatar-circle {
-        width: 40px;
-        height: 40px;
-        font-size: 1rem;
-    }
-    
-    .product-card {
-        margin-bottom: 0.5rem;
-    }
-    
-    .action-btn {
-        width: 50px;
-        padding: 0.5rem 0;
-    }
-    
-    .table-responsive {
-        font-size: 0.85rem;
-    }
-}
-
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-/* Empty State */
-.empty-state-icon {
-    opacity: 0.3;
-}
-
-/* Pagination Styling */
-.pagination .page-link {
-    border-radius: 8px;
-    margin: 0 2px;
-    border: 1px solid #e2e8f0;
-    color: #64748b;
-    font-weight: 500;
-}
-
-.pagination .page-item.active .page-link {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: white;
-}
-
-/* Insight Icons */
-.insight-icon {
-    transition: all 0.3s ease;
-}
-
-.insight-icon:hover {
-    transform: rotate(15deg) scale(1.1);
-}
-
-/* Tooltip Customization */
-.tooltip {
-    --bs-tooltip-bg: var(--primary);
-    --bs-tooltip-border-radius: 8px;
-}
-
-/* Loading Animation */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.customer-row {
-    animation: fadeIn 0.5s ease-out forwards;
-}
-</style>
-
 <script>
+    // Toast Notification Function
+    function showToast(title, message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer');
+        
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            background: ${type === 'success' ? '#d4edda' : type === 'error' ? '#f8d7da' : '#d1ecf1'};
+            border-left: 4px solid ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8'};
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            max-width: 350px;
+        `;
+        
+        toast.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h6 style="margin: 0 0 0.25rem 0; color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#0c5460'};">${title}</h6>
+                    <p style="margin: 0; font-size: 0.875rem; color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#0c5460'};">${message}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 1.25rem; font-weight: bold; color: #000; opacity: 0.5; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // Animate in
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(0)';
+        }, 10);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (toast.parentNode) toast.remove();
+                }, 300);
+            }
+        }, 5000);
+    }
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -1349,74 +1277,75 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Delete Customer with modal confirmation
+    // Handle toggle status button clicks
     document.body.addEventListener('click', function(e) {
-        const delBtn = e.target.closest('.delete-customer-btn');
-        if (!delBtn) return;
-        
-<<<<<<< HEAD
-        // Handle toggle status button clicks
-        document.querySelectorAll('.toggle-status-btn').forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                const cpId = this.getAttribute('data-cp-id');
-                const productName = this.getAttribute('data-product-name');
-                const customerName = this.getAttribute('data-customer-name');
-                const currentStatus = this.getAttribute('data-current-status');
-                const form = document.getElementById(`toggle-status-form-${cpId}`);
-                
-                const action = form.getAttribute('action');
-                const newStatus = currentStatus === 'active' ? 'pause' : 'resume';
-                
-                // Show confirmation dialog
+        const toggleBtn = e.target.closest('.toggle-status-btn');
+        if (toggleBtn) {
+            e.preventDefault();
+            
+            const cpId = toggleBtn.getAttribute('data-cp-id');
+            const productName = toggleBtn.getAttribute('data-product-name');
+            const customerName = toggleBtn.getAttribute('data-customer-name');
+            const currentStatus = toggleBtn.getAttribute('data-current-status');
+            const form = document.getElementById(`toggle-status-form-${cpId}`);
+            
+            const newStatus = currentStatus === 'active' ? 'pause' : 'resume';
+            
+            // Show confirmation modal
+            if (typeof showDeleteModal !== 'undefined') {
+                const message = `Are you sure you want to <strong>${newStatus}</strong> "<strong>${productName}</strong>" for "<strong>${customerName}</strong>"?`;
+                showDeleteModal(message, null, null, function() {
+                    // Trigger form submission which will be handled by our custom handler
+                    const event = new Event('submit', { cancelable: true, bubbles: true });
+                    form.dispatchEvent(event);
+                });
+            } else {
+                // Fallback to browser confirm if modal not available
                 if (confirm(`Are you sure you want to ${newStatus} "${productName}" for "${customerName}"?`)) {
-                    // Submit the form
+                    // Trigger form submission which will be handled by our custom handler
+                    const event = new Event('submit', { cancelable: true, bubbles: true });
+                    form.dispatchEvent(event);
+                }
+            }
+            return;
+        }
+        
+        // Handle delete button clicks
+        const delBtn = e.target.closest('.delete-btn');
+        if (delBtn) {
+            e.preventDefault();
+            
+            const productName = delBtn.getAttribute('data-product-name');
+            const customerName = delBtn.getAttribute('data-customer-name');
+            const action = delBtn.getAttribute('data-action');
+            
+            // Show confirmation modal
+            if (typeof showDeleteModal !== 'undefined') {
+                const message = `Are you sure you want to <strong>delete</strong> "<strong>${productName}</strong>" for "<strong>${customerName}</strong>"? This action cannot be undone.`;
+                showDeleteModal(message, action, null, null);
+            } else {
+                // Fallback to browser confirm if modal not available
+                if (confirm(`Are you sure you want to delete "${productName}" for "${customerName}"? This action cannot be undone.`)) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = action;
+                    
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = '_token';
+                    csrfInput.value = csrfToken;
+                    
+                    const methodInput = document.createElement('input');
+                    methodInput.type = 'hidden';
+                    methodInput.name = '_method';
+                    methodInput.value = 'DELETE';
+                    
+                    form.appendChild(csrfInput);
+                    form.appendChild(methodInput);
+                    document.body.appendChild(form);
                     form.submit();
                 }
-            });
-        });
-        
-        // Modal event listeners
-        confirmDeleteBtn.addEventListener('click', executeDelete);
-        cancelDeleteBtn.addEventListener('click', hideDeleteModal);
-=======
-        const customerId = delBtn.getAttribute('data-customer-id');
-        const customerName = delBtn.getAttribute('data-customer-name');
->>>>>>> 96d5fc991d2e6b3b7ad7b0a0d189c69526fd58e8
-        
-        const message = `Are you sure you want to delete <strong>"${customerName}"</strong>?<br><small class="text-danger">All associated invoices, payments, and product assignments will be permanently removed. This action cannot be undone.</small>`;
-        const action = `/admin/customers/${customerId}`;
-        const row = delBtn.closest('tr');
-        
-        if (typeof showDeleteModal === 'function') {
-            showDeleteModal(message, action, row, function() {
-                // Show success message and reload
-                setTimeout(() => {
-                    location.reload();
-                }, 500);
-            });
-        } else {
-            if (confirm(`Are you sure you want to delete "${customerName}"? All associated data will be permanently removed.`)) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = action;
-                
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = csrfToken;
-                
-                const methodInput = document.createElement('input');
-                methodInput.type = 'hidden';
-                methodInput.name = '_method';
-                methodInput.value = 'DELETE';
-                
-                form.appendChild(csrfInput);
-                form.appendChild(methodInput);
-                document.body.appendChild(form);
-                form.submit();
             }
         }
     });
@@ -1441,9 +1370,75 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Add loading state to form submissions
+    // Save original button text for toggle buttons
+    document.querySelectorAll('form[id^="toggle-status-form-"] button[type="submit"]').forEach(button => {
+        button.dataset.originalText = button.innerHTML;
+    });
+    
+    // Add loading state to form submissions and handle response
     document.querySelectorAll('form').forEach(form => {
-        form.addEventListener('submit', function() {
+        form.addEventListener('submit', function(e) {
+            // Check if this is our toggle status form
+            if (this.id && this.id.startsWith('toggle-status-form-')) {
+                e.preventDefault();
+                
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+                }
+                
+                const formData = new FormData(this);
+                const action = this.action || window.location.href;
+                
+                fetch(action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success message
+                        if (typeof showToast !== 'undefined') {
+                            showToast('Success', data.message || 'Status updated successfully', 'success');
+                        }
+                        
+                        // Reload page to reflect changes
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        // Show error message
+                        if (typeof showToast !== 'undefined') {
+                            showToast('Error', data.message || 'Failed to update status', 'error');
+                        }
+                        
+                        // Re-enable button
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = submitBtn.dataset.originalText || '<i class="fas fa-pause me-1"></i>Pause';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (typeof showToast !== 'undefined') {
+                        showToast('Error', 'An error occurred while updating status', 'error');
+                    }
+                    
+                    // Re-enable button
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = submitBtn.dataset.originalText || '<i class="fas fa-pause me-1"></i>Pause';
+                    }
+                });
+                
+                return;
+            }
+            
+            // Default loading state for other forms
             const submitBtn = this.querySelector('button[type="submit"]');
             if (submitBtn) {
                 submitBtn.disabled = true;

@@ -26,15 +26,17 @@ Route::get('/login', function () {
     return redirect()->route('admin.login');
 })->name('login');
 
-// Customer Authentication Routes
-Route::get('/customer/login', [CustomerController::class, 'showLoginForm'])->name('customer.login');
-Route::post('/customer/login', [CustomerController::class, 'login'])->name('customer.login.submit');
-Route::post('/customer/logout', [CustomerController::class, 'logout'])->name('customer.logout');
+Route::middleware('web')->group(function () {
+    // Customer Authentication Routes
+    Route::get('/customer/login', [CustomerController::class, 'showLoginForm'])->name('customer.login');
+    Route::post('/customer/login', [CustomerController::class, 'login'])->name('customer.login.submit');
+    Route::post('/customer/logout', [CustomerController::class, 'logout'])->name('customer.logout');
 
-// Admin Authentication Routes
-Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('admin.login');
-Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login.submit');
-Route::post('/admin/logout', [AuthController::class, 'logout'])->name('admin.logout');
+    // Admin Authentication Routes
+    Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('admin.login');
+    Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login.submit');
+    Route::post('/admin/logout', [AuthController::class, 'logout'])->name('admin.logout');
+});
 
 // Admin Protected Routes - SINGLE CLEAN GROUP
 Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(function () {

@@ -151,9 +151,16 @@ class Customer extends Model
         );
     }
 
-    public function payments(): HasMany
+    public function payments(): HasManyThrough
     {
-        return $this->hasMany(Payment::class, 'c_id');
+        return $this->hasManyThrough(
+            Payment::class,           // Final model
+            CustomerProduct::class,   // Intermediate model
+            'c_id',                   // Foreign key on customer_to_products table
+            'cp_id',                  // Foreign key on payments table
+            'c_id',                   // Local key on customers table
+            'cp_id'                   // Local key on customer_to_products table
+        );
     }
 
     public function unpaidInvoices(): HasManyThrough

@@ -68,6 +68,17 @@ class CustomerProductController extends Controller
             // Calculate total customers with products
             $totalCustomers = Customer::whereHas('customerProducts')->count();
             
+            // Calculate active customers
+            $activeCustomers = Customer::where('is_active', true)->count();
+            
+            // Calculate inactive customers
+            $inactiveCustomers = Customer::where('is_active', false)->count();
+            
+            // Calculate customers with due payments
+            $customersWithDue = Customer::whereHas('invoices', function($q) {
+                $q->whereIn('invoices.status', ['unpaid', 'partial'])->where('invoices.next_due', '>', 0);
+            })->count();
+            
             // Calculate active products count (already calculated above)
             $activeProducts = $totalActiveProducts;
             
@@ -99,6 +110,9 @@ class CustomerProductController extends Controller
                 'totalExpiredProducts', 
                 'totalPausedProducts',
                 'totalCustomers', 
+                'activeCustomers', 
+                'inactiveCustomers', 
+                'customersWithDue', 
                 'activeProducts', 
                 'monthlyRevenue', 
                 'renewalsDue'
