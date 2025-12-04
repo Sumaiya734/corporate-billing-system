@@ -168,29 +168,41 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex flex-wrap gap-2">
+                @php
+                    $currentFilter = request('filter');
+                @endphp
+                
                 <a href="{{ route('admin.customers.index') }}" 
-                   class="btn btn-sm btn-outline-primary {{ !request()->has('filter') ? 'active' : '' }}">
+                   class="btn btn-sm btn-outline-primary {{ !$currentFilter ? 'active' : '' }}">
                     <i class="fas fa-list me-1"></i>All Customers
+                    <span class="badge bg-primary ms-1">{{ $totalCustomers }}</span>
                 </a>
+                
                 <a href="{{ route('admin.customers.index', ['filter' => 'active']) }}" 
-                   class="btn btn-sm btn-outline-success">
+                   class="btn btn-sm btn-outline-success {{ $currentFilter === 'active' ? 'active' : '' }}">
                     <i class="fas fa-user-check me-1"></i>Active
+                    <span class="badge bg-success ms-1">{{ $activeCustomers }}</span>
                 </a>
+                
                 <a href="{{ route('admin.customers.index', ['filter' => 'inactive']) }}" 
-                   class="btn btn-sm btn-outline-secondary">
+                   class="btn btn-sm btn-outline-secondary {{ $currentFilter === 'inactive' ? 'active' : '' }}">
                     <i class="fas fa-user-slash me-1"></i>Inactive
+                    <span class="badge bg-secondary ms-1">{{ $inactiveCustomers }}</span>
                 </a>
+                
                 <a href="{{ route('admin.customers.index', ['filter' => 'with_due']) }}" 
-                   class="btn btn-sm btn-outline-danger">
+                   class="btn btn-sm btn-outline-danger {{ $currentFilter === 'with_due' ? 'active' : '' }}">
                     <i class="fas fa-exclamation-triangle me-1"></i>With Due
+                    <span class="badge bg-danger ms-1">{{ $customersWithDue }}</span>
                 </a>
-                <a href="{{ route('admin.customers.index', ['filter' => 'with_addons']) }}" 
-                   class="btn btn-sm btn-outline-warning">
-                    <i class="fas fa-bolt me-1"></i>With Add-ons
-                </a>
+                
                 <a href="{{ route('admin.customers.index', ['filter' => 'new']) }}" 
-                   class="btn btn-sm btn-outline-info">
+                   class="btn btn-sm btn-outline-info {{ $currentFilter === 'new' ? 'active' : '' }}">
                     <i class="fas fa-star me-1"></i>New This Week
+                    @php
+                        $newCustomersCount = \App\Models\Customer::where('created_at', '>=', now()->subDays(7))->count();
+                    @endphp
+                    <span class="badge bg-info ms-1">{{ $newCustomersCount }}</span>
                 </a>
             </div>
         </div>
@@ -470,18 +482,16 @@
                                         </a>
 
                                         <!-- Toggle Status -->
-                                        <form action="{{ route('admin.customers.toggle-status', $customer->c_id) }}" 
-                                            method="POST" 
-                                            class="d-inline">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button type="submit" 
-                                                class="btn btn-sm btn-outline-{{ $customer->is_active ? 'warning' : 'success' }} action-btn" 
-                                                title="{{ $customer->is_active ? 'Deactivate' : 'Activate' }}"
-                                                data-bs-toggle="tooltip">
-                                                <i class="fas fa-{{ $customer->is_active ? 'pause' : 'play' }}"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" 
+                                            class="btn btn-sm btn-outline-{{ $customer->is_active ? 'warning' : 'success' }} action-btn toggle-status-btn" 
+                                            title="{{ $customer->is_active ? 'Deactivate' : 'Activate' }}"
+                                            data-bs-toggle="tooltip"
+                                            data-customer-id="{{ $customer->c_id }}"
+                                            data-customer-name="{{ $customer->name }}"
+                                            data-current-status="{{ $customer->is_active ? 'active' : 'inactive' }}"
+                                            data-action-url="{{ route('admin.customers.toggle-status', $customer->c_id) }}">
+                                            <i class="fas fa-{{ $customer->is_active ? 'pause' : 'play' }}"></i>
+                                        </button>
 
                                         <!-- Delete Customer -->
                                         <!-- <button type="button" 
@@ -547,6 +557,44 @@
 
 <!-- Include Delete Confirmation Modal -->
 <x-delete-confirmation-modal />
+
+<!-- Toggle Status Confirmation Modal -->
+<div class="modal fade" id="toggleStatusModal" tabindex="-1" aria-labelledby="toggleStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="toggleStatusModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Confirm Status Change
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="toggleStatusMessage" class="mb-0"></p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmToggleStatus">
+                    <i class="fas fa-check me-2"></i>Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div id="statusToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMessage">
+                <!-- Toast message will be inserted here -->
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
 
 <style>
 /* Professional Table Styling */
@@ -723,10 +771,46 @@
 }
 
 /* Quick Filter Buttons */
-.btn-group-sm > .btn.active {
+.btn-sm.btn-outline-primary.active {
     background-color: #0d6efd;
     border-color: #0d6efd;
     color: white;
+}
+
+.btn-sm.btn-outline-success.active {
+    background-color: #198754;
+    border-color: #198754;
+    color: white;
+}
+
+.btn-sm.btn-outline-secondary.active {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+.btn-sm.btn-outline-danger.active {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.btn-sm.btn-outline-info.active {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+    color: white;
+}
+
+.btn-sm.btn-outline-warning.active {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+}
+
+/* Badge inside active buttons */
+.btn-sm.active .badge {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
 }
 
 /* Empty State */
@@ -848,6 +932,132 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Toggle Status Modal
+    let currentToggleUrl = '';
+    let currentToggleRow = null;
+    
+    document.body.addEventListener('click', function(e) {
+        const toggleBtn = e.target.closest('.toggle-status-btn');
+        if (!toggleBtn) return;
+        
+        const customerId = toggleBtn.getAttribute('data-customer-id');
+        const customerName = toggleBtn.getAttribute('data-customer-name');
+        const currentStatus = toggleBtn.getAttribute('data-current-status');
+        const actionUrl = toggleBtn.getAttribute('data-action-url');
+        
+        currentToggleUrl = actionUrl;
+        currentToggleRow = toggleBtn.closest('tr');
+        
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        const statusText = newStatus === 'active' ? 'activate' : 'deactivate';
+        const statusColor = newStatus === 'active' ? 'success' : 'warning';
+        
+        const message = `Are you sure you want to <strong class="text-${statusColor}">${statusText}</strong> customer <strong>"${customerName}"</strong>?`;
+        
+        document.getElementById('toggleStatusMessage').innerHTML = message;
+        
+        const modal = new bootstrap.Modal(document.getElementById('toggleStatusModal'));
+        modal.show();
+    });
+    
+    // Confirm Toggle Status
+    document.getElementById('confirmToggleStatus').addEventListener('click', function() {
+        const btn = this;
+        const originalHtml = btn.innerHTML;
+        
+        // Show loading state
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+        
+        // Create form and submit
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = currentToggleUrl;
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = csrfToken;
+        
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'PATCH';
+        
+        form.appendChild(csrfInput);
+        form.appendChild(methodInput);
+        document.body.appendChild(form);
+        
+        // Submit form via fetch to handle response
+        fetch(currentToggleUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            body: new FormData(form)
+        })
+        .then(response => {
+            // Check if response is ok
+            if (response.ok || response.redirected) {
+                // Hide modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('toggleStatusModal'));
+                modal.hide();
+                
+                // Show success toast
+                showToast('Status updated successfully!', 'success');
+                
+                // Reload page after short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                throw new Error('Failed to update status');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            
+            // Hide modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('toggleStatusModal'));
+            modal.hide();
+            
+            // Show error toast
+            showToast('Failed to update status. Please try again.', 'error');
+            
+            // Reset button
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        })
+        .finally(() => {
+            document.body.removeChild(form);
+        });
+    });
+    
+    // Toast function
+    function showToast(message, type = 'success') {
+        const toastEl = document.getElementById('statusToast');
+        const toastBody = document.getElementById('toastMessage');
+        
+        // Set toast style based on type
+        toastEl.classList.remove('bg-success', 'bg-danger', 'text-white');
+        if (type === 'success') {
+            toastEl.classList.add('bg-success', 'text-white');
+            toastBody.innerHTML = `<i class="fas fa-check-circle me-2"></i>${message}`;
+        } else {
+            toastEl.classList.add('bg-danger', 'text-white');
+            toastBody.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${message}`;
+        }
+        
+        const toast = new bootstrap.Toast(toastEl, {
+            autohide: true,
+            delay: 3000
+        });
+        toast.show();
+    }
 });
 </script>
 @endsection
