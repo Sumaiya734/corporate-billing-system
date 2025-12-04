@@ -29,8 +29,10 @@ class Customer extends Model
         'id_type',
         'id_number',
         'is_active',
+        'profile_picture',
+        'id_card_front',
+        'id_card_back',
     ];
-
     protected $casts = [
         'is_active' => 'boolean',
         'created_at' => 'datetime',

@@ -78,11 +78,10 @@ class CustomerController extends Controller
             'id_number' => 'nullable|string|max:100',
             'customer_id' => 'nullable|string|max:50|unique:customers,customer_id',
             'is_active' => 'nullable|boolean',
-            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'id_card_front' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'id_card_back' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+            'id_card_front' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+            'id_card_back' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
         ]);
-
         try {
             // Handle profile picture upload
             if ($request->hasFile('profile_picture')) {
@@ -164,13 +163,12 @@ class CustomerController extends Controller
             'id_type' => 'nullable|string|in:NID,Passport,Driving License',
             'id_number' => 'nullable|string|max:100',
             'is_active' => 'nullable|boolean',
-            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'id_card_front' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'id_card_back' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+            'id_card_front' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+            'id_card_back' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'remove_profile_picture' => 'nullable|boolean',
             'remove_id_cards' => 'nullable|boolean',
         ]);
-
         try {
             // Handle profile picture removal
             if ($request->has('remove_profile_picture') && $customer->profile_picture) {

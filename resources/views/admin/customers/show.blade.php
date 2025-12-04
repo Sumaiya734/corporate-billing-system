@@ -119,6 +119,19 @@
                     <h5 class="fw-bold text-primary mb-3">
                         <i class="fas fa-user me-2"></i>Personal Information
                     </h5>
+                    <div class="text-center mb-4">
+                        @if($customer->profile_picture)
+                            <img src="{{ asset('storage/' . $customer->profile_picture) }}" 
+                                 alt="{{ $customer->name }}" 
+                                 class="rounded-circle mb-3"
+                                 style="width: 180px; height: 180px; object-fit: cover; border: 3px solid #f1f3f4;">
+                        @else
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-3" 
+                                 style="width: 180px; height: 180px; font-size: 4rem; border: 3px solid #f1f3f4;">
+                                {{ strtoupper(substr($customer->name, 0, 1)) }}
+                            </div>
+                        @endif
+                    </div>
                     <table class="table table-sm table-borderless mb-0">
                         <tbody>
                             <tr>

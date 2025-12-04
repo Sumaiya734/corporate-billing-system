@@ -310,9 +310,16 @@
                                 <td class="ps-4">
                                     <div class="d-flex align-items-start">
                                         <div class="customer-avatar me-3 position-relative">
-                                            <div class="avatar-circle bg-primary text-white">
-                                                {{ $initialLetter }}
-                                            </div>
+                                            @if($customer->profile_picture)
+                                                <img src="{{ asset('storage/' . $customer->profile_picture) }}" 
+                                                     alt="{{ $customer->name }}" 
+                                                     class="avatar-circle bg-primary text-white"
+                                                     style="width: 64px; height: 64px; object-fit: cover;">
+                                            @else
+                                                <div class="avatar-circle bg-primary text-white" style="width: 64px; height: 64px; font-size: 1.5rem;">
+                                                    {{ $initialLetter }}
+                                                </div>
+                                            @endif
                                             @if($isNew)
                                                 <span class="position-absolute top-0 start-100 translate-middle badge bg-info" style="font-size: 0.5rem;">
                                                     NEW
@@ -463,7 +470,7 @@
                                         </a>
 
                                         <!-- Toggle Status -->
-                                        <!-- <form action="{{ route('admin.customers.toggle-status', $customer->c_id) }}" 
+                                        <form action="{{ route('admin.customers.toggle-status', $customer->c_id) }}" 
                                             method="POST" 
                                             class="d-inline">
                                             @csrf
@@ -474,16 +481,16 @@
                                                 data-bs-toggle="tooltip">
                                                 <i class="fas fa-{{ $customer->is_active ? 'pause' : 'play' }}"></i>
                                             </button>
-                                        </form> -->
+                                        </form>
 
                                         <!-- Delete Customer -->
-                                        <button type="button" 
+                                        <!-- <button type="button" 
                                                 class="btn btn-sm btn-outline-danger action-btn delete-customer-btn"
                                                 title="Delete Customer"
                                                 data-customer-id="{{ $customer->c_id }}"
                                                 data-customer-name="{{ $customer->name }}">
                                             <i class="fas fa-trash"></i>
-                                        </button>
+                                        </button> -->
 
                                     </div>
                                 </td>
@@ -799,7 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Sort table by priority (due payments first, then new customers)
+    // Sort table by priority (new customers first, then due payments, then others)
     function sortTableByPriority() {
         const table = document.getElementById('customersTable');
         if (!table) return;
@@ -813,13 +820,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const aIsNew = a.getAttribute('data-is-new') === 'yes';
             const bIsNew = b.getAttribute('data-is-new') === 'yes';
 
-            // Due payments first
-            if (aHasDue && !bHasDue) return -1;
-            if (!aHasDue && bHasDue) return 1;
-            
-            // Then new customers
+            // New customers first
             if (aIsNew && !bIsNew) return -1;
             if (!aIsNew && bIsNew) return 1;
+            
+            // Then customers with due payments
+            if (aHasDue && !bHasDue) return -1;
+            if (!aHasDue && bHasDue) return 1;
             
             return 0;
         });
