@@ -94,12 +94,12 @@ class CustomerProduct extends Model
 
     public function getFormattedTotalAmountAttribute(): string
     {
-        return '৳' . number_format($this->total_amount, 0);
+        return '৳' . number_format($this->total_amount, 2);
     }
 
     public function getFormattedMonthlyPriceAttribute(): string
     {
-        return '৳' . number_format($this->product_price, 0);
+        return '৳' . number_format($this->product_price, 2);
     }
 
     public function getBillingCycleTextAttribute(): string

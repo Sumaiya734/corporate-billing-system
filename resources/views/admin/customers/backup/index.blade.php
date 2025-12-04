@@ -3,27 +3,27 @@
 @section('title', 'All Customers - NetBill BD')
 
 @section('content')
-<div class="p-4">
+
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="h3 mb-1 text-dark">
+            <h2 class="h3 mb-1 text-dark fw-bold">
                 <i class="fas fa-users me-2 text-primary"></i>Customer Management
             </h2>
             <p class="text-muted mb-0">Manage all customer accounts, products, and billing information</p>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ route('admin.customers.create') }}" class="btn btn-primary">
+            <a href="{{ route('admin.customers.create') }}" class="btn btn-primary shadow-sm">
                 <i class="fas fa-user-plus me-2"></i>Add Customer
             </a>
-            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-success">
+            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-success shadow-sm">
                 <i class="fas fa-user-tag me-2"></i>Assign product
             </a>
             <div class="dropdown">
-                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown">
                     <i class="fas fa-cog me-2"></i>Actions
                 </button>
-                <ul class="dropdown-menu">
+                <ul class="dropdown-menu dropdown-menu-end shadow">
                     <li><a class="dropdown-item" href="#"><i class="fas fa-download me-2"></i>Export CSV</a></li>
                     <li><a class="dropdown-item" href="#"><i class="fas fa-print me-2"></i>Print Report</a></li>
                     <li><hr class="dropdown-divider"></li>
@@ -35,7 +35,7 @@
 
     <!-- Flash Messages -->
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center shadow-sm" role="alert">
             <i class="fas fa-check-circle me-2 fs-5"></i>
             <div class="flex-grow-1">{{ session('success') }}</div>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -43,7 +43,7 @@
     @endif
 
     @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center shadow-sm" role="alert">
             <i class="fas fa-exclamation-circle me-2 fs-5"></i>
             <div class="flex-grow-1">{{ session('error') }}</div>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -51,65 +51,77 @@
     @endif
 
     <!-- Customer Statistics Dashboard -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start-4 border-start-primary shadow-sm h-100">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total Customers</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $totalCustomers }}</div>
+    <div class="row mb-4 g-3">
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 hover-lift">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2 fw-semibold">Total Customers</h6>
+                            <h2 class="mb-0 fw-bold text-dark">{{ $totalCustomers }}</h2>
+                            <p class="text-success small mb-0 mt-1">
+                                <i class="fas fa-arrow-up me-1"></i>12% increase
+                            </p>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-users fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start-4 border-start-success shadow-sm h-100">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <div class="text-xs fw-bold text-success text-uppercase mb-1">Active Customers</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $activeCustomers }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-user-check fa-2x text-gray-300"></i>
+                        <div class="stat-icon bg-primary-light rounded-circle p-3">
+                            <i class="fas fa-users fa-2x text-primary"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start-4 border-start-warning shadow-sm h-100">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <div class="text-xs fw-bold text-warning text-uppercase mb-1">Inactive Customers</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $inactiveCustomers }}</div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 hover-lift">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2 fw-semibold">Active Customers</h6>
+                            <h2 class="mb-0 fw-bold text-dark">{{ $activeCustomers }}</h2>
+                            <p class="text-success small mb-0 mt-1">
+                                <i class="fas fa-user-check me-1"></i>{{ number_format(($activeCustomers/$totalCustomers)*100, 1) }}% active rate
+                            </p>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-user-slash fa-2x text-gray-300"></i>
+                        <div class="stat-icon bg-success-light rounded-circle p-3">
+                            <i class="fas fa-user-check fa-2x text-success"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start-4 border-start-danger shadow-sm h-100">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <div class="text-xs fw-bold text-danger text-uppercase mb-1">Due Payments</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $customersWithDue }}</div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 hover-lift">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2 fw-semibold">Due Payments</h6>
+                            <h2 class="mb-0 fw-bold text-dark">{{ $customersWithDue }}</h2>
+                            <p class="text-danger small mb-0 mt-1">
+                                <i class="fas fa-exclamation-circle me-1"></i>Requires attention
+                            </p>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        <div class="stat-icon bg-danger-light rounded-circle p-3">
+                            <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 hover-lift">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2 fw-semibold">Total Revenue</h6>
+                            <h2 class="mb-0 fw-bold text-dark">৳{{ number_format($customers->sum('total_monthly_bill') ?? 0, 2) }}</h2>
+                            <p class="text-success small mb-0 mt-1">
+                                <i class="fas fa-chart-line me-1"></i>Monthly recurring
+                            </p>
+                        </div>
+                        <div class="stat-icon bg-warning-light rounded-circle p-3">
+                            <i class="fas fa-money-bill-wave fa-2x text-warning"></i>
                         </div>
                     </div>
                 </div>
@@ -118,41 +130,55 @@
     </div>
 
     <!-- Search and Filter Section -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white py-3">
-            <h5 class="card-title mb-0">
-                <i class="fas fa-filter me-2 text-primary"></i>Search & Filter
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+            <h5 class="card-title mb-0 d-flex align-items-center">
+                <i class="fas fa-filter me-2 text-primary"></i>Advanced Search & Filter
             </h5>
         </div>
-        <div class="card-body">
+        <div class="card-body p-4">
             <form method="GET" action="{{ route('admin.customers.index') }}" id="searchForm">
                 <div class="row g-3">
-                    <div class="col-lg-6">
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0">
-                                <i class="fas fa-search text-muted"></i>
+                    <div class="col-lg-5">
+                        <label class="form-label small fw-semibold text-muted mb-1">Search Customers</label>
+                        <div class="input-group shadow-sm">
+                            <span class="input-group-text bg-white border-end-0">
+                                <i class="fas fa-search text-primary"></i>
                             </span>
                             <input type="text" 
                                    name="search" 
-                                   class="form-control border-start-0" 
-                                   placeholder="Search customers by name, email, phone, or ID..." 
+                                   class="form-control border-start-0 border-end-0" 
+                                   placeholder="Name, email, phone, customer ID..." 
                                    value="{{ request('search') }}"
                                    id="searchInput">
+                            <button class="input-group-text bg-white border-start-0" type="button" id="clearSearch">
+                                <i class="fas fa-times text-muted"></i>
+                            </button>
                         </div>
                     </div>
                     <div class="col-lg-3">
-                        <select name="status" class="form-select" id="statusFilter">
+                        <label class="form-label small fw-semibold text-muted mb-1">Status Filter</label>
+                        <select name="status" class="form-select shadow-sm" id="statusFilter">
                             <option value="">All Status</option>
                             <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active Only</option>
                             <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive Only</option>
                         </select>
                     </div>
-                    <div class="col-lg-3">
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary flex-fill">
+                    <div class="col-lg-2">
+                        <label class="form-label small fw-semibold text-muted mb-1">Sort By</label>
+                        <select name="sort" class="form-select shadow-sm">
+                            <option value="name">Name A-Z</option>
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="due">Due Amount</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 d-flex align-items-end">
+                        <div class="d-flex gap-2 w-100">
+                            <button type="submit" class="btn btn-primary flex-fill shadow-sm">
                                 <i class="fas fa-search me-2"></i>Search
                             </button>
-                            @if(request()->has('search') || request()->has('status'))
+                            @if(request()->has('search') || request()->has('status') || request()->has('sort'))
                                 <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary" title="Clear Filters">
                                     <i class="fas fa-times"></i>
                                 </a>
@@ -205,27 +231,31 @@
     </div>
 
     <!-- Customers Table -->
-    <div class="card shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-            <h5 class="card-title mb-0 d-flex align-items-center">
-                <i class="fas fa-list me-2 text-primary"></i>Customer Directory
-                <span class="badge bg-primary ms-2">{{ $customers->total() }}</span>
-                @if($customersWithDue > 0)
-                    <span class="badge bg-danger ms-1">{{ $customersWithDue }} Due</span>
-                @endif
-            </h5>
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
             <div class="d-flex align-items-center">
-                <span class="text-muted small me-3">
-                    Showing {{ $customers->firstItem() ?? 0 }}-{{ $customers->lastItem() ?? 0 }} of {{ $customers->total() }}
-                </span>
+                <div class="me-3">
+                    <i class="fas fa-list text-primary fs-4"></i>
+                </div>
+                <div>
+                    <h5 class="card-title mb-0 fw-bold">Customer Directory</h5>
+                    <p class="text-muted small mb-0">Showing {{ $customers->total() }} customers in system</p>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <div class="text-end">
+                    <div class="text-muted small">Page {{ $customers->currentPage() }} of {{ $customers->lastPage() }}</div>
+                    <div class="text-primary fw-semibold">{{ $customers->count() }} visible</div>
+                </div>
                 <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown">
                         <i class="fas fa-cog me-1"></i>Options
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-columns me-2"></i>Customize Columns</a></li>
+                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-columns me-2"></i>Customize View</a></li>
                         <li><a class="dropdown-item" href="#"><i class="fas fa-download me-2"></i>Export Data</a></li>
                         <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>Quick Preview</a></li>
                         <li><a class="dropdown-item" href="#"><i class="fas fa-sync-alt me-2"></i>Refresh</a></li>
                     </ul>
                 </div>
@@ -255,16 +285,15 @@
                             @foreach($customers as $customer)
                             @php
                                 // Get active products with relationships
-                                $activeproducts = $customer->customerproducts
+                                $activeProducts = $customer->customerproducts
                                     ->where('status', 'active')
                                     ->where('is_active', 1)
                                     ->filter(function($cp) {
-                                        return $cp->product !== null; // Only include products that exist
+                                        return $cp->product !== null;
                                     });
                                 
                                 // Calculate monthly total using custom price if available
-                                $monthlyTotal = $activeproducts->sum(function($cp) {
-                                    // Use custom price if set, otherwise use product's monthly price
+                                $monthlyTotal = $activeProducts->sum(function($cp) {
                                     $price = $cp->product_price ?? $cp->product->monthly_price ?? 0;
                                     return $price;
                                 });
@@ -279,19 +308,14 @@
                                     ->sum(DB::raw('invoices.total_amount - invoices.received_amount'));
                                 
                                 $isNew = $customer->created_at->gt(now()->subDays(7));
-                                
-                                // Determine row styling
-                                $rowClasses = [];
-                                if ($hasDue) $rowClasses[] = 'payment-due-row';
-                                if ($isNew) $rowClasses[] = 'new-customer-row';
-                                if (!$customer->is_active) $rowClasses[] = 'inactive-customer-row';
-                                
-                                $rowClass = implode(' ', $rowClasses);
                                 $initialLetter = strtoupper(substr($customer->name, 0, 1));
+                                
+                                // Determine customer tier based on monthly total
+                             
                             @endphp
                             <tr class="customer-row {{ $hasDue ? 'payment-due' : '' }} {{ $isNew ? 'new-customer' : '' }} {{ !$customer->is_active ? 'inactive-customer' : '' }}">
                                 
-                                <!-- Customer Information Column with Profile Picture -->
+                                <!-- Customer Information Column -->
                                 <td class="ps-4">
                                     <div class="d-flex align-items-start">
                                         <div class="customer-avatar me-3 position-relative">
@@ -299,10 +323,11 @@
                                                 {{ $initialLetter }}
                                             </div>
                                             @if($isNew)
-                                                <span class="position-absolute top-0 start-100 translate-middle badge bg-info" style="font-size: 0.5rem;">
+                                                <span class="new-badge position-absolute top-0 start-100 translate-middle badge bg-info rounded-pill" style="font-size: 0.6rem;">
                                                     NEW
                                                 </span>
                                             @endif
+                                           
                                         </div>
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center mb-2">
@@ -312,11 +337,12 @@
                                                 @if(!$customer->is_active)
                                                     <span class="badge bg-secondary badge-sm">Inactive</span>
                                                 @endif
+                                                
                                             </div>
                                             <div class="customer-details">
                                                 <div class="text-muted small mb-1">
                                                     <i class="fas fa-id-card me-1"></i>
-                                                    <span class="fw-medium">{{ $customer->customer_id }}</span>
+                                                    <span class="fw-medium customer-id">{{ $customer->customer_id }}</span>
                                                 </div>
                                                 <div class="text-muted small mb-1">
                                                     <i class="fas fa-envelope me-1"></i>
@@ -325,6 +351,12 @@
                                                 <div class="text-muted small">
                                                     <i class="fas fa-phone me-1"></i>
                                                     {{ $customer->phone ?? 'No phone' }}
+                                                    @if($customer->address)
+                                                        <span class="ms-3">
+                                                            <i class="fas fa-map-marker-alt me-1"></i>
+                                                            {{ Str::limit($customer->address, 20) }}
+                                                        </span>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </div>
@@ -361,26 +393,37 @@
 
                                 <!-- Billing Column -->
                                 <td class="text-center">
-                                    <div class="billing-info">
-                                        <div class="monthly-total">
-                                            <strong class="text-success fs-6">৳{{ number_format($monthlyTotal, 2) }}</strong>
-                                            <div class="text-muted small">Monthly</div>
+                                    <div class="billing-card">
+                                        <div class="monthly-bill text-center mb-3">
+                                            <div class="bill-amount">
+                                                <h3 class="mb-0 fw-bold text-success">৳{{ number_format($monthlyTotal, 2) }}</h3>
+                                                <small class="text-muted">Monthly Recurring</small>
+                                            </div>
                                         </div>
                                         
                                         @if($hasDue && $totalDue > 0)
-                                            <div class="due-amount mt-2">
-                                                <div class="alert alert-danger py-1 px-2 mb-0 border-0">
-                                                    <small class="fw-semibold">
-                                                        <i class="fas fa-exclamation-circle me-1"></i>
-                                                        ৳{{ number_format($totalDue, 2 ) }} due
-                                                    </small>
+                                            <div class="due-alert alert alert-danger border-0 shadow-sm py-2 px-3 mb-0">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <div>
+                                                        <i class="fas fa-exclamation-circle me-2"></i>
+                                                        <strong class="small">৳{{ number_format($totalDue, 2 ) }} Due</strong>
+                                                    </div>
+                                                    <a href="#" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
                                                 </div>
                                             </div>
                                         @elseif($monthlyTotal > 0)
-                                            <div class="payment-status mt-2">
-                                                <span class="badge bg-success badge-sm">
-                                                    <i class="fas fa-check me-1"></i>Paid
-                                                </span>
+                                            <div class="payment-status">
+                                                <div class="paid-badge bg-success-light text-success p-2 rounded text-center">
+                                                    <i class="fas fa-check-circle me-1"></i>
+                                                    <small class="fw-semibold">All Paid</small>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div class="no-bill text-muted small">
+                                                <i class="fas fa-ban me-1"></i>
+                                                No billing
                                             </div>
                                         @endif
                                     </div>
@@ -388,26 +431,49 @@
 
                                 <!-- Status Column -->
                                 <td class="text-center">
-                                    <div class="status-indicators">
-                                        <span class="badge bg-{{ $customer->is_active ? 'success' : 'secondary' }} mb-1">
-                                            <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>
-                                            {{ $customer->is_active ? 'Active' : 'Inactive' }}
-                                        </span>
-                                        @if($hasDue)
-                                            <div class="due-indicator small text-danger">
-                                                <i class="fas fa-clock me-1"></i>Payment Due
-                                            </div>
-                                        @endif
+                                    <div class="status-container">
+                                        <div class="status-badge mb-2">
+                                            <span class="badge bg-{{ $customer->is_active ? 'success' : 'secondary' }} rounded-pill px-3 py-2">
+                                                <i class="fas fa-{{ $customer->is_active ? 'check-circle' : 'pause-circle' }} me-1"></i>
+                                                {{ $customer->is_active ? 'Active' : 'Inactive' }}
+                                            </span>
+                                        </div>
+                                        <div class="status-indicators">
+                                            @if($hasDue)
+                                                <div class="status-item danger">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    <small class="fw-semibold">Payment Due</small>
+                                                </div>
+                                            @endif
+                                            @if($isNew)
+                                                <div class="status-item info">
+                                                    <i class="fas fa-bolt me-1"></i>
+                                                    <small class="fw-semibold">New Customer</small>
+                                                </div>
+                                            @endif
+                                        </div>
                                     </div>
                                 </td>
 
                                 <!-- Registration Column -->
                                 <td class="text-center">
-                                    <div class="registration-info">
-                                        <div class="date fw-semibold text-dark">
-                                            {{ $customer->created_at->format('M j, Y') }}
+                                    <div class="registration-card text-center">
+                                        <div class="date-display">
+                                            <div class="date-icon mb-2">
+                                                <div class="icon-circle bg-primary-light text-primary">
+                                                    <i class="fas fa-calendar-alt"></i>
+                                                </div>
+                                            </div>
+                                            <div class="date-info">
+                                                <div class="date fw-bold text-dark">
+                                                    {{ $customer->created_at->format('M j, Y') }}
+                                                </div>
+                                                <small class="text-muted d-block">{{ $customer->created_at->diffForHumans() }}</small>
+                                                <!-- <div class="duration-badge bg-light text-muted mt-2 p-1 rounded">
+                                                    <small>{{ $customer->created_at->diffInDays(now()) }} days</small>
+                                                </div> -->
+                                            </div>
                                         </div>
-                                        <small class="text-muted">{{ $customer->created_at->diffForHumans() }}</small>
                                     </div>
                                 </td>
 
@@ -465,7 +531,7 @@
 
                 <!-- Pagination -->
                 @if ($customers->hasPages())
-                    <div class="card-footer bg-white border-top-0 pt-3">
+                    <div class="card-footer bg-white border-top-0 pt-4 pb-3">
                         <div class="d-flex justify-content-between align-items-center flex-wrap">
                             <div class="text-muted small mb-2 mb-md-0">
                                 Showing <strong>{{ $customers->firstItem() }}</strong> to <strong>{{ $customers->lastItem() }}</strong> of <strong>{{ $customers->total() }}</strong> customers
@@ -480,10 +546,10 @@
             @else
                 <!-- Empty State -->
                 <div class="text-center py-5">
-                    <div class="empty-state-icon mb-3">
-                        <i class="fas fa-users fa-4x text-muted opacity-25"></i>
+                    <div class="empty-state-icon mb-4">
+                        <i class="fas fa-users fa-5x text-muted opacity-10"></i>
                     </div>
-                    <h4 class="text-muted mb-2">No Customers Found</h4>
+                    <h3 class="text-muted mb-3">No Customers Found</h3>
                     <p class="text-muted mb-4">
                         @if(request()->has('search') || request()->has('status') || request()->has('filter'))
                             No customers match your current search criteria.
@@ -491,12 +557,12 @@
                             Get started by adding your first customer to the system.
                         @endif
                     </p>
-                    <div class="d-flex justify-content-center gap-2">
-                        <a href="{{ route('admin.customers.create') }}" class="btn btn-primary">
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="{{ route('admin.customers.create') }}" class="btn btn-primary btn-lg shadow-sm">
                             <i class="fas fa-user-plus me-2"></i>Add First Customer
                         </a>
                         @if(request()->has('search') || request()->has('status') || request()->has('filter'))
-                            <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary">
+                            <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary btn-lg shadow-sm">
                                 <i class="fas fa-times me-2"></i>Clear Filters
                             </a>
                         @endif
@@ -505,7 +571,54 @@
             @endif
         </div>
     </div>
-</div>
+
+    <!-- Customer Insights Footer -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h6 class="mb-3 fw-semibold">
+                        <i class="fas fa-chart-pie me-2 text-primary"></i>Customer Insights
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <div class="d-flex align-items-center">
+                                <div class="insight-icon bg-primary-light rounded-circle p-2 me-3">
+                                    <i class="fas fa-user-check text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="text-muted small">Most Common</div>
+                                    <div class="fw-bold">{{ $customers->count() > 0 ? $customers->first()->name : 'N/A' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <div class="d-flex align-items-center">
+                                <div class="insight-icon bg-success-light rounded-circle p-2 me-3">
+                                    <i class="fas fa-money-bill-wave text-success"></i>
+                                </div>
+                                <div>
+                                    <div class="text-muted small">Average Monthly Bill</div>
+                                    <div class="fw-bold">৳{{ number_format($customers->avg('total_monthly_bill') ?? 0, 2) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <div class="insight-icon bg-info-light rounded-circle p-2 me-3">
+                                    <i class="fas fa-chart-line text-info"></i>
+                                </div>
+                                <div>
+                                    <div class="text-muted small">Growth Rate</div>
+                                    <div class="fw-bold text-success">+12.5%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
 <!-- Include Delete Confirmation Modal -->
 <x-delete-confirmation-modal />
@@ -587,9 +700,9 @@
         box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
     }
 
-.customer-avatar {
-    position: relative;
-}
+    .customer-avatar {
+        position: relative;
+    }
 
     .new-badge {
         animation: pulse 2s infinite;
@@ -980,31 +1093,22 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    // Delete Customer with modal confirmation
-    document.body.addEventListener('click', function(e) {
-        const delBtn = e.target.closest('.delete-customer-btn');
-        if (!delBtn) return;
-        
-        const customerId = delBtn.getAttribute('data-customer-id');
-        const customerName = delBtn.getAttribute('data-customer-name');
-        
-        const message = `Are you sure you want to delete <strong>"${customerName}"</strong>?<br><small class="text-danger">All associated invoices, payments, and product assignments will be permanently removed. This action cannot be undone.</small>`;
-        const action = `/admin/customers/${customerId}`;
-        const row = delBtn.closest('tr');
-        
-        showDeleteModal(message, action, row, function() {
-            // Reload page after successful deletion to update stats
-            setTimeout(() => location.reload(), 500);
-        });
+    // Clear search input
+    document.getElementById('clearSearch')?.addEventListener('click', function() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('searchForm').submit();
     });
 
-    // Auto-submit form when status filter changes
-    const statusFilter = document.getElementById('statusFilter');
-    if (statusFilter) {
-        statusFilter.addEventListener('change', function() {
-            document.getElementById('searchForm').submit();
-        });
-    }
+    // Auto-submit form when filters change
+    const filters = ['statusFilter', 'sortSelect'];
+    filters.forEach(filterId => {
+        const filter = document.getElementById(filterId);
+        if (filter) {
+            filter.addEventListener('change', function() {
+                document.getElementById('searchForm').submit();
+            });
+        }
+    });
 
     // Real-time search with debounce
     let searchTimeout;
@@ -1013,10 +1117,10 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.addEventListener('input', function() {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
-                if (this.value.length >= 3 || this.value.length === 0) {
+                if (this.value.length >= 2 || this.value.length === 0) {
                     document.getElementById('searchForm').submit();
                 }
-            }, 500);
+            }, 300);
         });
     }
 
@@ -1084,7 +1188,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Add loading state to buttons
+    // Add loading state to form submissions
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function() {
             const submitBtn = this.querySelector('button[type="submit"]');
@@ -1093,6 +1197,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
             }
         });
+    });
+
+    // Filter button active state
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Handle customer activate/deactivate
+    document.querySelectorAll('form[action*="toggle-status"]').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const customerName = this.closest('tr').querySelector('.customer-name').textContent;
+            const isActive = !this.querySelector('button').classList.contains('text-success');
+            const action = isActive ? 'deactivate' : 'activate';
+            
+            if (confirm(`Are you sure you want to ${action} "${customerName}"?`)) {
+                this.submit();
+            }
+        });
+    });
+
+    // Calculate and show product count
+    document.querySelectorAll('.products-container').forEach(container => {
+        const productCards = container.querySelectorAll('.product-card');
+        if (productCards.length > 2) {
+            const moreText = container.querySelector('.text-center small');
+            if (moreText) {
+                moreText.textContent = `+${productCards.length - 2} more product${productCards.length - 2 > 1 ? 's' : ''}`;
+            }
+        }
     });
 });
 </script>

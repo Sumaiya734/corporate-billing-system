@@ -16,13 +16,13 @@
     </div>
 </div>
 
-<div class="page-body">
+<div class="container-fluid">
     <div class="row mb-4">
         <div class="col">
             <h1 class="page-title"><i class="fas fa-plus-circle me-2"></i>Assign Products to Customer</h1>
         </div>
         <div class="col-auto">
-            <a href="{{ route('admin.customer-to-products.index') }}" class="btn btn-outline-secondary">
+            <a href="{{ route('admin.customer-to-products.index') }}" class="btn btn-outline-secondary" data-action="navigate">
                 <i class="fas fa-arrow-left me-2"></i>Back to List
             </a>
         </div>
@@ -808,7 +808,7 @@
 
 @section('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function () {
     let productCount = 1;
     let productAmounts = {};
     let selectedProducts = new Set();
@@ -854,90 +854,62 @@
     }
 
     // Customer Search with Auto-filtering
-    let searchTimeout;
     customerSearch.addEventListener('input', function () {
-        const query = this.value.trim();
-        
-        // Clear previous timeout
-        clearTimeout(searchTimeout);
+        const query = this.value.trim().toLowerCase();
         
         if (query.length === 0) {
             customerResults.style.display = 'none';
-            customerResults.innerHTML = '';
+            // Reset all items to be visible for next search
+            document.querySelectorAll('.customer-result-item').forEach(item => {
+                item.style.display = 'block';
+            });
             return;
         }
-        
-        // Wait for user to stop typing before making request
-        searchTimeout = setTimeout(() => {
-            // Show loading indicator
-            customerResults.style.display = 'block';
-            customerResults.innerHTML = `
-                <div class="p-3 text-center text-muted">
-                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
-                    <div>Searching customers...</div>
-                </div>`;
+
+        customerResults.style.display = 'block';
+        let hasMatch = false;
+
+        document.querySelectorAll('.customer-result-item').forEach(item => {
+            const name = (item.dataset.customerName || '').toLowerCase();
+            const phone = (item.dataset.customerPhone || '').toLowerCase();
+            const email = (item.dataset.customerEmail || '').toLowerCase();
+            const custId = (item.dataset.customerCustomerid || '').toLowerCase();
+
+            const matches = name.includes(query) || phone.includes(query) || email.includes(query) || custId.includes(query);
             
-            // Use Laravel route helper to get the correct URL
-            const suggestionsUrl = "{{ route('admin.customers.suggestions') }}";
-            
-            // Make AJAX request to fetch customers
-            fetch(`${suggestionsUrl}?q=${encodeURIComponent(query)}`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        if (response.status === 401 || response.status === 403) {
-                            window.location.reload();
-                        }
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(customers => {
-                    if (customers.length === 0) {
-                        customerResults.innerHTML = `
-                            <div class="no-results-message p-3 text-center text-muted">
-                                <i class="fas fa-search fa-2x mb-2 opacity-50"></i>
-                                <div>No customers found for "<strong>${escapeHtml(query)}</strong>"</div>
-                                <small class="d-block mt-2">Try searching by name, phone, email, or ID</small>
-                            </div>`;
-                    } else {
-                        let html = '';
-                        customers.forEach(customer => {
-                            html += `
-                                <div class="customer-result-item"
-                                     data-customer-id="${customer.c_id}"
-                                     data-customer-name="${customer.name}"
-                                     data-customer-phone="${customer.phone || 'No phone'}"
-                                     data-customer-email="${customer.email || 'No email'}"
-                                     data-customer-customerid="${customer.customer_id}">
-                                    <div class="customer-name">${customer.name}</div>
-                                    <div class="customer-details">
-                                        ${customer.phone ? `<i class="fas fa-phone me-1"></i>${customer.phone} •` : ''}
-                                        <i class="fas fa-id-card me-1"></i>ID: ${customer.customer_id}
-                                        ${customer.email ? `• <i class="fas fa-envelope me-1"></i>${customer.email}` : ''}
-                                    </div>
-                                    <div class="customer-address small text-muted mt-1">
-                                        <i class="fas fa-map-marker-alt me-1"></i>
-                                        ${customer.address || 'No address provided'}
-                                    </div>
-                                </div>`;
-                        });
-                        customerResults.innerHTML = html;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching customers:', error);
-                    customerResults.innerHTML = `
-                        <div class="p-3 text-center text-danger">
-                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                            <div>Error loading customers. Please try again.</div>
-                        </div>`;
-                });
-        }, 300); // Debounce for 300ms
+            if (matches) {
+                item.style.display = 'block';
+                hasMatch = true;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // Show "no results" message if no matches
+        let noResultsMsg = customerResults.querySelector('.no-results-message');
+        if (!hasMatch) {
+            if (!noResultsMsg) {
+                noResultsMsg = document.createElement('div');
+                noResultsMsg.className = 'no-results-message p-3 text-center text-muted';
+                noResultsMsg.innerHTML = `
+                    <i class="fas fa-search fa-2x mb-2 opacity-50"></i>
+                    <div>No customers found for "<strong>${escapeHtml(query)}</strong>"</div>
+                    <small class="d-block mt-2">Try searching by name, phone, email, or ID</small>
+                `;
+                customerResults.appendChild(noResultsMsg);
+            } else {
+                noResultsMsg.innerHTML = `
+                    <i class="fas fa-search fa-2x mb-2 opacity-50"></i>
+                    <div>No customers found for "<strong>${escapeHtml(query)}</strong>"</div>
+                    <small class="d-block mt-2">Try searching by name, phone, email, or ID</small>
+                `;
+                noResultsMsg.style.display = 'block';
+            }
+        } else {
+            if (noResultsMsg) {
+                noResultsMsg.style.display = 'none';
+            }
+        }
     });
     
     // Helper function to escape HTML
@@ -1263,26 +1235,9 @@
 
     function checkExistingProducts(customerId, productId, index) {
         if (!customerId || !productId) return Promise.resolve(true);
-
-        const adminPos = window.location.pathname.indexOf('/admin/');
-        const basePath = window.location.pathname.substring(0, adminPos);
-        const url = `${window.location.origin}${basePath}/admin/customer-to-products/check-existing`;
-
-        return fetch(`${url}?customer_id=${customerId}&product_id=${productId}`, {
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    if (response.status === 401 || response.status === 403) {
-                        window.location.reload();
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
+        const baseUrl = '{{ url("/") }}';
+        return fetch(`${baseUrl}/admin/customer-to-products/check-existing?customer_id=${customerId}&product_id=${productId}`)
+            .then(r => r.json())
             .then(data => {
                 const select = document.querySelector(`.product-select[data-index="${index}"]`);
                 if (!select) return true;
@@ -1557,17 +1512,14 @@ async function updateInvoicePreview() {
         </div>`;
     
     try {
-        const adminPos = window.location.pathname.indexOf('/admin/');
-        const basePath = window.location.pathname.substring(0, adminPos);
-        const url = `${window.location.origin}${basePath}/admin/customer-to-products/preview-invoice-numbers`;
-
-        const response = await fetch(url, {
+        // Fetch real invoice numbers from server
+        const baseUrl = '{{ url("/") }}';
+        const response = await fetch(`${baseUrl}/admin/customer-to-products/preview-invoice-numbers`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 customer_id: customerIdInput.value,
@@ -1797,12 +1749,10 @@ function generateCustomerId() {
     const customerIdInput = document.getElementById('customer_id');
     
     if (nameInput && nameInput.value && phoneInput && phoneInput.value && customerIdInput && !customerIdInput.value) {
-        // Get current year's last 2 digits
-        const year = new Date().getFullYear().toString().slice(-2);
-        
-        // Generate sequential number (similar to the server-side logic)
-        const randomPart = Math.floor(1000 + Math.random() * 9000);
-        customerIdInput.value = `C-${year}-${randomPart}`;
+        const namePart = nameInput.value.split(' ')[0].toUpperCase().substring(0, 4);
+        const phonePart = phoneInput.value.slice(-4);
+        const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        customerIdInput.value = `CUST${namePart}${phonePart}${randomPart}`;
     }
 }
 </script>

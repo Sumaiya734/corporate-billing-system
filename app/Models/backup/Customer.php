@@ -29,6 +29,9 @@ class Customer extends Model
         'id_type',
         'id_number',
         'is_active',
+        'profile_picture',
+        'id_card_front',
+        'id_card_back',
     ];
 
     protected $casts = [
@@ -37,469 +40,227 @@ class Customer extends Model
         'updated_at' => 'datetime',
     ];
 
-        protected $appends = [
+    protected $appends = [
+        'initial_letter',
+        'full_address',
+        'total_monthly_charge',
+        'total_due',
+        'has_regular_product',
+        'has_special_products',
+        'has_due_payments',
+        'status_badge',
+        'latest_invoice',
+        'product_info',
+    ];
 
-            'initial_letter',
+    // ==================== RELATIONSHIPS ====================
 
-            'full_address',
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
-            'total_monthly_charge',
+    /**
+     * FIXED: Use HasMany through CustomerToProduct instead of BelongsToMany
+     */
+    public function customerproducts(): HasMany
+    {
+        return $this->hasMany(Customerproduct::class, 'c_id', 'c_id');
+    }
 
-            'total_due',
+    /**
+     * FIXED: Get products through customerproducts relationship
+     */
+    public function products()
+    {
+        return $this->hasManyThrough(
+            product::class,
+            Customerproduct::class,
+            'c_id', // Foreign key on customer_to_products table
+            'p_id', // Foreign key on products table
+            'c_id', // Local key on customers table
+            'p_id'  // Local key on customer_to_products table
+        );
+    }
 
-            'has_regular_product',
+    /**
+     * FIXED: Active customer products
+     */
+    public function activeCustomerproducts(): HasMany
+    {
+        return $this->customerproducts()
+            ->where('status', 'active')
+            ->where('is_active', true);
+    }
 
-            'has_special_products',
+    /**
+     * FIXED: Active products through active customer products
+     */
+    public function activeproducts()
+    {
+        return $this->hasManyThrough(
+            product::class,
+            Customerproduct::class,
+            'c_id',
+            'p_id',
+            'c_id',
+            'p_id'
+        )->where('customer_to_products.status', 'active')
+         ->where('customer_to_products.is_active', true);
+    }
 
-            'has_due_payments',
+    /**
+     * FIXED: Regular product
+     */
+    public function regularproduct(): ?product
+    {
+        return $this->activeproducts()
+            ->whereHas('type', function($query) {
+                $query->where('name', 'regular');
+            })
+            ->first();
+    }
 
-            'status_badge',
+    /**
+     * FIXED: Special products
+     */
+    public function specialproducts()
+    {
+        return $this->activeproducts()
+            ->whereHas('type', function($query) {
+                $query->where('name', 'special');
+            })
+            ->get();
+    }
 
-            'latest_invoice',
+    public function mainproduct(): ?product
+    {
+        return $this->regularproduct();
+    }
 
-            'product_info',
+    // FIXED: Updated invoices relationship to use customer_to_products as intermediate table
+    public function invoices(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Invoice::class,
+            Customerproduct::class,
+            'c_id',        // Foreign key on customer_to_products table
+            'cp_id',       // Foreign key on invoices table
+            'c_id',        // Local key on customers table
+            'cp_id'        // Local key on customer_to_products table
+        );
+    }
 
-            'active_products_count',
+    public function payments(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Payment::class,           // Final model
+            CustomerProduct::class,   // Intermediate model
+            'c_id',                   // Foreign key on customer_to_products table
+            'cp_id',                  // Foreign key on payments table
+            'c_id',                   // Local key on customers table
+            'cp_id'                   // Local key on customer_to_products table
+        );
+    }
 
-            'total_paid',
+    public function unpaidInvoices(): HasManyThrough
+    {
+        return $this->invoices()->whereIn('invoices.status', ['unpaid', 'partial']);
+    }
 
-            'due_amount',
+    // ==================== SCOPES ====================
 
-        ];
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
 
-    
+    public function scopeInactive(Builder $query): Builder
+    {
+        return $query->where('is_active', false);
+    }
 
-        // ==================== RELATIONSHIPS ====================
-
-    
-
-        public function user(): BelongsTo
-
-        {
-
-            return $this->belongsTo(User::class, 'user_id');
-
+    public function scopeSearch(Builder $query, ?string $search): Builder
+    {
+        if (!$search) {
+            return $query;
         }
 
-    
-
-        /**
-
-         * FIXED: Use HasMany through CustomerToProduct instead of BelongsToMany
-
-         */
-
-        public function customerproducts(): HasMany
-
-        {
-
-            return $this->hasMany(Customerproduct::class, 'c_id', 'c_id');
-
-        }
-
-    
-
-        /**
-
-         * FIXED: Get products through customerproducts relationship
-
-         */
-
-        public function products()
-
-        {
-
-            return $this->hasManyThrough(
-
-                product::class,
-
-                Customerproduct::class,
-
-                'c_id', // Foreign key on customer_to_products table
-
-                'p_id', // Foreign key on products table
-
-                'c_id', // Local key on customers table
-
-                'p_id'  // Local key on customer_to_products table
-
-            );
-
-        }
-
-    
-
-        /**
-
-         * FIXED: Active customer products
-
-         */
-
-        public function activeCustomerproducts(): HasMany
-
-        {
-
-            return $this->customerproducts()
-
-                ->where('status', 'active')
-
-                ->where('is_active', true);
-
-        }
-
-    
-
-        /**
-
-         * FIXED: Active products through active customer products
-
-         */
-
-        public function activeproducts()
-
-        {
-
-            return $this->hasManyThrough(
-
-                product::class,
-
-                Customerproduct::class,
-
-                'c_id',
-
-                'p_id',
-
-                'c_id',
-
-                'p_id'
-
-            )->where('customer_to_products.status', 'active')
-
-             ->where('customer_to_products.is_active', true);
-
-        }
-
-    
-
-        /**
-
-         * FIXED: Regular product
-
-         */
-
-        public function regularproduct(): ?product
-
-        {
-
-            return $this->activeproducts()
-
-                ->whereHas('type', function($query) {
-
-                    $query->where('name', 'regular');
-
-                })
-
-                ->first();
-
-        }
-
-    
-
-        /**
-
-         * FIXED: Special products
-
-         */
-
-        public function specialproducts()
-
-        {
-
-            return $this->activeproducts()
-
-                ->whereHas('type', function($query) {
-
-                    $query->where('name', 'special');
-
-                })
-
-                ->get();
-
-        }
-
-    
-
-        public function mainproduct(): ?product
-
-        {
-
-            return $this->regularproduct();
-
-        }
-
-    
-
-        // FIXED: Updated invoices relationship to use customer_to_products as intermediate table
-
-        public function invoices(): HasManyThrough
-
-        {
-
-            return $this->hasManyThrough(
-
-                Invoice::class,
-
-                Customerproduct::class,
-
-                'c_id',        // Foreign key on customer_to_products table
-
-                'cp_id',       // Foreign key on invoices table
-
-                'c_id',        // Local key on customers table
-
-                'cp_id'        // Local key on customer_to_products table
-
-            );
-
-        }
-
-    
-
-        public function payments(): HasMany
-
-        {
-
-            return $this->hasMany(Payment::class, 'c_id');
-
-        }
-
-    
-
-        public function unpaidInvoices(): HasManyThrough
-
-        {
-
-            return $this->invoices()->whereIn('invoices.status', ['unpaid', 'partial']);
-
-        }
-
-    
-
-        // ==================== SCOPES ====================
-
-    
-
-        public function scopeActive(Builder $query): Builder
-
-        {
-
-            return $query->where('is_active', true);
-
-        }
-
-    
-
-        public function scopeInactive(Builder $query): Builder
-
-        {
-
-            return $query->where('is_active', false);
-
-        }
-
-    
-
-        public function scopeSearch(Builder $query, ?string $search): Builder
-
-        {
-
-            if (!$search) {
-
-                return $query;
-
-            }
-
-    
-
-            return $query->where(function ($q) use ($search) {
-
-                $q->where('name', 'like', "%{$search}%")
-
-                  ->orWhere('email', 'like', "%{$search}%")
-
-                  ->orWhere('phone', 'like', "%{$search}%")
-
-                  ->orWhere('customer_id', 'like', "%{$search}%");
-
+        return $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%")
+              ->orWhere('phone', 'like', "%{$search}%")
+              ->orWhere('customer_id', 'like', "%{$search}%");
+        });
+    }
+
+    public function scopeWithDuePayments(Builder $query): Builder
+    {
+        return $query->whereHas('invoices', function ($q) {
+            $q->whereIn('invoices.status', ['unpaid', 'partial'])
+              ->whereRaw('invoices.total_amount > COALESCE(invoices.received_amount, 0)');
+        });
+    }
+
+    /**
+     * FIXED: Scope for customers with specific product
+     */
+    public function scopeWithproduct(Builder $query, int $productId): Builder
+    {
+        return $query->whereHas('customerproducts', function ($q) use ($productId) {
+            $q->where('p_id', $productId)
+              ->where('status', 'active')
+              ->where('is_active', true);
+        });
+    }
+
+    /**
+     * FIXED: Scope for customers with regular product
+     */
+    public function scopeWithRegularproduct(Builder $query): Builder
+    {
+        return $query->whereHas('customerproducts.product', function ($q) {
+            $q->whereHas('type', function($query) {
+                $query->where('name', 'regular');
             });
+        })->whereHas('customerproducts', function ($q) {
+            $q->where('status', 'active')
+              ->where('is_active', true);
+        });
+    }
 
-        }
-
-    
-
-        public function scopeWithDuePayments(Builder $query): Builder
-
-        {
-
-            return $query->whereHas('invoices', function ($q) {
-
-                $q->whereIn('invoices.status', ['unpaid', 'partial'])
-
-                  ->whereRaw('invoices.total_amount > COALESCE(invoices.received_amount, 0)');
-
+    /**
+     * FIXED: Scope for customers with special products
+     */
+    public function scopeWithSpecialproducts(Builder $query): Builder
+    {
+        return $query->whereHas('customerproducts.product', function ($q) {
+            $q->whereHas('type', function($query) {
+                $query->where('name', 'special');
             });
-
-        }
-
-    
-
-        /**
-
-         * FIXED: Scope for customers with specific product
-
-         */
-
-        public function scopeWithproduct(Builder $query, int $productId): Builder
-
-        {
-
-            return $query->whereHas('customerproducts', function ($q) use ($productId) {
-
-                $q->where('p_id', $productId)
-
-                  ->where('status', 'active')
-
-                  ->where('is_active', true);
-
-            });
-
-        }
-
-    
-
-        /**
-
-         * FIXED: Scope for customers with regular product
-
-         */
-
-        public function scopeWithRegularproduct(Builder $query): Builder
-
-        {
-
-            return $query->whereHas('customerproducts.product', function ($q) {
-
-                $q->whereHas('type', function($query) {
-
-                    $query->where('name', 'regular');
-
-                });
-
-            })->whereHas('customerproducts', function ($q) {
-
-                $q->where('status', 'active')
-
-                  ->where('is_active', true);
-
-            });
-
-        }
-
-    
-
-        /**
-
-         * FIXED: Scope for customers with special products
-
-         */
-
-        public function scopeWithSpecialproducts(Builder $query): Builder
-
-        {
-
-            return $query->whereHas('customerproducts.product', function ($q) {
-
-                $q->whereHas('type', function($query) {
-
-                    $query->where('name', 'special');
-
-                });
-
-            })->whereHas('customerproducts', function ($q) {
-
-                $q->where('status', 'active')
-
-                  ->where('is_active', true);
-
-            });
-
-        }
-
-    
-
-        /**
-
-         * FIXED: Scope for customers with no products
-
-         */
-
-        public function scopeWithNoproduct(Builder $query): Builder
-
-        {
-
-            return $query->whereDoesntHave('customerproducts', function ($q) {
-
-                $q->where('status', 'active')
-
-                  ->where('is_active', true);
-
-            });
-
-        }
-
-    
-
-        // ==================== ACCESSORS ====================
-
-    
-
-        public function getActiveProductsCountAttribute(): int
-
-        {
-
-            return $this->activeCustomerproducts()->count();
-
-        }
-
-    
-
-        public function getTotalPaidAttribute(): float
-
-        {
-
-            return (float) $this->invoices()->sum('received_amount');
-
-        }
-
-    
-
-        public function getDueAmountAttribute(): float
-
-        {
-
-            return $this->total_due;
-
-        }
-
-    
-
-        public function getInitialLetterAttribute(): string
-
-        {
-
-            return strtoupper(substr(trim($this->name), 0, 1));
-
-        }
+        })->whereHas('customerproducts', function ($q) {
+            $q->where('status', 'active')
+              ->where('is_active', true);
+        });
+    }
+
+    /**
+     * FIXED: Scope for customers with no products
+     */
+    public function scopeWithNoproduct(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('customerproducts', function ($q) {
+            $q->where('status', 'active')
+              ->where('is_active', true);
+        });
+    }
+
+    // ==================== ACCESSORS ====================
+
+    public function getInitialLetterAttribute(): string
+    {
+        return strtoupper(substr(trim($this->name), 0, 1));
+    }
 
     public function getFullAddressAttribute(): string
     {

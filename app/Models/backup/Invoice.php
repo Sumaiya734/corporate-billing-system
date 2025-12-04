@@ -184,17 +184,17 @@ class Invoice extends Model
 
     public function getFormattedTotalAmountAttribute(): string
     {
-        return '৳' . number_format((float) $this->total_amount, 0);
+        return '৳' . number_format((float) $this->total_amount, 2);
     }
 
     public function getFormattedReceivedAmountAttribute(): string
     {
-        return '৳' . number_format((float) $this->received_amount, 0);
+        return '৳' . number_format((float) $this->received_amount, 2);
     }
 
     public function getFormattedDueAmountAttribute(): string
     {
-        return '৳' . number_format($this->due_amount, 0);
+        return '৳' . number_format($this->due_amount, 2);
     }
 
     public function getDaysOverdueAttribute(): int

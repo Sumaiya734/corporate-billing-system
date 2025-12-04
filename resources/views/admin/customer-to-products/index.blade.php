@@ -9,8 +9,9 @@
             <h1 class="page-title"><i class="fas fa-user-tag me-2"></i>Customer to Products</h1>
         </div>
         <div class="col-auto">
+
             <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-primary" style="margin:10px">
-                <i class="fas fa-plus me-2"></i>Assign Products
+         <i class="fas fa-plus me-2"></i>Assign Products
             </a>
         </div>
     </div>
@@ -899,6 +900,21 @@
                 hideDeleteModal();
             }
         });
+
+
+        // Handle assign products link click to ensure navigation
+        const assignLink = document.getElementById('assign-products-link');
+        if (assignLink) {
+            assignLink.addEventListener('click', function(e) {
+                // Allow the default behavior but ensure navigation happens
+                const href = this.getAttribute('href');
+                if (href) {
+                    window.location.href = href;
+                    return false;
+                }
+            });
+        }
+>>>>>>> 83ead503e426be14c37c53ab8f72f706b000f589
     });
 </script>
 @endsection

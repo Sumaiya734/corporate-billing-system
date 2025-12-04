@@ -1,24 +1,111 @@
 @extends('layouts.admin')
 
-@section('title', 'Customer Details - ' . $customer->name)
+@section('title', 'Customer Profile - ' . $customer->name)
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid p-4">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="h3 mb-1 text-dark fw-bold">
-                <i class="fas fa-user me-2 text-primary"></i>{{ $customer->name }}
-            </h2>
-            <p class="text-muted mb-0">Customer ID: {{ $customer->customer_id }}</p>
+            <h2 class="fw-bold mb-1">Customer Profile</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('admin.customers.index') }}">Customers</a></li>
+                    <li class="breadcrumb-item active">{{ $customer->name }}</li>
+                </ol>
+            </nav>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Back to List
+            <a href="{{ route('admin.customers.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Customers
             </a>
             <a href="{{ route('admin.customers.edit', $customer->c_id) }}" class="btn btn-primary">
-                <i class="fas fa-edit me-2"></i>Edit Customer
+                <i class="fas fa-edit me-2"></i>Edit Profile
             </a>
+            <a href="{{ route('admin.customer-to-products.assign', ['customer_id' => $customer->c_id]) }}" class="btn btn-success">
+                <i class="fas fa-user-tag me-2"></i>Assign Product
+            </a>
+            
+            <form action="{{ route('admin.customers.toggle-status', $customer->c_id) }}" method="POST" class="d-inline">
+                @csrf
+                @method('PATCH')
+                <button type="submit" class="btn btn-{{ $customer->is_active ? 'warning' : 'success' }}">
+                    <i class="fas fa-{{ $customer->is_active ? 'ban' : 'check' }} me-2"></i>
+                    {{ $customer->is_active ? 'Deactivate' : 'Activate' }}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-primary bg-opacity-10 text-primary rounded p-3">
+                                <i class="fas fa-file-invoice fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Invoices</h6>
+                            <h3 class="mb-0">{{ $totalInvoices }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-success bg-opacity-10 text-success rounded p-3">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Paid</h6>
+                            <h3 class="mb-0">৳{{ number_format($totalPaid, 2) }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-danger bg-opacity-10 text-danger rounded p-3">
+                                <i class="fas fa-exclamation-circle fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Due</h6>
+                            <h3 class="mb-0">৳{{ number_format($totalDue, 2) }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-info bg-opacity-10 text-info rounded p-3">
+                                <i class="fas fa-box fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Active Products</h6>
+                            <h3 class="mb-0">{{ $customer->customerproducts->where('status', 'active')->count() }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -198,30 +285,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- ID Information -->
-                        @if($customer->id_type || $customer->id_number)
-                        <div class="col-12">
-                            <div class="info-card bg-light p-3 rounded">
-                                <h6 class="text-muted mb-3"><i class="fas fa-id-card me-2"></i>Identification Details</h6>
-                                <div class="row">
-                                    @if($customer->id_type)
-                                    <div class="col-md-6 mb-2">
-                                        <label class="text-muted small d-block">ID Type</label>
-                                        <p class="mb-0 fw-semibold">{{ ucfirst($customer->id_type) }}</p>
-                                    </div>
-                                    @endif
-                                    
-                                    @if($customer->id_number)
-                                    <div class="col-md-6 mb-2">
-                                        <label class="text-muted small d-block">ID Number</label>
-                                        <p class="mb-0 fw-semibold">{{ $customer->id_number }}</p>
-                                    </div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        @endif
                     </div>
                 </div>
             </div>
@@ -231,13 +294,13 @@
     <!-- Products Section -->
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fas fa-box me-2"></i>Active Products ({{ $customer->customerproducts->where('is_active', true)->count() }})</h5>
-            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-sm btn-primary">
+            <h5 class="mb-0"><i class="fas fa-box me-2"></i>Active Products ({{ $customer->customerproducts->where('status', 'active')->count() }})</h5>
+            <a href="{{ route('admin.customer-to-products.assign', ['customer_id' => $customer->c_id]) }}" class="btn btn-sm btn-primary">
                 <i class="fas fa-plus me-1"></i>Assign New Product
             </a>
         </div>
         <div class="card-body">
-            @if($customer->customerproducts->where('is_active', true)->count() > 0)
+            @if($customer->customerproducts->where('status', 'active')->count() > 0)
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead class="table-light">
@@ -251,7 +314,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($customer->customerproducts->where('is_active', true) as $cp)
+                            @foreach($customer->customerproducts->where('status', 'active') as $cp)
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center">
@@ -262,7 +325,7 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="fw-bold text-success">৳{{ number_format($cp->product_price ?? $cp->product->monthly_price ?? 0, 2) }}</td>
+                                <td class="fw-bold text-success">৳{{ number_format($cp->custom_price ?? $cp->product->monthly_price ?? 0, 2) }}</td>
                                 <td>
                                     <span class="badge bg-info">
                                         {{ $cp->billing_cycle_months ?? 1 }} Month(s)
@@ -274,19 +337,25 @@
                                     </span>
                                 </td>
                                 <td>
-                                    {{ $cp->assign_date ? \Carbon\Carbon::parse($cp->assign_date)->format('M d, Y') : 'N/A' }}
                                     @if($cp->assign_date)
+                                        {{ \Carbon\Carbon::parse($cp->assign_date)->format('M d, Y') }}
                                         <div class="small text-muted">{{ \Carbon\Carbon::parse($cp->assign_date)->diffForHumans() }}</div>
+                                    @else
+                                        N/A
                                     @endif
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-warning" title="Edit">
+                                        <a href="{{ route('admin.customer-to-products.edit', $cp->cp_id) }}" class="btn btn-outline-warning" title="Edit">
                                             <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-outline-danger" title="Remove">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        </a>
+                                        <form action="{{ route('admin.customer-to-products.destroy', $cp->cp_id) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger" title="Remove" onclick="return confirm('Are you sure you want to remove this product?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>
@@ -301,7 +370,7 @@
                     </div>
                     <h5 class="text-muted mb-2">No Active Products</h5>
                     <p class="text-muted mb-4">This customer doesn't have any active products assigned yet.</p>
-                    <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-primary">
+                    <a href="{{ route('admin.customer-to-products.assign', ['customer_id' => $customer->c_id]) }}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Assign First Product
                     </a>
                 </div>
@@ -309,70 +378,74 @@
         </div>
     </div>
 
-    <!-- Invoices Section -->
-    <div class="card shadow-sm mb-4">
+    <!-- Recent Invoices -->
+    <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-file-invoice me-2"></i>Recent Invoices ({{ $customer->invoices->count() }})</h5>
-            <a href="{{ route('admin.invoices.create') }}" class="btn btn-sm btn-primary">
+            <a href="{{ route('admin.invoices.create', ['customer_id' => $customer->c_id]) }}" class="btn btn-sm btn-primary">
                 <i class="fas fa-plus me-1"></i>Create Invoice
             </a>
         </div>
         <div class="card-body">
-            @if($customer->invoices->count() > 0)
+            @if($recentInvoices->count() > 0)
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Invoice #</th>
+                                <th>Invoice ID</th>
+                                <th>Issue Date</th>
+                                <th>Due Date</th>
                                 <th>Amount</th>
                                 <th>Paid</th>
-                                <th>Due</th>
                                 <th>Status</th>
-                                <th>Date</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($customer->invoices->take(10) as $invoice)
-                            <tr class="{{ $invoice->status === 'unpaid' ? 'table-warning' : '' }}">
-                                <td>
-                                    <a href="{{ route('admin.invoices.show', $invoice->id) }}" class="text-decoration-none fw-semibold">
-                                        {{ $invoice->invoice_number }}
-                                    </a>
-                                </td>
-                                <td class="fw-bold">৳{{ number_format($invoice->total_amount, 2) }}</td>
-                                <td class="text-success">৳{{ number_format($invoice->received_amount, 2) }}</td>
-                                <td class="text-danger">৳{{ number_format($invoice->next_due, 2) }}</td>
-                                <td>
-                                    <span class="badge bg-{{ $invoice->status === 'paid' ? 'success' : ($invoice->status === 'partial' ? 'warning' : 'danger') }}">
-                                        {{ ucfirst($invoice->status) }}
-                                    </span>
-                                </td>
-                                <td>
-                                    {{ \Carbon\Carbon::parse($invoice->invoice_date)->format('M d, Y') }}
-                                    <div class="small text-muted">{{ \Carbon\Carbon::parse($invoice->invoice_date)->diffForHumans() }}</div>
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('admin.invoices.show', $invoice->id) }}" class="btn btn-outline-info" title="View">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="{{ route('admin.invoices.edit', $invoice->id) }}" class="btn btn-outline-warning" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="{{ route('admin.invoices.download', $invoice->id) }}" class="btn btn-outline-success" title="Download">
-                                            <i class="fas fa-download"></i>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
+                            @foreach($recentInvoices as $invoice)
+                                <tr class="{{ $invoice->status === 'unpaid' && $invoice->due_date < now() ? 'table-danger' : '' }}">
+                                    <td class="fw-semibold">{{ $invoice->invoice_id }}</td>
+                                    <td>{{ $invoice->issue_date ? $invoice->issue_date->format('M d, Y') : 'N/A' }}</td>
+                                    <td>
+                                        {{ $invoice->due_date ? $invoice->due_date->format('M d, Y') : 'N/A' }}
+                                        @if($invoice->status === 'unpaid' && $invoice->due_date < now())
+                                            <div class="small text-danger">Overdue</div>
+                                        @endif
+                                    </td>
+                                    <td>৳{{ number_format($invoice->total_amount ?? 0, 2) }}</td>
+                                    <td>৳{{ number_format($invoice->received_amount ?? 0, 2) }}</td>
+                                    <td>
+                                        @if($invoice->status === 'paid')
+                                            <span class="badge bg-success">Paid</span>
+                                        @elseif($invoice->status === 'partial')
+                                            <span class="badge bg-warning text-dark">Partial</span>
+                                        @elseif($invoice->status === 'overdue')
+                                            <span class="badge bg-danger">Overdue</span>
+                                        @else
+                                            <span class="badge bg-secondary">Unpaid</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $invoice->i_id]) }}" class="btn btn-outline-info" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('admin.billing.edit-invoice', $invoice->i_id) }}" class="btn btn-outline-warning" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{{ route('admin.billing.download-invoice', $invoice->i_id) }}" class="btn btn-outline-success" title="Download">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-                @if($customer->invoices->count() > 10)
+                @if($customer->invoices->count() > 5)
                     <div class="text-center mt-3">
-                        <a href="{{ route('admin.invoices.index', ['customer' => $customer->c_id]) }}" class="btn btn-outline-primary">
+                        <a href="{{ route('admin.customers.billing-history', $customer->c_id) }}" class="btn btn-outline-primary">
                             <i class="fas fa-list me-2"></i>View All Invoices
                         </a>
                     </div>
@@ -384,7 +457,7 @@
                     </div>
                     <h5 class="text-muted mb-2">No Invoices Found</h5>
                     <p class="text-muted mb-4">No invoices have been generated for this customer yet.</p>
-                    <a href="{{ route('admin.invoices.create') }}" class="btn btn-primary">
+                    <a href="{{ route('admin.invoices.create', ['customer_id' => $customer->c_id]) }}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Create First Invoice
                     </a>
                 </div>
@@ -392,78 +465,72 @@
         </div>
     </div>
 
-    <!-- Payments Section -->
-    <div class="card shadow-sm">
+    <!-- Recent Payments -->
+    <div class="card border-0 shadow-sm">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Recent Payments ({{ $customer->payments->count() }})</h5>
-            <a href="{{ route('admin.payments.create') }}" class="btn btn-sm btn-primary">
+            <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Recent Payments</h5>
+            <a href="{{ route('admin.billing.create-payment', ['customer_id' => $customer->c_id]) }}" class="btn btn-sm btn-primary">
                 <i class="fas fa-plus me-1"></i>Record Payment
             </a>
         </div>
         <div class="card-body">
-            @if($customer->payments->count() > 0)
+            @if($recentPayments->count() > 0)
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th>Payment ID</th>
+                                <th>Date</th>
                                 <th>Amount</th>
                                 <th>Method</th>
                                 <th>Invoice</th>
                                 <th>Status</th>
-                                <th>Date</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($customer->payments->take(10) as $payment)
-                            <tr>
-                                <td class="fw-semibold">#{{ $payment->payment_id }}</td>
-                                <td class="fw-bold text-success">৳{{ number_format($payment->amount, 2) }}</td>
-                                <td>
-                                    <span class="badge bg-light text-dark">
-                                        {{ ucfirst(str_replace('_', ' ', $payment->payment_method)) }}
-                                    </span>
-                                </td>
-                                <td>
-                                    @if($payment->invoice)
-                                        <a href="{{ route('admin.invoices.show', $payment->invoice->id) }}" class="text-decoration-none">
-                                            {{ $payment->invoice->invoice_number }}
-                                        </a>
-                                    @else
-                                        <span class="text-muted">N/A</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <span class="badge bg-{{ $payment->status === 'completed' ? 'success' : 'warning' }}">
-                                        {{ ucfirst($payment->status) }}
-                                    </span>
-                                </td>
-                                <td>
-                                    {{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}
-                                    <div class="small text-muted">{{ \Carbon\Carbon::parse($payment->payment_date)->diffForHumans() }}</div>
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('admin.payments.show', $payment->id) }}" class="btn btn-outline-info" title="View">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="{{ route('admin.payments.edit', $payment->id) }}" class="btn btn-outline-warning" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="#" class="btn btn-outline-success" title="Receipt">
-                                            <i class="fas fa-receipt"></i>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
+                            @foreach($recentPayments as $payment)
+                                <tr>
+                                    <td class="fw-semibold">#{{ $payment->payment_id }}</td>
+                                    <td>{{ $payment->payment_date ? $payment->payment_date->format('M d, Y') : 'N/A' }}</td>
+                                    <td class="fw-bold text-success">৳{{ number_format($payment->amount, 2) }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">
+                                            {{ ucfirst(str_replace('_', ' ', $payment->payment_method)) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if($payment->invoice)
+                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $payment->invoice_id]) }}" class="text-decoration-none">
+                                                {{ $payment->invoice->invoice_id }}
+                                            </a>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ $payment->status === 'completed' ? 'success' : 'warning' }}">
+                                            {{ ucfirst($payment->status) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="#" class="btn btn-outline-info" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="#" class="btn btn-outline-success" title="Download Receipt">
+                                                <i class="fas fa-receipt"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-                @if($customer->payments->count() > 10)
+                @if($customer->payments->count() > 5)
                     <div class="text-center mt-3">
-                        <a href="{{ route('admin.payments.index', ['customer' => $customer->c_id]) }}" class="btn btn-outline-primary">
+                        <a href="#" class="btn btn-outline-primary">
                             <i class="fas fa-list me-2"></i>View All Payments
                         </a>
                     </div>
@@ -475,7 +542,7 @@
                     </div>
                     <h5 class="text-muted mb-2">No Payments Found</h5>
                     <p class="text-muted mb-4">No payment records found for this customer.</p>
-                    <a href="{{ route('admin.payments.create') }}" class="btn btn-primary">
+                    <a href="{{ route('admin.billing.create-payment', ['customer_id' => $customer->c_id]) }}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Record First Payment
                     </a>
                 </div>
@@ -549,6 +616,11 @@
     padding: 0.25rem 0.5rem;
 }
 
+/* Overdue invoice styling */
+.table-danger {
+    background-color: rgba(220, 53, 69, 0.05);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .avatar-circle {
@@ -561,11 +633,50 @@
     .card-header {
         flex-direction: column;
         gap: 10px;
+        align-items: flex-start !important;
     }
     
     .card-header .btn {
-        align-self: flex-start;
+        align-self: stretch;
+    }
+    
+    .d-flex.gap-2 {
+        flex-wrap: wrap;
+    }
+    
+    .btn-group {
+        flex-wrap: nowrap;
     }
 }
 </style>
+@endsection
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add confirmation for deactivate/activate button
+    const toggleStatusForm = document.querySelector('form[action*="toggle-status"]');
+    if (toggleStatusForm) {
+        toggleStatusForm.addEventListener('submit', function(e) {
+            const button = this.querySelector('button[type="submit"]');
+            const action = button.textContent.trim();
+            const confirmed = confirm(`Are you sure you want to ${action.toLowerCase()} this customer?`);
+            if (!confirmed) {
+                e.preventDefault();
+            }
+        });
+    }
+    
+    // Add hover effects to table rows
+    const tableRows = document.querySelectorAll('tbody tr');
+    tableRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f8f9fa';
+        });
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+});
+</script>
 @endsection

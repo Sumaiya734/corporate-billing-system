@@ -68,7 +68,7 @@ class InvoiceProduct extends Pivot
      */
     public function getFormattedTotalAmountAttribute(): string
     {
-        return '৳' . number_format($this->total_amount, 0);
+        return '৳' . number_format($this->total_amount, 2);
     }
 
     /**
@@ -76,7 +76,7 @@ class InvoiceProduct extends Pivot
      */
     public function getFormattedProductPriceAttribute(): string
     {
-        return '৳' . number_format($this->custom_price, 0);
+        return '৳' . number_format($this->custom_price, 2);
     }
 
     /**

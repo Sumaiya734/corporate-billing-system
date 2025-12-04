@@ -77,7 +77,7 @@ class Product extends Model
 
     public function getFormattedPriceAttribute(): string
     {
-        return '৳' . number_format((float) $this->monthly_price, 0);
+        return '৳' . number_format((float) $this->monthly_price, 2);
     }
 
     public function getTotalPriceAttribute(): float

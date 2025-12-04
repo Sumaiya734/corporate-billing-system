@@ -71,7 +71,7 @@ class Payment extends Model
     // Accessors
     public function getFormattedAmountAttribute()
     {
-        return '৳ ' . number_format((float)$this->amount, 0);
+        return '৳ ' . number_format((float)$this->amount, 2);
     }
 
     public function getFormattedPaymentDateAttribute()
