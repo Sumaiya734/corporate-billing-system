@@ -78,9 +78,9 @@
                             <small class="h5 mb-2 fw-bold"><i class="fas fa-file-invoice me-1"></i>{{ $totalInvoices }} Total Invoices</small>
                             <div class="small mt-2 pt-2 border-top border-white border-opacity-25">
                                 <div>
-                                    <span><i class="fas fa-exclamation-circle me-1"></i>With Due</span>
+                                    <span><i class="fas fa-exclamation-circle me-1"></i> Due</span>
                                     <span class="badge bg-warning text-dark fw-bold">{{ $customersWithDue }}</span>
-                                    <span><i class="fas fa-check-circle me-1"></i>Fully Paid</span>
+                                    <span><i class="fas fa-check-circle me-1"></i> Paid</span>
                                     <span class="badge bg-success fw-bold">{{ $fullyPaidCustomers }}</span>
                                 </div>
                             </div>
@@ -152,7 +152,7 @@
     </div>
 
     <!-- Legend for Table Colors -->
-    <div class="alert alert-light border mb-3">
+    <div class="alert alert-light border mb-3 persistent-alert">
         <div class="row align-items-center">
             <div class="col-md-8">
                 <strong><i class="fas fa-info-circle me-2"></i>Table Legend:</strong>
@@ -173,7 +173,6 @@
             </div>
         </div>
     </div>
-
     <!-- Monthly Bills Table -->
     <div class="card">
         <div class="card-header">
@@ -476,25 +475,25 @@
                                                 @endif
                                             @elseif($hasPartialPayment)
                                                 {{-- Partial Payment: Show Edit Payment + View + Confirm --}}
-                                                <button class="btn btn-warning btn-sm payment-btn"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#addPaymentModal"
-                                                        data-invoice-id="{{ $invoice->invoice_id }}"
-                                                        data-cp-id="{{ $customerProduct->cp_id }}"
-                                                        data-invoice-number="{{ $invoice->invoice_number }}"
-                                                        data-customer-name="{{ e($customer->name ?? 'Customer') }}"
-                                                        data-customer-email="{{ e($customer->email ?? 'N/A') }}"
-                                                        data-customer-phone="{{ e($customer->phone ?? 'N/A') }}"
-                                                        data-subtotal="{{ $invoice->subtotal ?? 0 }}"
-                                                        data-previous-due="{{ $invoice->previous_due ?? 0 }}"
-                                                        data-total-amount="{{ $totalAmount }}"
-                                                        data-due-amount="{{ $nextDue }}"
-                                                        data-received-amount="{{ $receivedAmount }}"
-                                                        data-status="{{ $invoice->status }}"
-                                                        data-product-name="{{ e($product->name ?? 'Unknown Product') }}"
-                                                        title="Edit Payments">
-                                                    <i class="fas fa-edit"></i> Edit
-                                                </button>
+                                                    <button class="btn btn-warning btn-sm payment-btn"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#addPaymentModal"
+                                                            data-invoice-id="{{ $invoice->invoice_id }}"
+                                                            data-cp-id="{{ $customerProduct->cp_id }}"
+                                                            data-invoice-number="{{ $invoice->invoice_number }}"
+                                                            data-customer-name="{{ e($customer->name ?? 'Customer') }}"
+                                                            data-customer-email="{{ e($customer->email ?? 'N/A') }}"
+                                                            data-customer-phone="{{ e($customer->phone ?? 'N/A') }}"
+                                                            data-subtotal="{{ $invoice->subtotal ?? 0 }}"
+                                                            data-previous-due="{{ $invoice->previous_due ?? 0 }}"
+                                                            data-total-amount="{{ $totalAmount }}"
+                                                            data-due-amount="{{ $nextDue }}"
+                                                            data-received-amount="{{ $receivedAmount }}"
+                                                            data-status="{{ $invoice->status }}"
+                                                            data-product-name="{{ e($product->name ?? 'Unknown Product') }}"
+                                                            title="Edit Payments">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </button>
                                                 <button class="btn btn-outline-info btn-sm view-invoice-btn" data-invoice-id="{{ $invoice->invoice_id }}" data-bs-toggle="modal" data-bs-target="#viewInvoiceModal" title="View Invoice">
                                                     <i class="fas fa-eye"></i> View
                                                 </button>
@@ -587,11 +586,12 @@
                                         </table>
                                     </div>
                                 </div>
+                                <!-- How to read this table: -->
                                 <div class="card-footer bg-white">
                                             <div class="row align-items-center">
                                                 <div class="col-md-12 mb-3">
-                                                    <div class="alert alert-info mb-0 small">
-                                                        <div class="alert alert-info mb-4">
+                                                    <div class="alert alert-info mb-0 small persistent-alert">
+                                                        <!-- <div class="alert alert-info mb-4">
                                                             <strong><i class="fas fa-info-circle me-1"></i>How to read this table:</strong>
                                                             <ul class="mb-0 mt-1">
                                                                 <li><strong>Product Amount</strong> = Current month charges (from products)</li>
@@ -600,9 +600,8 @@
                                                                 <li><strong>Received</strong> = Payments made against this invoice</li>
                                                                 <li><strong>Next Due</strong> = Total Invoice - Received (what customer still owes)</li>
                                                             </ul>
-                                                        </div>
-
-                                                        <div class="alert alert-info mb-4">
+                                                        </div> -->
+                                                        <!-- <div class="alert alert-info mb-4">
                                                             <i class="fas fa-info-circle me-2"></i>
                                                             <strong>Note:</strong>
                                                             <ul class="mb-0">
@@ -617,7 +616,7 @@
                                                                 <li><strong>Remember to close this month</strong> before accessing the next month's billing</li>
                                                                 @endif
                                                             </ul>
-                                                        </div>
+                                                        </div> -->
 
                                                         <div class="mt-2 p-2 bg-light rounded">
                                                             <strong><i class="fas fa-calculator me-1"></i>Verification:</strong>
@@ -679,284 +678,284 @@
                                     </div>
                                 </div>
 
-<!-- Generate Bills Modal -->
-<div class="modal fade" id="generateBillsModal" tabindex="-1" aria-labelledby="generateBillsModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Generate Monthly Bills</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Choose how you want to generate bills for {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}
-                </div>
+                                <!-- Generate Bills Modal -->
+                                <div class="modal fade" id="generateBillsModal" tabindex="-1" aria-labelledby="generateBillsModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Generate Monthly Bills</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle me-2"></i>
+                                                    Choose how you want to generate bills for {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}
+                                                </div>
 
-                <form id="generateBillsForm">
-                    <input type="hidden" name="month" value="{{ $month }}">
-                    <div class="mb-3">
-                        <label class="form-label">Billing Month</label>
-                        <input type="text" class="form-control" value="{{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}" readonly>
-                    </div>
+                                                <form id="generateBillsForm">
+                                                    <input type="hidden" name="month" value="{{ $month }}">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Billing Month</label>
+                                                        <input type="text" class="form-control" value="{{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}" readonly>
+                                                    </div>
 
-                    <div class="mb-4">
-                        <label class="form-label">Generation Options</label>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="generationType" id="dueOnly" value="due_only" checked>
-                            <label class="form-check-label" for="dueOnly">
-                                <strong>Due Customers Only</strong>
-                                <div class="text-muted small">Generate bills only for customers who are due based on their billing cycle</div>
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="generationType" id="allCustomers" value="all_customers">
-                            <label class="form-check-label" for="allCustomers">
-                                <strong>All Active Customers</strong>
-                                <div class="text-muted small">Generate bills for all active customers with products (regardless of billing cycle)</div>
-                            </label>
-                        </div>
-                    </div>
+                                                    <div class="mb-4">
+                                                        <label class="form-label">Generation Options</label>
+                                                        <div class="form-check mb-2">
+                                                            <input class="form-check-input" type="radio" name="generationType" id="dueOnly" value="due_only" checked>
+                                                            <label class="form-check-label" for="dueOnly">
+                                                                <strong>Due Customers Only</strong>
+                                                                <div class="text-muted small">Generate bills only for customers who are due based on their billing cycle</div>
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="generationType" id="allCustomers" value="all_customers">
+                                                            <label class="form-check-label" for="allCustomers">
+                                                                <strong>All Active Customers</strong>
+                                                                <div class="text-muted small">Generate bills for all active customers with products (regardless of billing cycle)</div>
+                                                            </label>
+                                                        </div>
+                                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Active Customers with products</label>
-                        <input type="text" class="form-control" value="{{ $totalDueCustomers ?? 0 }} customers" readonly>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="generateBills()">
-                    <i class="fas fa-sync me-1"></i>Generate Bills
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- View Invoice Modal -->
-<div class="modal fade" id="viewInvoiceModal" tabindex="-1" aria-labelledby="viewInvoiceModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Invoice Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="viewInvoiceContent">
-                <!-- Content will be loaded via JavaScript -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Close
-                </button>
-                <button type="button" class="btn btn-primary" onclick="printInvoice()">
-                    <i class="fas fa-print me-1"></i>Print Invoice
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Close Month Modal -->
-<div class="modal fade" id="closeMonthModal" tabindex="-1" aria-labelledby="closeMonthModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title">
-                    <i class="fas fa-lock me-2"></i>Close Billing Month - {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Warning:</strong> Closing this month will carry forward all outstanding dues to the next billing cycle.
-                </div>
-
-                <!-- Summary Section -->
-                <div class="card mb-3">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Month Summary</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
-                                    <div>
-                                        <small class="text-muted d-block">Total Billing Amount</small>
-                                        @php
-                                            // Calculate total billing amount from actual invoice data
-                                            $totalBillingAmount = $invoices->sum('total_amount');
-                                        @endphp
-                                        <h4 class="mb-0 text-primary">৳ {{ number_format($totalBillingAmount, 0) }}</h4>
-                                    </div>
-                                    <i class="fas fa-file-invoice-dollar fa-2x text-primary opacity-50"></i>
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
-                                    <div>
-                                        <small class="text-muted d-block">Total Paid Amount</small>
-                                        @php
-                                            // Calculate paid amount from actual invoice data
-                                            $paidAmount = $invoices->sum('received_amount');
-                                        @endphp
-                                        <h4 class="mb-0 text-success">৳ {{ number_format($paidAmount, 0) }}</h4>
-                                    </div>
-                                    <i class="fas fa-check-circle fa-2x text-success opacity-50"></i>
-                                </div>
-                            </div>
-                            <div class="col-md-12">
-                                <div class="d-flex justify-content-between align-items-center p-3 bg-danger text-white rounded">
-                                    <div>
-                                        <small class="d-block opacity-75">Outstanding Due (To be carried forward)</small>
-                                        @php
-                                            // Calculate pending amount from actual invoice data
-                                            $pendingAmount = $invoices->sum('next_due');
-                                        @endphp
-                                        <h3 class="mb-0">৳ {{ number_format($pendingAmount, 0) }}</h3>
-                                    </div>
-                                    <i class="fas fa-exclamation-circle fa-3x opacity-50"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Customer Breakdown -->
-                        <div class="mt-3 pt-3 border-top">
-                            <h6 class="mb-3"><i class="fas fa-users me-2"></i>Customer Status</h6>
-                            @php
-                                // Calculate customer statistics based on actual invoice data
-                                $totalInvoices = $invoices->total() ?? 0;
-                                $customersWithDue = $invoices->filter(function($invoice) {
-                                    return in_array($invoice->status, ['unpaid', 'partial']) && $invoice->next_due > 0;
-                                })->count();
-
-                                $fullyPaidCustomers = $invoices->filter(function($invoice) {
-                                    return $invoice->status === 'paid' || $invoice->next_due <= 0;
-                                })->count();
-                            @endphp
-                            <div class="row text-center">
-                                <div class="col-4">
-                                    <div class="p-2 bg-light rounded">
-                                        <h5 class="mb-0 text-primary">{{ $totalInvoices }}</h5>
-                                        <small class="text-muted">Total Invoices</small>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Active Customers with products</label>
+                                                        <input type="text" class="form-control" value="{{ $totalDueCustomers ?? 0 }} customers" readonly>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="button" class="btn btn-success" onclick="generateBills()">
+                                                    <i class="fas fa-sync me-1"></i>Generate Bills
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-4">
-                                    <div class="p-2 bg-light rounded">
-                                        <h5 class="mb-0 text-success">{{ $fullyPaidCustomers }}</h5>
-                                        <small class="text-muted">Fully Paid</small>
+
+                                <!-- View Invoice Modal -->
+                                <div class="modal fade" id="viewInvoiceModal" tabindex="-1" aria-labelledby="viewInvoiceModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Invoice Details</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body" id="viewInvoiceContent">
+                                                <!-- Content will be loaded via JavaScript -->
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    <i class="fas fa-times me-1"></i>Close
+                                                </button>
+                                                <button type="button" class="btn btn-primary" onclick="printInvoice()">
+                                                    <i class="fas fa-print me-1"></i>Print Invoice
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-4">
-                                    <div class="p-2 bg-light rounded">
-                                        <h5 class="mb-0 text-warning">{{ $customersWithDue }}</h5>
-                                        <small class="text-muted">With Dues</small>
+
+                                <!-- Close Month Modal -->
+                                <div class="modal fade" id="closeMonthModal" tabindex="-1" aria-labelledby="closeMonthModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-warning text-dark">
+                                                <h5 class="modal-title">
+                                                    <i class="fas fa-lock me-2"></i>Close Billing Month - {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-warning">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                                    <strong>Warning:</strong> Closing this month will carry forward all outstanding dues to the next billing cycle.
+                                                </div>
+
+                                                <!-- Summary Section -->
+                                                <div class="card mb-3">
+                                                    <div class="card-header bg-light">
+                                                        <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Month Summary</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="row">
+                                                            <div class="col-md-6 mb-3">
+                                                                <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                                                                    <div>
+                                                                        <small class="text-muted d-block">Total Billing Amount</small>
+                                                                        @php
+                                                                            // Calculate total billing amount from actual invoice data
+                                                                            $totalBillingAmount = $invoices->sum('total_amount');
+                                                                        @endphp
+                                                                        <h4 class="mb-0 text-primary">৳ {{ number_format($totalBillingAmount, 0) }}</h4>
+                                                                    </div>
+                                                                    <i class="fas fa-file-invoice-dollar fa-2x text-primary opacity-50"></i>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-6 mb-3">
+                                                                <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                                                                    <div>
+                                                                        <small class="text-muted d-block">Total Paid Amount</small>
+                                                                        @php
+                                                                            // Calculate paid amount from actual invoice data
+                                                                            $paidAmount = $invoices->sum('received_amount');
+                                                                        @endphp
+                                                                        <h4 class="mb-0 text-success">৳ {{ number_format($paidAmount, 0) }}</h4>
+                                                                    </div>
+                                                                    <i class="fas fa-check-circle fa-2x text-success opacity-50"></i>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12">
+                                                                <div class="d-flex justify-content-between align-items-center p-3 bg-danger text-white rounded">
+                                                                    <div>
+                                                                        <small class="d-block opacity-75">Outstanding Due (To be carried forward)</small>
+                                                                        @php
+                                                                            // Calculate pending amount from actual invoice data
+                                                                            $pendingAmount = $invoices->sum('next_due');
+                                                                        @endphp
+                                                                        <h3 class="mb-0">৳ {{ number_format($pendingAmount, 0) }}</h3>
+                                                                    </div>
+                                                                    <i class="fas fa-exclamation-circle fa-3x opacity-50"></i>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Customer Breakdown -->
+                                                        <div class="mt-3 pt-3 border-top">
+                                                            <h6 class="mb-3"><i class="fas fa-users me-2"></i>Customer Status</h6>
+                                                            @php
+                                                                // Calculate customer statistics based on actual invoice data
+                                                                $totalInvoices = $invoices->total() ?? 0;
+                                                                $customersWithDue = $invoices->filter(function($invoice) {
+                                                                    return in_array($invoice->status, ['unpaid', 'partial']) && $invoice->next_due > 0;
+                                                                })->count();
+
+                                                                $fullyPaidCustomers = $invoices->filter(function($invoice) {
+                                                                    return $invoice->status === 'paid' || $invoice->next_due <= 0;
+                                                                })->count();
+                                                            @endphp
+                                                            <div class="row text-center">
+                                                                <div class="col-4">
+                                                                    <div class="p-2 bg-light rounded">
+                                                                        <h5 class="mb-0 text-primary">{{ $totalInvoices }}</h5>
+                                                                        <small class="text-muted">Total Invoices</small>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-4">
+                                                                    <div class="p-2 bg-light rounded">
+                                                                        <h5 class="mb-0 text-success">{{ $fullyPaidCustomers }}</h5>
+                                                                        <small class="text-muted">Fully Paid</small>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-4">
+                                                                    <div class="p-2 bg-light rounded">
+                                                                        <h5 class="mb-0 text-warning">{{ $customersWithDue }}</h5>
+                                                                        <small class="text-muted">With Dues</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Confirmation Section -->
+                                                <div class="card border-warning">
+                                                    <div class="card-body">
+                                                        <h6 class="mb-3"><i class="fas fa-info-circle me-2"></i>What happens when you close this month?</h6>
+                                                        @php
+                                                            // Calculate pending amount from actual invoice data
+                                                            $pendingAmount = $invoices->sum('next_due');
+                                                        @endphp
+                                                        <ul class="mb-3">
+                                                            <li>All outstanding dues (৳{{ number_format($pendingAmount, 0) }}) will be carried forward to next month's invoices</li>
+                                                            <li>This month's billing cycle will be marked as closed</li>
+                                                            <li>Fully paid invoices will remain as completed</li>
+                                                            <li>Unpaid and partial invoices will have their dues transferred to the next billing period</li>
+                                                        </ul>
+
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="confirmCloseMonth">
+                                                            <label class="form-check-label" for="confirmCloseMonth">
+                                                                <strong>I understand that this action will close {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }} billing and carry forward all outstanding dues</strong>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    <i class="fas fa-times me-1"></i>Cancel
+                                                </button>
+                                                <button type="button" class="btn btn-warning" id="confirmCloseMonthBtn" onclick="closeMonth()" disabled>
+                                                    <i class="fas fa-lock me-1"></i>Close Month & Carry Forward Dues
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Confirmation Section -->
-                <div class="card border-warning">
-                    <div class="card-body">
-                        <h6 class="mb-3"><i class="fas fa-info-circle me-2"></i>What happens when you close this month?</h6>
-                        @php
-                            // Calculate pending amount from actual invoice data
-                            $pendingAmount = $invoices->sum('next_due');
-                        @endphp
-                        <ul class="mb-3">
-                            <li>All outstanding dues (৳{{ number_format($pendingAmount, 0) }}) will be carried forward to next month's invoices</li>
-                            <li>This month's billing cycle will be marked as closed</li>
-                            <li>Fully paid invoices will remain as completed</li>
-                            <li>Unpaid and partial invoices will have their dues transferred to the next billing period</li>
-                        </ul>
+                                <!-- Include Separate Payment Modal -->
+                                @include('admin.billing.payment-modal')
 
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="confirmCloseMonth">
-                            <label class="form-check-label" for="confirmCloseMonth">
-                                <strong>I understand that this action will close {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }} billing and carry forward all outstanding dues</strong>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Cancel
-                </button>
-                <button type="button" class="btn btn-warning" id="confirmCloseMonthBtn" onclick="closeMonth()" disabled>
-                    <i class="fas fa-lock me-1"></i>Close Month & Carry Forward Dues
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+                                <!-- Confirm User Payment Modal -->
+                                <!-- Confirm User Payment Modal -->
+                                <div class="modal fade" id="confirmUserPaymentModal" tabindex="-1" aria-labelledby="confirmUserPaymentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-warning text-dark">
+                                                <h5 class="modal-title">
+                                                    <i class="fas fa-check-circle me-2"></i>Confirm User Payment
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle me-2"></i>
+                                                    <strong>This will close the billing month for this customer</strong>
+                                                </div>
 
-<!-- Include Separate Payment Modal -->
-@include('admin.billing.payment-modal')
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Customer</label>
+                                                    <div class="p-2 bg-light rounded" id="confirm_customer_name">-</div>
+                                                </div>
 
-<!-- Confirm User Payment Modal -->
-<!-- Confirm User Payment Modal -->
-<div class="modal fade" id="confirmUserPaymentModal" tabindex="-1" aria-labelledby="confirmUserPaymentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title">
-                    <i class="fas fa-check-circle me-2"></i>Confirm User Payment
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>This will close the billing month for this customer</strong>
-                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Product</label>
+                                                    <div class="p-2 bg-light rounded" id="confirm_product_name">-</div>
+                                                </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Customer</label>
-                    <div class="p-2 bg-light rounded" id="confirm_customer_name">-</div>
-                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Remaining Amount to Carry Forward</label>
+                                                    <div class="p-3 bg-warning bg-opacity-10 rounded text-center">
+                                                        <h4 class="mb-0 text-warning" id="confirm_next_due">৳ 0.00</h4>
+                                                    </div>
+                                                </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Product</label>
-                    <div class="p-2 bg-light rounded" id="confirm_product_name">-</div>
-                </div>
+                                                <!-- <div class="alert alert-warning mb-0">
+                                                    <strong><i class="fas fa-exclamation-triangle me-2"></i>What happens next?</strong>
+                                                    <ul class="mb-0 mt-2">
+                                                        <li>The remaining amount will be carried forward to next month</li>
+                                                        <li>This customer's billing for this month will be marked as confirmed</li>
+                                                        <li>No further payments can be added for this month</li>
+                                                        <li>Due amount will still be visible and added to next payment</li>
+                                                    </ul>
+                                                </div> -->
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    <i class="fas fa-times me-1"></i>Cancel
+                                                </button>
+                                                <button type="button" class="btn btn-warning" id="confirmUserPaymentBtn" onclick="executeConfirmUserPayment()">
+                                                    <i class="fas fa-check me-1"></i>Confirm & Carry Forward
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Remaining Amount to Carry Forward</label>
-                    <div class="p-3 bg-warning bg-opacity-10 rounded text-center">
-                        <h4 class="mb-0 text-warning" id="confirm_next_due">৳ 0.00</h4>
-                    </div>
-                </div>
+                                @endsection
 
-                <!-- <div class="alert alert-warning mb-0">
-                    <strong><i class="fas fa-exclamation-triangle me-2"></i>What happens next?</strong>
-                    <ul class="mb-0 mt-2">
-                        <li>The remaining amount will be carried forward to next month</li>
-                        <li>This customer's billing for this month will be marked as confirmed</li>
-                        <li>No further payments can be added for this month</li>
-                        <li>Due amount will still be visible and added to next payment</li>
-                    </ul>
-                </div> -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Cancel
-                </button>
-                <button type="button" class="btn btn-warning" id="confirmUserPaymentBtn" onclick="executeConfirmUserPayment()">
-                    <i class="fas fa-check me-1"></i>Confirm & Carry Forward
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-@endsection
-
-@section('styles')
+                                @section('styles')
 <style>
     :root {
         --primary: #4361ee;
@@ -978,6 +977,7 @@
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         margin-bottom: 24px;
+        display: flex;
     }
 
     .card-header {
@@ -1042,7 +1042,7 @@
     }
 
     .badge.bg-danger {
-        background-color: #ef476f !important;
+        background-color:rgb(247, 50, 50) !important;
         color: white !important;
         padding: 6px 12px;
         font-weight: 600;

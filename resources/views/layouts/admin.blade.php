@@ -179,7 +179,7 @@
             /* Prevent admin layout stacking on large screens while resources load */
             @media (min-width: 992px) {
                 .admin-layout-row { flex-wrap: nowrap; }
-                .main-content { flex: 1 1 auto; min-width: 0; }
+                .main-content { flex: 1 1 auto; min-width: 0; margin-top: 56px; }
             }
     </style>
 
@@ -231,15 +231,6 @@
         <div class="row admin-layout-row">
             <!-- Sidebar -->
             <div id="sidebar" class="col-12 col-lg-auto sidebar p-0">
-                {{-- Sidebar header / brand --}}
-                <div class="sidebar-brand d-flex align-items-center">
-                    <img src="{{ asset('assets/nanosoft logo.png') }}" alt="logo">
-                    <div>
-                        <div style="font-weight:700; color: #fff; margin-left:6px;">Nanosoft</div>
-                        <small style="color: rgba(255,255,255,0.75); margin-left:6px;">Billing</small>
-                    </div>
-                </div>
-
                 {{-- Navigation (you can keep your existing admin-sidebar include if you prefer) --}}
                 @if (View::exists('admin.admin-sidebar'))
                     @include('admin.admin-sidebar')
@@ -330,14 +321,13 @@
                 });
             }
 
-            // Auto-close alerts
-            document.querySelectorAll('.alert').forEach(alert => {
+            // Auto-close alerts (except those with persistent-alert class)
+            document.querySelectorAll('.alert:not(.persistent-alert)').forEach(alert => {
                 setTimeout(() => {
                     const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
                     bsAlert.close();
                 }, 6000);
             });
-
             // Tooltips init
             const tList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tList.map(function (t) { return new bootstrap.Tooltip(t); });

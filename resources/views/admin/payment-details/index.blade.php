@@ -402,10 +402,22 @@
                                                             }
                                                         }
                                                     @endphp
-                                                    <tr class="{{ $isSelectedProduct ? 'table-info' : '' }} align-middle">
+                                                    @php
+                                                        // Check if this invoice matches the search term (for highlighting)
+                                                        $isMatchingInvoice = false;
+                                                        if ($search && stripos($invoice->invoice_number, $search) !== false) {
+                                                            $isMatchingInvoice = true;
+                                                        }
+                                                    @endphp
+                                                    <tr class="{{ $isSelectedProduct ? 'table-info' : '' }} {{ $isMatchingInvoice ? 'table-warning' : '' }} align-middle">
                                                         <td class="py-2 px-3">
                                                             <a href="#" class="text-decoration-none fw-bold text-primary">
                                                                 {{ $invoice->invoice_number }}
+                                                                @if($isMatchingInvoice)
+                                                                    <span class="badge bg-warning text-dark ms-2">
+                                                                        <i class="fas fa-search me-1"></i>Matched
+                                                                    </span>
+                                                                @endif
                                                             </a>
                                                         </td>
                                                         <td class="py-2 px-3">
@@ -744,6 +756,17 @@
         background-color: rgba(52, 152, 219, 0.1);
     }
 
+    /* Highlighted invoice animation */
+    @keyframes highlightPulse {
+        0% { background-color: rgba(243, 157, 18, 0.47); }
+        50% { background-color: rgba(243, 157, 18, 0.71); }
+        100% { background-color: rgba(243, 157, 18, 0.47); }
+    }
+
+    /* .table-warning {
+        animation: highlightPulse 2s infinite;
+    } */
+
     /* Badge Styles */
     .badge {
         font-size: 0.75rem;
@@ -995,6 +1018,7 @@
     .small, small {
         font-size: 0.75em;
     }
+
 </style>
 
 <!-- JavaScript -->

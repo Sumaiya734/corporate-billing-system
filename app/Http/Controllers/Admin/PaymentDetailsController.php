@@ -26,12 +26,18 @@ class PaymentDetailsController extends Controller
             // Base query for customers
             $customersQuery = Customer::query();
             
-            // Apply search filter
+            // Apply search filter (customer info + invoice number)
             $customersQuery->where(function($query) use ($search) {
+                // Search in customer fields
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('customer_id', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
+                
+                // Search invoice numbers
+                $query->orWhereHas('customerProducts.invoices', function ($q) use ($search) {
+                    $q->where('invoice_number', 'like', "%{$search}%");
+                });
             });
             
             // Get customers with their products

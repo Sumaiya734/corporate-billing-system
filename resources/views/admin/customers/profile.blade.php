@@ -279,8 +279,8 @@
                                         @endif
                                     </td>
                                     <td>
-                                        @if($invoice->i_id)
-                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $invoice->i_id]) }}" class="btn btn-sm btn-outline-primary">
+                                        @if($invoice->invoice_id)
+                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $invoice->invoice_id]) }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         @else
@@ -332,12 +332,12 @@
                                         <span class="badge bg-info">{{ ucfirst($payment->payment_method ?? 'N/A') }}</span>
                                     </td>
                                     <td>
-                                        @if($payment->invoice && $payment->i_id)
-                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $payment->i_id]) }}">
-                                                {{ $payment->invoice->invoice_id }}
+                                        @if($payment->invoice && $payment->invoice_id)
+                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $payment->invoice_id]) }}">
+                                                {{ $payment->invoice->invoice_number }}
                                             </a>
-                                        @elseif($payment->i_id)
-                                            <span class="text-muted">Invoice #{{ $payment->i_id }}</span>
+                                        @elseif($payment->invoice_id)
+                                            <span class="text-muted">Invoice #{{ $payment->invoice_id }}</span>
                                         @else
                                             <span class="text-muted">N/A</span>
                                         @endif

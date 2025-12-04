@@ -118,12 +118,58 @@
 
 <style>
  
+/* Fixed header and sidebar for desktop */
+@media (min-width: 992px) {
+    /* Fixed navbar */
+    .navbar {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1030;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* Fixed sidebar */
+    .sidebar {
+        position: fixed !important;
+        top: 56px;
+        left: 0;
+        bottom: 0;
+        z-index: 1000;
+        overflow-y: auto;
+        /* Add scrollbar styling */
+        scrollbar-width: thin;
+        scrollbar-color: #3498db #2c3e50;
+    }
+    
+    .sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .sidebar::-webkit-scrollbar-track {
+        background: #2c3e50;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb {
+        background-color: #3498db;
+        border-radius: 3px;
+    }
+    
+    /* Adjust main content to account for fixed sidebar */
+    .main-content {
+        margin-left: 250px !important;
+        margin-top: 56px !important;
+    }
+}
+
 .submenu {
     padding-left: 15px;
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease;
 }
+
 .sidebar .nav-link {
     font-size: 0.9rem;  /* make sidebar text a little smaller */
 }
@@ -171,7 +217,7 @@
     box-shadow: none;
 }
 
-/* Mobile styles */
+/* Mobile styles (unchanged) */
 @media (max-width: 767.98px) {
     .sidebar {
         position: fixed;
@@ -209,7 +255,6 @@
     color: #fff !important;
 }
 </style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Handle dropdown toggle clicks

@@ -17,7 +17,7 @@
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('admin.customers.index') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-1"></i>Back to Billing
+                <i class="fas fa-arrow-left me-1"></i>Back to Customers
             </a>
             <a href="{{ route('admin.customers.edit', $customer->c_id) }}" class="btn btn-primary">
                 <i class="fas fa-edit me-2"></i>Edit Profile
@@ -279,7 +279,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $invoice->i_id]) }}" class="btn btn-sm btn-outline-primary">
+                                        <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $invoice->invoice_id]) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                     </td>
@@ -326,12 +326,12 @@
                                         <span class="badge bg-info">{{ ucfirst($payment->payment_method ?? 'N/A') }}</span>
                                     </td>
                                     <td>
-                                        @if($payment->invoice && $payment->i_id)
-                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $payment->i_id]) }}">
-                                                {{ $payment->invoice->invoice_id }}
+                                        @if($payment->invoice && $payment->invoice_id)
+                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $payment->invoice_id]) }}">
+                                                {{ $payment->invoice->invoice_number }}
                                             </a>
-                                        @elseif($payment->i_id)
-                                            <span class="text-muted">Invoice #{{ $payment->i_id }}</span>
+                                        @elseif($payment->invoice_id)
+                                            <span class="text-muted">Invoice #{{ $payment->invoice_id }}</span>
                                         @else
                                             <span class="text-muted">N/A</span>
                                         @endif

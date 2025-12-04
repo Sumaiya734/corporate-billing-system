@@ -12,6 +12,9 @@
             <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-primary" style="margin:10px" id="assign-products-link">
                 <i class="fas fa-plus me-2"></i>Assign Products
             </a>
+            <a href="{{ route('admin.customers.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Billing
+            </a>
         </div>
     </div>
 
@@ -220,15 +223,15 @@
                                         @if($cp->cp_id)
                                             <a href="{{ route('admin.customer-to-products.edit', $cp->cp_id) }}" class="btn btn-sm btn-outline-primary" title="Edit product"><i class="fas fa-edit"></i></a>
                                             <!-- Add deactivate button -->
-                                            <form action="{{ route('admin.customer-to-products.toggle-status', $cp->cp_id) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                @method('POST')
-                                                <button type="submit" 
-                                                        class="btn btn-sm btn-outline-{{ $cp->status === 'active' ? 'warning' : 'success' }}" 
-                                                        title="{{ $cp->status === 'active' ? 'Deactivate product' : 'Activate product' }}">
-                                                    <i class="fas fa-{{ $cp->status === 'active' ? 'pause' : 'play' }}"></i>
-                                                </button>
-                                            </form>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-{{ $cp->status === 'active' ? 'warning' : 'success' }} toggle-status-btn" 
+                                                    title="{{ $cp->status === 'active' ? 'Deactivate product' : 'Activate product' }}"
+                                                    data-product-name="{{ optional($cp->product)->name ?? 'Unknown product' }}"
+                                                    data-customer-name="{{ $singleCustomer->name }}"
+                                                    data-current-status="{{ $cp->status }}"
+                                                    data-action="{{ route('admin.customer-to-products.toggle-status', $cp->cp_id) }}">
+                                                <i class="fas fa-{{ $cp->status === 'active' ? 'pause' : 'play' }}"></i>
+                                            </button>
                                             <button type="button" class="btn btn-sm btn-outline-danger delete-btn" title="Delete product" data-product-name="{{ optional($cp->product)->name ?? 'Unknown product' }}" data-customer-name="{{ $singleCustomer->name }}" data-action="{{ route('admin.customer-to-products.destroy', $cp->cp_id) }}"><i class="fas fa-trash"></i></button>
                                         @else
                                             <span class="text-muted small">No actions</span>
@@ -368,15 +371,15 @@
                                                        <i class="fas fa-edit"></i>
                                                     </a>
 
-                                                    <form action="{{ route('admin.customer-to-products.toggle-status', $cp->cp_id) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        @method('POST')
-                                                        <button type="submit" 
-                                                                class="btn btn-sm btn-outline-{{ $cp->status === 'active' ? 'warning' : 'success' }}" 
-                                                                title="{{ $cp->status === 'active' ? 'Deactivate product' : 'Activate product' }}">
-                                                            <i class="fas fa-{{ $cp->status === 'active' ? 'pause' : 'play' }}"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-{{ $cp->status === 'active' ? 'warning' : 'success' }} toggle-status-btn" 
+                                                            title="{{ $cp->status === 'active' ? 'Deactivate product' : 'Activate product' }}"
+                                                            data-product-name="{{ optional($cp->product)->name ?? 'Unknown product' }}"
+                                                            data-customer-name="{{ $customer->name }}"
+                                                            data-current-status="{{ $cp->status }}"
+                                                            data-action="{{ route('admin.customer-to-products.toggle-status', $cp->cp_id) }}">
+                                                        <i class="fas fa-{{ $cp->status === 'active' ? 'pause' : 'play' }}"></i>
+                                                    </button>                                                    
                                                     <button type="button"
                                                             class="btn btn-sm btn-outline-danger delete-btn"
                                                             title="Delete product"
@@ -460,6 +463,25 @@
             </button>
             <button id="confirmDeleteBtn" class="btn btn-danger" style="min-width: 120px;">
                 <i class="fas fa-trash me-1"></i>Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toggle Status Confirmation Modal -->
+<div id="toggleStatusModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 10px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); animation: modalSlideIn 0.2s ease-out;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <i class="fas fa-question-circle" style="font-size: 3rem; color: #3498db;"></i>
+        </div>
+        <h4 style="text-align: center; margin-bottom: 15px; color: #2c3e50;">Confirm Status Change</h4>
+        <p id="toggleStatusModalMessage" style="text-align: center; color: #7f8c8d; margin-bottom: 25px;"></p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button id="cancelToggleStatusBtn" class="btn btn-secondary" style="min-width: 120px;">
+                <i class="fas fa-times me-1"></i>Cancel
+            </button>
+            <button id="confirmToggleStatusBtn" class="btn btn-primary" style="min-width: 120px;">
+                <i class="fas fa-check me-1"></i>Confirm
             </button>
         </div>
     </div>
@@ -780,9 +802,19 @@
     const deleteModalMessage = document.getElementById('deleteModalMessage');
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    
+    // Toggle status modal elements
+    const toggleStatusModal = document.getElementById('toggleStatusModal');
+    const toggleStatusModalMessage = document.getElementById('toggleStatusModalMessage');
+    const confirmToggleStatusBtn = document.getElementById('confirmToggleStatusBtn');
+    const cancelToggleStatusBtn = document.getElementById('cancelToggleStatusBtn');
 
     let pendingDeleteAction = null;
     let pendingDeleteRow = null;
+    
+    // Pending toggle status data
+    let pendingToggleAction = null;
+    let pendingToggleRow = null;
 
     function showDeleteModal(productName, customerName, action, row) {
         deleteModalMessage.innerHTML = `Are you sure you want to remove <strong>"${productName}"</strong> from <strong>"${customerName}"</strong>?<br><small class="text-danger">This action cannot be undone.</small>`;
@@ -793,11 +825,29 @@
         // Focus on cancel button for accessibility
         setTimeout(() => cancelDeleteBtn.focus(), 100);
     }
+    
+    function showToggleStatusModal(productName, customerName, currentStatus, action, row) {
+        const actionText = currentStatus === 'active' ? 'deactivate' : 'activate';
+        const statusText = currentStatus === 'active' ? 'Deactivate' : 'Activate';
+        toggleStatusModalMessage.innerHTML = `Are you sure you want to ${actionText} <strong>"${productName}"</strong> for <strong>"${customerName}"</strong>?`;
+        toggleStatusModal.style.display = 'flex';
+        pendingToggleAction = action;
+        pendingToggleRow = row;
+
+        // Focus on cancel button for accessibility
+        setTimeout(() => cancelToggleStatusBtn.focus(), 100);
+    }
 
     function hideDeleteModal() {
         deleteModal.style.display = 'none';
         pendingDeleteAction = null;
         pendingDeleteRow = null;
+    }
+    
+    function hideToggleStatusModal() {
+        toggleStatusModal.style.display = 'none';
+        pendingToggleAction = null;
+        pendingToggleRow = null;
     }
 
     function executeDelete() {
@@ -860,6 +910,64 @@
             confirmDeleteBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Delete';
         });
     }
+    
+    function executeToggleStatus() {
+        if (!pendingToggleAction) return;
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // Disable buttons during request
+        confirmToggleStatusBtn.disabled = true;
+        cancelToggleStatusBtn.disabled = true;
+        confirmToggleStatusBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+
+        fetch(pendingToggleAction, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: '_method=POST'
+        })
+        .then(response => {
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // If not JSON, assume success if status is OK
+                if (response.ok) {
+                    return { success: true, message: 'Product status updated successfully' };
+                } else {
+                    throw new Error('Server returned non-JSON response');
+                }
+            }
+        })
+        .then(data => {
+            hideToggleStatusModal();
+
+            if (data.success) {
+                showToast('Success', data.message || 'Product status updated successfully', 'success');
+
+                // Reload the page to reflect the status change
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('Error', data.message || 'Failed to update product status', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            hideToggleStatusModal();
+            showToast('Error', 'An error occurred while updating the product status', 'error');
+        })
+        .finally(() => {
+            confirmToggleStatusBtn.disabled = false;
+            cancelToggleStatusBtn.disabled = false;
+            confirmToggleStatusBtn.innerHTML = '<i class="fas fa-check me-1"></i>Confirm';
+        });
+    }
 
     // Auto-submit on filter change
     document.addEventListener('DOMContentLoaded', function() {
@@ -882,24 +990,51 @@
             });
         });
 
+        // Handle toggle status button clicks
+        document.querySelectorAll('.toggle-status-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const productName = this.getAttribute('data-product-name');
+                const customerName = this.getAttribute('data-customer-name');
+                const currentStatus = this.getAttribute('data-current-status');
+                const action = this.getAttribute('data-action');
+                const row = this.closest('tr');
+
+                showToggleStatusModal(productName, customerName, currentStatus, action, row);
+            });
+        });
+
         // Modal event listeners
         confirmDeleteBtn.addEventListener('click', executeDelete);
         cancelDeleteBtn.addEventListener('click', hideDeleteModal);
+        confirmToggleStatusBtn.addEventListener('click', executeToggleStatus);
+        cancelToggleStatusBtn.addEventListener('click', hideToggleStatusModal);
 
-        // Close modal on ESC key
+        // Close modals on ESC key
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && deleteModal.style.display === 'flex') {
-                hideDeleteModal();
+            if (e.key === 'Escape') {
+                if (deleteModal.style.display === 'flex') {
+                    hideDeleteModal();
+                }
+                if (toggleStatusModal.style.display === 'flex') {
+                    hideToggleStatusModal();
+                }
             }
         });
 
-        // Close modal on backdrop click
+        // Close modals on backdrop click
         deleteModal.addEventListener('click', function(e) {
             if (e.target === deleteModal) {
                 hideDeleteModal();
             }
         });
-
+        
+        toggleStatusModal.addEventListener('click', function(e) {
+            if (e.target === toggleStatusModal) {
+                hideToggleStatusModal();
+            }
+        });
         // Handle assign products link click to ensure navigation
         const assignLink = document.getElementById('assign-products-link');
         if (assignLink) {

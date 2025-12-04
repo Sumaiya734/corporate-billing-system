@@ -349,82 +349,37 @@
                                 <!-- products Column -->
                                 <td>
                                     @if($activeproducts->count() > 0)
-                                        @if($hasRegularproduct)
-                                            <!-- Main product -->
-                                            <div class="main-product-card mb-2">
-                                                <div class="d-flex align-items-center justify-content-between">
-                                                    <div class="d-flex align-items-center">
-                                                        <i class="fas fa-wifi text-primary me-2"></i>
-                                                        <div>
-                                                            <div class="product-name fw-semibold text-dark">
-                                                                {{ $regularproduct->product->name ?? 'Unknown product' }}
-                                                            </div>
-                                                            <div class="product-price text-success small">
-                                                                @php
-                                                                    $price = $regularproduct->product_price ?? $regularproduct->product->monthly_price ?? 0;
-                                                                    $isCustomPrice = $regularproduct->product_price && $regularproduct->product_price != $regularproduct->product->monthly_price;
-                                                                @endphp
-                                                                ৳{{ number_format($price, 2) }}/month
-                                                                @if($isCustomPrice)
-                                                                    <span class="badge bg-info" style="font-size: 0.65rem;">Custom</span>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <span class="badge bg-primary badge-sm">Main</span>
-                                                </div>
-                                            </div>
-
-                                            <!-- Add-on products -->
-                                            @if($hasSpecialproducts)
-                                                <div class="addons-section">
-                                                    <div class="addons-header small text-muted mb-1">
-                                                        <i class="fas fa-bolt me-1"></i>Add-ons ({{ $specialproducts->count() }})
-                                                    </div>
-                                                    <div class="addons-list">
-                                                        @foreach($specialproducts as $specialproduct)
-                                                        <div class="addon-item">
-                                                            <div class="d-flex align-items-center justify-content-between">
-                                                                <span class="addon-name small">
-                                                                    {{ $specialproduct->product->name ?? 'Unknown Add-on' }}
-                                                                </span>
-                                                                <span class="addon-price text-warning small fw-semibold">
+                                        <!-- Show all products by name and price only -->
+                                        <div class="products-list">
+                                            @foreach($activeproducts as $cp)
+                                                <div class="product-item mb-2">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <div class="d-flex align-items-center">
+                                                            <i class="fas fa-box text-primary me-2"></i>
+                                                            <div>
+                                                                <div class="product-name fw-semibold text-dark small">
+                                                                    {{ $cp->product->name ?? 'Unknown product' }}
+                                                                </div>
+                                                                <div class="product-price text-success small">
                                                                     @php
-                                                                        $addonPrice = $specialproduct->product_price ?? $specialproduct->product->monthly_price ?? 0;
+                                                                        $price = $cp->product_price ?? $cp->product->monthly_price ?? 0;
+                                                                        $billingCycle = $cp->billing_cycle_months ?? 1;
+                                                                        $displayBilling = match($billingCycle) {
+                                                                            1 => 'Monthly',
+                                                                            3 => '3 Months',
+                                                                            6 => '6 Months',
+                                                                            12 => 'Annual',
+                                                                            default => $billingCycle . ' Month' . ($billingCycle > 1 ? 's' : '')
+                                                                        };
                                                                     @endphp
-                                                                    +৳{{ number_format($addonPrice, 2) }}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        @endforeach
-                                                    </div>
-                                                </div>
-                                            @endif
-                                        @else
-                                            <!-- Show all products if no regular product is identified -->
-                                            <div class="products-list">
-                                                @foreach($activeproducts as $cp)
-                                                    <div class="product-item mb-2">
-                                                        <div class="d-flex align-items-center justify-content-between">
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="fas fa-box text-primary me-2"></i>
-                                                                <div>
-                                                                    <div class="product-name fw-semibold text-dark small">
-                                                                        {{ $cp->product->name ?? 'Unknown product' }}
-                                                                    </div>
-                                                                    <div class="product-price text-success small">
-                                                                        @php
-                                                                            $price = $cp->product_price ?? $cp->product->monthly_price ?? 0;
-                                                                        @endphp
-                                                                        ৳{{ number_format($price, 2) }}/month
-                                                                    </div>
+                                                                    ৳{{ number_format($price, 2) }}/{{$displayBilling}}
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                @endforeach
-                                            </div>
-                                        @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     @else
                                         <div class="no-product text-center py-2">
                                             <i class="fas fa-exclamation-triangle text-warning fa-lg mb-2"></i>
@@ -445,14 +400,14 @@
                                         </div>
                                         
                                         @if($hasDue && $totalDue > 0)
-                                            <div class="due-amount mt-2">
+                                            <!-- <div class="due-amount mt-2">
                                                 <div class="alert alert-danger py-1 px-2 mb-0 border-0">
                                                     <small class="fw-semibold">
                                                         <i class="fas fa-exclamation-circle me-1"></i>
                                                         ৳{{ number_format($totalDue, 2 ) }} due
                                                     </small>
                                                 </div>
-                                            </div>
+                                            </div> -->
                                         @elseif($monthlyTotal > 0)
                                             <div class="payment-status mt-2">
                                                 <span class="badge bg-success badge-sm">
