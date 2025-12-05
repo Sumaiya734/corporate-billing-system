@@ -126,6 +126,7 @@
         </div>
         <div class="card-body">
             <form method="GET" action="{{ route('admin.customers.index') }}" id="searchForm">
+                <input type="hidden" name="filter" id="filterInput" value="{{ request('filter') }}">
                 <div class="row g-3">
                     <div class="col-lg-6">
                         <div class="input-group">
@@ -152,7 +153,7 @@
                             <button type="submit" class="btn btn-primary flex-fill">
                                 <i class="fas fa-search me-2"></i>Search
                             </button>
-                            @if(request()->has('search') || request()->has('status'))
+                            @if(request()->has('search') || request()->has('status') || request()->has('filter'))
                                 <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary" title="Clear Filters">
                                     <i class="fas fa-times"></i>
                                 </a>
@@ -166,47 +167,43 @@
 
     <!-- Quick Filter Buttons -->
     <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex flex-wrap gap-2">
-                @php
-                    $currentFilter = request('filter');
-                @endphp
-                
-                <a href="{{ route('admin.customers.index') }}" 
-                   class="btn btn-sm btn-outline-primary {{ !$currentFilter ? 'active' : '' }}">
-                    <i class="fas fa-list me-1"></i>All Customers
-                    <span class="badge bg-primary ms-1">{{ $totalCustomers }}</span>
-                </a>
-                
-                <a href="{{ route('admin.customers.index', ['filter' => 'active']) }}" 
-                   class="btn btn-sm btn-outline-success {{ $currentFilter === 'active' ? 'active' : '' }}">
-                    <i class="fas fa-user-check me-1"></i>Active
-                    <span class="badge bg-success ms-1">{{ $activeCustomers }}</span>
-                </a>
-                
-                <a href="{{ route('admin.customers.index', ['filter' => 'inactive']) }}" 
-                   class="btn btn-sm btn-outline-secondary {{ $currentFilter === 'inactive' ? 'active' : '' }}">
-                    <i class="fas fa-user-slash me-1"></i>Inactive
-                    <span class="badge bg-secondary ms-1">{{ $inactiveCustomers }}</span>
-                </a>
-                
-                <a href="{{ route('admin.customers.index', ['filter' => 'with_due']) }}" 
-                   class="btn btn-sm btn-outline-danger {{ $currentFilter === 'with_due' ? 'active' : '' }}">
-                    <i class="fas fa-exclamation-triangle me-1"></i>With Due
-                    <span class="badge bg-danger ms-1">{{ $customersWithDue }}</span>
-                </a>
-                
-                <a href="{{ route('admin.customers.index', ['filter' => 'new']) }}" 
-                   class="btn btn-sm btn-outline-info {{ $currentFilter === 'new' ? 'active' : '' }}">
-                    <i class="fas fa-star me-1"></i>New This Week
-                    @php
-                        $newCustomersCount = \App\Models\Customer::where('created_at', '>=', now()->subDays(7))->count();
-                    @endphp
-                    <span class="badge bg-info ms-1">{{ $newCustomersCount }}</span>
-                </a>
-            </div>
+        <div class="d-flex flex-wrap gap-2">
+            @php
+                $currentFilter = request('filter', ''); // default to empty string
+            @endphp
+
+            <a href="{{ route('admin.customers.index') }}"
+               class="btn btn-sm btn-outline-primary quick-filter-btn {{ $currentFilter === '' ? 'active' : '' }}">
+                <i class="fas fa-list me-1"></i>All Customers
+                <span class="badge bg-primary ms-1">{{ $totalCustomers }}</span>
+            </a>
+
+            <a href="{{ route('admin.customers.index', ['filter' => 'active']) }}"
+               class="btn btn-sm btn-outline-success quick-filter-btn {{ $currentFilter === 'active' ? 'active' : '' }}">
+                <i class="fas fa-user-check me-1"></i>Active
+                <span class="badge bg-success ms-1">{{ $activeCustomers }}</span>
+            </a>
+
+            <a href="{{ route('admin.customers.index', ['filter' => 'inactive']) }}"
+               class="btn btn-sm btn-outline-secondary quick-filter-btn {{ $currentFilter === 'inactive' ? 'active' : '' }}">
+                <i class="fas fa-user-slash me-1"></i>Inactive
+                <span class="badge bg-secondary ms-1">{{ $inactiveCustomers }}</span>
+            </a>
+
+            <a href="{{ route('admin.customers.index', ['filter' => 'with_due']) }}"
+               class="btn btn-sm btn-outline-danger quick-filter-btn {{ $currentFilter === 'with_due' ? 'active' : '' }}">
+                <i class="fas fa-exclamation-triangle me-1"></i>With Due
+                <span class="badge bg-danger ms-1">{{ $customersWithDue }}</span>
+            </a>
+
+            <a href="{{ route('admin.customers.index', ['filter' => 'new']) }}"
+               class="btn btn-sm btn-outline-info quick-filter-btn {{ $currentFilter === 'new' ? 'active' : '' }}">
+                <i class="fas fa-star me-1"></i>New This Week
+                <span class="badge bg-info ms-1">{{ $newCustomersCount }}</span>
+            </a>
         </div>
     </div>
+</div>
 
     <!-- Customers Table -->
     <div class="card shadow-sm">
@@ -875,6 +872,25 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('searchForm').submit();
         });
     }
+
+    // Handle quick filter buttons
+    document.querySelectorAll('.quick-filter-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevent default link navigation
+            
+            // Get the filter value from the data attribute
+            const filterValue = this.dataset.filter;
+            
+            // Set the value of the hidden input
+            const filterInput = document.getElementById('filterInput');
+            if (filterInput) {
+                filterInput.value = filterValue;
+            }
+            
+            // Submit the main search form
+            document.getElementById('searchForm').submit();
+        });
+    });
 
     // Real-time search with debounce
     let searchTimeout;

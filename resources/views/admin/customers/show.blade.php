@@ -16,25 +16,30 @@
             </nav>
         </div>
         <div class="d-flex gap-2">
+            <!-- Back to Customers -->
             <a href="{{ route('admin.customers.index') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-1"></i>Back to Customers
             </a>
+            <!-- Edit Customer Profile -->
             <a href="{{ route('admin.customers.edit', $customer->c_id) }}" class="btn btn-primary">
                 <i class="fas fa-edit me-2"></i>Edit Profile
             </a>
-            <!--  -->
+            <!-- Assign Product to Customer -->
             <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-success">
                 <i class="fas fa-user-tag me-2"></i>Assign product
             </a>
-            
-            <form action="{{ route('admin.customers.toggle-status', $customer->c_id) }}" method="POST" class="d-inline">
-                @csrf
-                @method('PATCH')
-                <button type="submit" class="btn btn-{{ $customer->is_active ? 'warning' : 'success' }}">
-                    <i class="fas fa-{{ $customer->is_active ? 'ban' : 'check' }} me-2"></i>
-                    {{ $customer->is_active ? 'Deactivate' : 'Activate' }}
-                </button>
-            </form>
+            <!-- Active/Deactive Customer -->
+            <button type="button" 
+                    class="btn btn-{{ $customer->is_active ? 'warning' : 'success' }}" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#toggleStatusModal"
+                    data-customer-id="{{ $customer->c_id }}"
+                    data-customer-name="{{ $customer->name }}"
+                    data-current-status="{{ $customer->is_active ? 'active' : 'inactive' }}"
+                    data-action-url="{{ route('admin.customers.toggle-status', $customer->c_id) }}">
+                <i class="fas fa-{{ $customer->is_active ? 'ban' : 'check' }} me-2"></i>
+                {{ $customer->is_active ? 'Deactivate' : 'Activate' }}
+            </button>
         </div>
     </div>
 
@@ -186,6 +191,53 @@
                                 <td class="text-muted">Member Since:</td>
                                 <td>{{ $customer->created_at->format('M d, Y') }}</td>
                             </tr>
+                            @if($customer->id_type)
+                            <tr>
+                                <td class="text-muted">ID Type:</td>
+                                <td>{{ $customer->id_type }}</td>
+                            </tr>
+                            @endif
+                            @if($customer->id_number)
+                            <tr>
+                                <td class="text-muted">ID Number:</td>
+                                <td>{{ $customer->id_number }}</td>
+                            </tr>
+                            @endif
+                            @if($customer->id_card_front || $customer->id_card_back)
+                            <tr>
+                                <td class="text-muted">ID Documents:</td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        @if($customer->id_card_front)
+                                        <div class="position-relative">
+                                            <img src="{{ asset('storage/' . $customer->id_card_front) }}" 
+                                                 alt="Front ID Card" 
+                                                 class="img-thumbnail id-card-preview"
+                                                 style="width: 80px; height: 50px; object-fit: cover; cursor: pointer;"
+                                                 data-bs-toggle="modal" 
+                                                 data-bs-target="#idCardModal"
+                                                 data-image-src="{{ asset('storage/' . $customer->id_card_front) }}"
+                                                 data-image-title="Front ID Card">
+                                            <small class="d-block text-center mt-1">Front</small>
+                                        </div>
+                                        @endif
+                                        @if($customer->id_card_back)
+                                        <div class="position-relative">
+                                            <img src="{{ asset('storage/' . $customer->id_card_back) }}" 
+                                                 alt="Back ID Card" 
+                                                 class="img-thumbnail id-card-preview"
+                                                 style="width: 80px; height: 50px; object-fit: cover; cursor: pointer;"
+                                                 data-bs-toggle="modal" 
+                                                 data-bs-target="#idCardModal"
+                                                 data-image-src="{{ asset('storage/' . $customer->id_card_back) }}"
+                                                 data-image-title="Back ID Card">
+                                            <small class="d-block text-center mt-1">Back</small>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                            @endif
                         </tbody>
                     </table>
                 </div>
@@ -218,8 +270,8 @@
                                                 <i class="fas fa-calendar me-1"></i>Billing: 
                                                 {{ match($cp->billing_cycle_months ?? 1) {
                                                     1 => 'Monthly',
-                                                    3 => 'Quarterly',
-                                                    6 => 'Semi-Annual',
+                                                    3 => '3 Months',
+                                                    6 => '6 Months',
                                                     12 => 'Annual',
                                                     default => $cp->billing_cycle_months . ' Months'
                                                 } }}
@@ -368,12 +420,61 @@
         </div>
     </div>
 </div>
+
+<!-- ID Card Image Modal -->
+<div class="modal fade" id="idCardModal" tabindex="-1" aria-labelledby="idCardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="idCardModalLabel">ID Card Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="idCardImage" src="" alt="ID Card" class="img-fluid" style="max-height: 70vh;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
+
+<!-- Toggle Status Confirmation Modal -->
+<div class="modal fade" id="toggleStatusModal" tabindex="-1" aria-labelledby="toggleStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="toggleStatusModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Confirm Status Change
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="toggleStatusMessage" class="mb-0"></p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmToggleStatus">
+                    <i class="fas fa-check me-2"></i>Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section('styles')
 <style>
 .card {
     border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    
 }
 .table th, .table td {
     vertical-align: middle;
@@ -401,5 +502,100 @@ h5.text-primary {
 .text-decoration-line-through {
     text-decoration: line-through !important;
 }
+
+/* ID Card Preview Styles */
+.id-card-preview {
+    transition: transform 0.2s ease-in-out;
+    border: 2px solid #dee2e6;
+}
+
+.id-card-preview:hover {
+    transform: scale(1.05);
+    border-color: #0d6efd;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.img-thumbnail {
+    padding: 0.15rem;
+}
 </style>
+@endsection
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentToggleUrl = '';
+    
+    // Handle toggle status button click
+    const toggleButton = document.querySelector('[data-bs-target="#toggleStatusModal"]');
+    if (toggleButton) {
+        toggleButton.addEventListener('click', function() {
+            const customerId = this.getAttribute('data-customer-id');
+            const customerName = this.getAttribute('data-customer-name');
+            const currentStatus = this.getAttribute('data-current-status');
+            const actionUrl = this.getAttribute('data-action-url');
+            
+            currentToggleUrl = actionUrl;
+            
+            const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+            const statusText = newStatus === 'active' ? 'activate' : 'deactivate';
+            const statusColor = newStatus === 'active' ? 'success' : 'warning';
+            
+            const message = `Are you sure you want to <strong class="text-${statusColor}">${statusText}</strong> customer <strong>"${customerName}"</strong>?`;
+            
+            document.getElementById('toggleStatusMessage').innerHTML = message;
+        });
+    }
+    
+    // Confirm Toggle Status
+    const confirmButton = document.getElementById('confirmToggleStatus');
+    if (confirmButton) {
+        confirmButton.addEventListener('click', function() {
+            const btn = this;
+            const originalHtml = btn.innerHTML;
+            
+            // Show loading state
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+            
+            // Create form and submit
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = currentToggleUrl;
+            
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'PATCH';
+            
+            form.appendChild(csrfInput);
+            form.appendChild(methodInput);
+            document.body.appendChild(form);
+            form.submit();
+        });
+    }
+    
+    // Handle ID card image preview
+    const idCardImages = document.querySelectorAll('.id-card-preview');
+    const idCardModal = document.getElementById('idCardModal');
+    const idCardImage = document.getElementById('idCardImage');
+    const idCardModalLabel = document.getElementById('idCardModalLabel');
+    
+    idCardImages.forEach(function(img) {
+        img.addEventListener('click', function() {
+            const src = this.getAttribute('data-image-src');
+            const title = this.getAttribute('data-image-title');
+            
+            idCardImage.src = src;
+            idCardModalLabel.textContent = title;
+        });
+    });
+});
+</script>
 @endsection

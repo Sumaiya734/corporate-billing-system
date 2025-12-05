@@ -556,9 +556,12 @@
                                 <button type="reset" class="btn btn-outline-warning me-2">
                                     <i class="fas fa-undo me-2"></i>Reset
                                 </button>
-                                <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <!-- <button type="submit" class="btn btn-primary" id="submitBtn">
                                     <i class="fas fa-save me-2"></i>Update Customer
-                                </button>
+                                </button> -->
+                                <a href="{{ route('admin.customers.index') }}" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Update Customer
+                                </a>
                             </div>
                         </div>
                     </div>

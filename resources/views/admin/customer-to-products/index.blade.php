@@ -164,7 +164,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($singleCustomer->customerProducts as $cp)
+                        @forelse($singleCustomer->customerproducts as $cp)
                             <tr>
                                 <td class="product-cell">
                                     <div class="product-badge {{ optional($cp->product)->product_type === 'regular' ? 'regular-product' : 'special-product' }} {{ $cp->status !== 'active' ? 'deactivated-product' : '' }}">
@@ -271,11 +271,11 @@
                     </thead>
                     <tbody>
                         @forelse($customers as $customer)
-                            @if($customer->customerProducts->count() > 0)
-                                @foreach($customer->customerProducts as $index => $cp)
+                            @if($customer->customerproducts->count() > 0)
+                                @foreach($customer->customerproducts as $index => $cp)
                                     <tr>
                                         @if($index === 0)
-                                            <td rowspan="{{ $customer->customerProducts->count() }}">
+                                            <td rowspan="{{ $customer->customerproducts->count() }}">
                                                  <a href="{{ route('admin.customers.show', $customer->c_id) }}" class="text-decoration-none" Target="_blank">
                                                 <div class="customer-name text-primary fw-bold">{{ $customer->name }}</div>
                                                     </a>
@@ -380,15 +380,18 @@
                                                             data-current-status="{{ $cp->status }}"
                                                             data-action="{{ route('admin.customer-to-products.toggle-status', $cp->cp_id) }}">
                                                         <i class="fas fa-{{ $cp->status === 'active' ? 'pause' : 'play' }}"></i>
-                                                    </button>                                                    
-                                                    <button type="button"
+                                                    </button>   
+
+                                                    <!-- Delete button -->
+
+                                                    <!-- <button type="button"
                                                             class="btn btn-sm btn-outline-danger delete-btn"
                                                             title="Delete product"
                                                             data-product-name="{{ optional($cp->product)->name ?? 'Unknown product' }}"
                                                             data-customer-name="{{ $customer->name }}"
                                                             data-action="{{ route('admin.customer-to-products.destroy', $cp->cp_id) }}">
                                                         <i class="fas fa-trash"></i>
-                                                    </button>
+                                                    </button> -->
                                                 @else
                                                     <span class="text-muted small">No actions</span>
                                                 @endif
@@ -1030,30 +1033,12 @@
                 hideDeleteModal();
             }
         });
-<<<<<<< HEAD
         
         toggleStatusModal.addEventListener('click', function(e) {
             if (e.target === toggleStatusModal) {
                 hideToggleStatusModal();
             }
         });
-=======
-
-
->>>>>>> 115d0ebf8f2a811ac6e8ab221c675e0e5f65e552
-        // Handle assign products link click to ensure navigation
-        const assignLink = document.getElementById('assign-products-link');
-        if (assignLink) {
-            assignLink.addEventListener('click', function(e) {
-                // Allow the default behavior but ensure navigation happens
-                const href = this.getAttribute('href');
-                if (href) {
-                    window.location.href = href;
-                    return false;
-                }
-            });
-        }
->>>>>>> 83ead503e426be14c37c53ab8f72f706b000f589
     });
 </script>
 @endsection

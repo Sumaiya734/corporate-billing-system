@@ -272,7 +272,10 @@
                                             @foreach($customer->customerProducts as $customerProduct)
                                             <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
                                                 <div class="card product-card h-100 border-0 shadow-sm
-                                                    {{ request('product_id') == $customerProduct->p_id ? 'border-primary border-2' : '' }}">
+                                                    {{ request('product_id') == $customerProduct->p_id ? 'border-primary border-2' : '' }}" 
+                                                    style="cursor: pointer;" 
+                                                    data-product-id="{{ $customerProduct->p_id }}" 
+                                                    data-product-name="{{ $customerProduct->product->name ?? 'Unknown Product' }}">
                                                     <div class="card-body p-2">
                                                         <div class="d-flex justify-content-between align-items-start mb-1">
                                                             <div>
@@ -889,6 +892,13 @@
     .product-card {
         border-radius: 6px;
         border: 1px solid var(--border-color);
+        transition: all 0.2s ease-in-out;
+    }
+
+    .product-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        border-color: var(--secondary-color);
     }
 
     .product-card .card-title {
@@ -1088,6 +1098,23 @@
         // Export functionality (placeholder)
         document.querySelector('.btn-outline-primary')?.addEventListener('click', function() {
             alert('Export functionality will be implemented soon!');
+        });
+
+        // Handle product card clicks to filter payment history
+        const productCards = document.querySelectorAll('.product-card');
+        productCards.forEach(card => {
+            card.addEventListener('click', function() {
+                const productId = this.getAttribute('data-product-id');
+                const productName = this.getAttribute('data-product-name');
+                
+                // Update the product filter
+                if (productFilter) {
+                    productFilter.value = productId;
+                    
+                    // Submit the form to filter results
+                    searchForm.submit();
+                }
+            });
         });
     });
 </script>

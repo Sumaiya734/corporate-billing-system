@@ -39,7 +39,7 @@
             --primary-700: #2F63B8;
             --secondary: #2C3E50;
             --muted: #6b7280;
-            --bg: #f7fafc;
+            --bg:rgb(238, 238, 240);
             --card-radius: 14px;
             --glass: rgba(255,255,255,0.85);
         }
@@ -69,7 +69,7 @@
 
         /* SIDEBAR */
         .sidebar {
-            background: linear-gradient(180deg, #22334a 0%, #263a4f 100%);
+            background: linear-gradient(180deg,rgb(57, 74, 99) 0%, #263a4f 100%);
             color: #ecf2ff;
             min-height: 100vh;
             padding: 0;
@@ -126,6 +126,7 @@
             box-shadow: 0 8px 30px rgba(40,45,62,0.04);
         }
         .stat-card:hover {
+            background: linear-gradient(180deg, #fff, #fbfdff);
             transform: translateY(-6px);
             box-shadow: 0 18px 40px rgba(26,32,44,0.07);
         }

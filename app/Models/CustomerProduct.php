@@ -5,6 +5,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 class CustomerProduct extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $primaryKey = 'cp_id';
     public $incrementing = true;
@@ -30,6 +31,7 @@ class CustomerProduct extends Model
         'due_date',
         'status',
         'is_active',
+        'deleted_at'
     ];
 
     protected $casts = [
@@ -39,7 +41,12 @@ class CustomerProduct extends Model
         'is_active' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
         'custom_price' => 'decimal:2',
+    ];
+
+    protected $dates = [
+        'deleted_at'
     ];
 
     protected $appends = [

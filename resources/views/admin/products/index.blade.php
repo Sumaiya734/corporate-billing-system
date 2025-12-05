@@ -17,10 +17,10 @@
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-outline-primary" id="exportBtn">
-                <span class="me-1">📥</span>Export
+                <span class="me-1">Export</span>
             </button>
             <a href="{{ route('admin.products.create') }}" class="btn btn-primary">
-                <span class="me-1">➕</span>Create Product
+                <span class="me-1">+</span>Create Product
             </a>
         </div>
     </div>
@@ -32,14 +32,14 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title text-white-muted mb-2">Total Products</h6>
-                            <h3 class="mb-0">{{ $stats['total_products'] ?? 0 }}</h3>
+                            <h6 class="card-title text-white mb-2">Total Products</h6>
+                            <h3 class="mb-0 counter">{{ $stats['total_products'] ?? 0 }}</h3>
                         </div>
                         <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
                             <span style="font-size: 1.5rem;">📦</span>
                         </div>
                     </div>
-                    <p class="text-white mt-3 mb-0">
+                    <p class="text-white-50 mt-3 mb-0">
                         <span class="me-1">✅</span> All active products
                     </p>
                 </div>
@@ -51,14 +51,14 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title text-white-muted mb-2">Total Types</h6>
-                            <h3 class="mb-0">{{ $stats['total_types'] ?? 0 }}</h3>
+                            <h6 class="card-title text-white mb-2">Total Types</h6>
+                            <h3 class="mb-0 counter">{{ $stats['total_types'] ?? 0 }}</h3>
                         </div>
                         <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
                             <span style="font-size: 1.5rem;">🏷️</span>
                         </div>
                     </div>
-                    <p class="text-white-muted mt-3 mb-0">
+                    <p class="text-white-50 mt-3 mb-0">
                         <span class="me-1">ℹ️</span> Product categories available
                     </p>
                 </div>
@@ -70,14 +70,14 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title text-whitemuted mb-2">Most Popular</h6>
-                            <h3 class="mb-0" style="font-size: 1.5rem;">{{ $stats['most_popular'] ?? 'N/A' }}</h3>
+                            <h6 class="card-title text-white mb-2">Most Popular</h6>
+                            <h3 class="mb-0 counter" style="font-size: 1.5rem;">{{ $stats['most_popular'] ?? 'N/A' }}</h3>
                         </div>
                         <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
                             <span style="font-size: 1.5rem;">🔥</span>
                         </div>
                     </div>
-                    <p class="text-white muted mt-3 mb-0">
+                    <p class="text-white-50 mt-3 mb-0">
                         <span class="me-1">📈</span> Top selling product
                     </p>
                 </div>
@@ -85,18 +85,18 @@
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card stat-card bg-secondary text-white">
+            <div class="card stat-card bg-secondary text-white mb-4">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title text-white-muted mb-2">Active Customers</h6>
-                            <h3 class="mb-0">{{ $stats['active_customers'] ?? 'N/A' }}</h3>
+                            <h6 class="card-title text-white mb-2">Active Customers</h6>
+                            <h3 class="mb-0 counter">{{ $stats['active_customers'] ?? 'N/A' }}</h3>
                         </div>
                         <div class="avatar-sm rounded-circle text-white d-flex align-items-center justify-content-center">
                             <span style="font-size: 1.5rem;">👥</span>
                         </div>
                     </div>
-                    <p class="text-white mt-3 mb-0">
+                    <p class="text-white-50 mt-3 mb-0">
                         <span class="me-1">⬆️</span> Using products
                     </p>
                 </div>
@@ -321,6 +321,45 @@
 
     .bg-purple {
         background-color: #6f42c1 !important;
+    }
+
+    /* Statistics Cards */
+    .stat-card {
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-card .card-title {
+        font-size: 0.875rem;
+        font-weight: 500;
+        opacity: 0.9;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-card .avatar-sm {
+        width: 3rem;
+        height: 3rem;
+        font-size: 1.5rem;
+    }
+    
+    .stat-card h3 {
+        font-weight: 600;
+        font-size: 1.5rem;
+    }
+    
+    .stat-card p {
+        font-size: 0.875rem;
+        margin-bottom: 0;
+    }
+    
+    .stat-card .counter {
+        transition: all 0.3s ease-in-out;
     }
 
     .table th {

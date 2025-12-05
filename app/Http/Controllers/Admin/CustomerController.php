@@ -44,6 +44,7 @@ class CustomerController extends Controller
         $customersWithDue = Customer::whereHas('invoices', function($q) {
             $q->whereIn('invoices.status', ['unpaid', 'partial'])->where('invoices.next_due', '>', 0);
         })->count();
+        $newCustomersCount = Customer::where('created_at', '>=', now()->subDays(7))->count();
 
         return view('admin.customers.index', compact(
             'customers',
@@ -51,7 +52,8 @@ class CustomerController extends Controller
             'activeCustomers',
             'inactiveCustomers',
             'customersWithProducts',
-            'customersWithDue'
+            'customersWithDue',
+            'newCustomersCount'
         ));
     }
 
@@ -128,6 +130,9 @@ class CustomerController extends Controller
             return $invoice->total_amount - ($invoice->received_amount ?? 0);
         });
         
+        // In your controller
+        $newCustomersCount = Customer::where('created_at', '>=', now()->subDays(7))->count();
+
         // Get recent invoices (limit to 5 most recent)
         $recentInvoices = $customer->invoices()->latest()->take(5)->get();
         
@@ -135,7 +140,7 @@ class CustomerController extends Controller
         $recentPayments = $customer->invoices()->with('payments')->get()
             ->pluck('payments')->flatten()->sortByDesc('payment_date')->take(5);
         
-        return view('admin.customers.show', compact('customer', 'totalInvoices', 'totalPaid', 'totalDue', 'recentInvoices', 'recentPayments'));
+        return view('admin.customers.show', compact('customer', 'totalInvoices', 'totalPaid', 'totalDue', 'recentInvoices', 'recentPayments', 'newCustomersCount'));
     }
 
     /**

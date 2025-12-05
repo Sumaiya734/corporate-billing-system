@@ -17,8 +17,14 @@ class CustomerProductController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Customer::with(['customerproducts.product', 'customerproducts.invoices'])
-                ->whereHas('customerproducts');
+            $query = Customer::with(['customerproducts' => function($query) {
+                // Exclude deleted products
+                $query->where('status', '!=', 'deleted');
+            }, 'customerproducts.product', 'customerproducts.invoices'])
+                ->whereHas('customerproducts', function($query) {
+                    // Only include customers with non-deleted products
+                    $query->where('status', '!=', 'deleted');
+                });
 
             // Single customer view
             if ($request->has('customer_id')) {
@@ -50,15 +56,18 @@ class CustomerProductController extends Controller
 
             $customers = $query->orderBy('name')->paginate(15)->withQueryString();
             
-            // Get total customers count
-            $totalCustomers = Customer::whereHas('customerproducts')->count();
+            // Get total customers count with non-deleted products
+            $totalCustomers = Customer::whereHas('customerproducts', function($query) {
+                $query->where('status', '!=', 'deleted');
+            })->count();
 
             // For single customer view, calculate total paid
             $totalPaid = 0;
             if ($request->has('customer_id') && $customers->count() === 1) {
                 $customer = $customers->first();
-                // Calculate total paid through invoices
+                // Calculate total paid through invoices for non-deleted products
                 $totalPaid = $customer->customerproducts()
+                    ->where('status', '!=', 'deleted')
                     ->with('invoices.payments')
                     ->get()
                     ->flatMap(function ($cp) {
@@ -247,7 +256,11 @@ class CustomerProductController extends Controller
         try {
             $customerProduct = CustomerProduct::with(['customer', 'product', 'invoices'])->findOrFail($id);
             
-            return view('admin.customer-to-products.edit', compact('customerProduct'));
+            // Extract customer and product for easier access in the view
+            $customer = $customerProduct->customer;
+            $product = $customerProduct->product;
+            
+            return view('admin.customer-to-products.edit', compact('customerProduct', 'customer', 'product'));
         } catch (\Exception $e) {
             Log::error('Error loading edit form: ' . $e->getMessage());
             return redirect()->route('admin.customer-to-products.index')
@@ -336,14 +349,15 @@ class CustomerProductController extends Controller
             }
 
             $productName = $customerProduct->product->name ?? 'Unknown product';
+            
+            // Soft delete the customer product to preserve for history
             $customerProduct->delete();
 
             return redirect()->route('admin.customer-to-products.index')
-                ->with('success', "Product '{$productName}' removed successfully!");
-
+                ->with('success', "Product '{$productName}' removed successfully! (Preserved for history)");
         } catch (\Exception $e) {
-            Log::error('Error deleting product: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to delete product.');
+            Log::error('Error marking product as deleted: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to remove product.');
         }
     }
 

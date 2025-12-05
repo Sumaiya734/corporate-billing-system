@@ -179,13 +179,13 @@
             </div>
         </div>
 
-        <!-- Active Products -->
+        <!-- Active Products // All Products -->
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="fw-bold text-primary mb-3">
-                            <i class="fas fa-box me-2"></i>Active Products
+                            <i class="fas fa-box me-2"></i>All Products 
                             </h5>
                             <a href="{{ route('admin.customer-to-products.index', ['customer_id' => $customer->c_id]) }}" class="btn btn-sm btn-outline-primary">
                                 View
@@ -367,6 +367,9 @@
 <style>
 .card {
     border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
 }
 .table th, .table td {
     vertical-align: middle;

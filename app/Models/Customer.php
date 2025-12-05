@@ -90,13 +90,9 @@ class Customer extends Model
          * FIXED: Use HasMany through CustomerToProduct instead of BelongsToMany
 
          */
-
         public function customerproducts(): HasMany
-
         {
-
             return $this->hasMany(Customerproduct::class, 'c_id', 'c_id');
-
         }
 
     

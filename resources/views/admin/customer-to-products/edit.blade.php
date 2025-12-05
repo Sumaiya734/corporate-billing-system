@@ -116,7 +116,7 @@
                                                 <input type="number" step="0.01" min="0" 
                                                        class="form-control @error('custom_total_amount') is-invalid @enderror" 
                                                        id="custom_total_amount" name="custom_total_amount" 
-                                                       value="{{ old('custom_total_amount', $customerProduct->custom_price ?? ($product->monthly_price * $customerProduct->billing_cycle_months)) }}">
+                                                       value="{{ old('custom_total_amount', $customerProduct->custom_price ?? (($product->monthly_price ?? 0) * $customerProduct->billing_cycle_months)) }}">
                                                 @error('custom_total_amount')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror

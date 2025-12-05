@@ -113,6 +113,37 @@ class ProductController extends Controller
         }
     }
 
+    public function edit($id)
+    {
+        Log::info('=== EDIT METHOD CALLED ===', [
+            'id' => $id,
+            'type' => gettype($id),
+            'request_url' => request()->url(),
+            'request_method' => request()->method()
+        ]);
+        
+        try {
+            Log::info('Fetching product for edit', ['id' => $id]);
+            
+            $product = Product::with('type')->where('p_id', $id)->firstOrFail();
+            
+            Log::info('Product found for edit', ['product' => $product->toArray()]);
+            
+            return response()->json($product);
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch product for edit', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found: ' . $e->getMessage()
+            ], 404);
+        }
+    }
+
     public function update(Request $request, $id)
     {
         Log::info('Product update request received', [
