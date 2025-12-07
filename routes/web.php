@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Customer;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\AuthController;
@@ -18,6 +19,23 @@ use App\Http\Controllers\Admin\CustomerToProductController;
 
 // Customer search route for product assignment (outside auth group for AJAX access)
 Route::get('/admin/customers/suggestions', [CustomerProductController::class, 'getCustomerSuggestions'])->name('admin.customers.suggestions');
+
+// Route to serve customer profile images
+Route::get('/storage/{path}', function ($path) {
+    // Security check to ensure only customer profile images are served
+    if (!str_starts_with($path, 'customers/profiles/') && 
+        !str_starts_with($path, 'customers/id_cards/')) {
+        abort(403, 'Unauthorized access');
+    }
+    
+    // Check if file exists in storage
+    if (!Storage::disk('public')->exists($path)) {
+        abort(404, 'File not found');
+    }
+    
+    // Return the file
+    return response()->file(Storage::disk('public')->path($path));
+})->where('path', '.*')->name('storage.serve');
 
 Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
 Route::get('/home', [WelcomeController::class, 'index'])->name('home');

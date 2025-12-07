@@ -4,6 +4,32 @@
 
 @section('content')
 <div class="container-fluid p-4">
+    <!-- Flash Messages -->
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">
+            <i class="fas fa-check-circle me-2 fs-5"></i>
+            <div class="flex-grow-1">{{ session('success') }}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center" role="alert">
+            <i class="fas fa-exclamation-circle me-2 fs-5"></i>
+            <div class="flex-grow-1">{{ session('error') }}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    
+    @if(session('success') && strpos(session('success'), 'Customer updated successfully') !== false)
+        <script>
+            // Refresh the page to ensure images are displayed properly after update
+            setTimeout(function() {
+                window.location.reload();
+            }, 1500);
+        </script>
+    @endif
+    
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -172,6 +198,10 @@
                             <tr>
                                 <td class="text-muted">Member Since:</td>
                                 <td>{{ $customer->created_at->format('M d, Y') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">NID/ID:</td>
+                                <td>{{ $customer->nid_number }}</td>
                             </tr>
                         </tbody>
                     </table>

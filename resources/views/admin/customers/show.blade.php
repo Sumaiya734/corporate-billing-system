@@ -128,14 +128,24 @@
                         @if($customer->profile_picture)
                             <img src="{{ asset('storage/' . $customer->profile_picture) }}" 
                                  alt="{{ $customer->name }}" 
-                                 class="rounded-circle mb-3"
-                                 style="width: 180px; height: 180px; object-fit: cover; border: 3px solid #f1f3f4;">
+                                 class="rounded-circle mb-3 img-lightbox-trigger"
+                                 style="width: 180px; height: 180px; object-fit: cover; border: 3px solid #f1f3f4; cursor: zoom-in;"
+                                 data-full-src="{{ asset('storage/' . $customer->profile_picture) }}"
+                                 data-caption="{{ $customer->name }} - Profile Picture">
                         @else
                             <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-3" 
                                  style="width: 180px; height: 180px; font-size: 4rem; border: 3px solid #f1f3f4;">
                                 {{ strtoupper(substr($customer->name, 0, 1)) }}
                             </div>
                         @endif
+                        <!-- @if($customer->profile_picture)
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-info img-lightbox-btn"
+                                    data-full-src="{{ asset('storage/' . $customer->profile_picture) }}"
+                                    data-caption="{{ $customer->name }} - Profile Picture">
+                                <i class="fas fa-expand me-1"></i>View Full Image
+                            </button>
+                        @endif -->
                     </div>
                     <table class="table table-sm table-borderless mb-0">
                         <tbody>
@@ -212,12 +222,14 @@
                                         <div class="position-relative">
                                             <img src="{{ asset('storage/' . $customer->id_card_front) }}" 
                                                  alt="Front ID Card" 
-                                                 class="img-thumbnail id-card-preview"
-                                                 style="width: 80px; height: 50px; object-fit: cover; cursor: pointer;"
+                                                 class="img-thumbnail id-card-preview img-lightbox-trigger"
+                                                 style="width: 80px; height: 50px; object-fit: cover; cursor: zoom-in;"
                                                  data-bs-toggle="modal" 
                                                  data-bs-target="#idCardModal"
                                                  data-image-src="{{ asset('storage/' . $customer->id_card_front) }}"
-                                                 data-image-title="Front ID Card">
+                                                 data-image-title="Front ID Card"
+                                                 
+                                                 data-caption="ID Card - Front Side">
                                             <small class="d-block text-center mt-1">Front</small>
                                         </div>
                                         @endif
@@ -225,12 +237,14 @@
                                         <div class="position-relative">
                                             <img src="{{ asset('storage/' . $customer->id_card_back) }}" 
                                                  alt="Back ID Card" 
-                                                 class="img-thumbnail id-card-preview"
-                                                 style="width: 80px; height: 50px; object-fit: cover; cursor: pointer;"
+                                                 class="img-thumbnail id-card-preview img-lightbox-trigger"
+                                                 style="width: 80px; height: 50px; object-fit: cover; cursor: zoom-in;"
                                                  data-bs-toggle="modal" 
                                                  data-bs-target="#idCardModal"
                                                  data-image-src="{{ asset('storage/' . $customer->id_card_back) }}"
-                                                 data-image-title="Back ID Card">
+                                                 data-image-title="Back ID Card"
+                                                 
+                                                 data-caption="ID Card - Back Side">
                                             <small class="d-block text-center mt-1">Back</small>
                                         </div>
                                         @endif
@@ -438,6 +452,25 @@
         </div>
     </div>
 </div>
+
+<!-- Lightbox Modal -->
+<div class="modal fade" id="imageLightboxModal" tabindex="-1" aria-labelledby="imageLightboxModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageLightboxModalLabel">Image Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="lightboxImage" src="" alt="Full size image" class="img-fluid">
+                <p id="lightboxCaption" class="mt-2 mb-0 text-muted"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 <!-- Toggle Status Confirmation Modal -->
@@ -518,6 +551,17 @@ h5.text-primary {
 .img-thumbnail {
     padding: 0.15rem;
 }
+
+/* Lightbox trigger cursor */
+.img-lightbox-trigger {
+    cursor: zoom-in;
+}
+
+/* Modal image styling */
+#lightboxImage {
+    max-height: 80vh;
+    object-fit: contain;
+}
 </style>
 @endsection
 
@@ -594,6 +638,34 @@ document.addEventListener('DOMContentLoaded', function() {
             
             idCardImage.src = src;
             idCardModalLabel.textContent = title;
+        });
+    });
+    
+    // Lightbox modal elements
+    const lightboxModal = new bootstrap.Modal(document.getElementById('imageLightboxModal'));
+    const lightboxImage = document.getElementById('lightboxImage');
+    const lightboxCaption = document.getElementById('lightboxCaption');
+    
+    // Lightbox trigger function
+    function openLightbox(src, caption) {
+        if (src && lightboxImage) {
+            lightboxImage.src = src;
+            lightboxCaption.textContent = caption || '';
+            lightboxModal.show();
+        }
+    }
+    
+    // Add event listeners for lightbox triggers
+    document.querySelectorAll('.img-lightbox-trigger, .img-lightbox-btn').forEach(element => {
+        element.addEventListener('click', function(e) {
+            // Prevent default if it's a button
+            if (this.tagName === 'BUTTON') {
+                e.preventDefault();
+            }
+            
+            const src = this.getAttribute('data-full-src');
+            const caption = this.getAttribute('data-caption');
+            openLightbox(src, caption);
         });
     });
 });

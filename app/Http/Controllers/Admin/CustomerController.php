@@ -31,6 +31,24 @@ class CustomerController extends Controller
                 $query->inactive();
             }
         }
+        
+        // Handle quick filter buttons
+        if ($request->has('filter')) {
+            switch ($request->filter) {
+                case 'active':
+                    $query->active();
+                    break;
+                case 'inactive':
+                    $query->inactive();
+                    break;
+                case 'with_due':
+                    $query->withDuePayments();
+                    break;
+                case 'new':
+                    $query->where('created_at', '>=', now()->subDays(7));
+                    break;
+            }
+        }
 
         $customers = $query->latest()->paginate(20);
 
@@ -42,11 +60,13 @@ class CustomerController extends Controller
             $q->where('customer_to_products.status', 'active')->where('customer_to_products.is_active', true);
         })->count();
         $customersWithDue = Customer::whereHas('invoices', function($q) {
-            $q->whereIn('invoices.status', ['unpaid', 'partial'])->where('invoices.next_due', '>', 0);
+            $q->whereIn('invoices.status', ['unpaid', 'partial'])
+              ->whereRaw('invoices.total_amount > COALESCE(invoices.received_amount, 0)');
         })->count();
         $newCustomersCount = Customer::where('created_at', '>=', now()->subDays(7))->count();
 
-        return view('admin.customers.index', compact(
+        // Prepare data for view
+        $viewData = compact(
             'customers',
             'totalCustomers',
             'activeCustomers',
@@ -54,7 +74,14 @@ class CustomerController extends Controller
             'customersWithProducts',
             'customersWithDue',
             'newCustomersCount'
-        ));
+        );
+
+        // Return partial view for AJAX requests
+        if ($request->ajax()) {
+            return view('admin.customers.partials.table', $viewData)->render();
+        }
+
+        return view('admin.customers.index', $viewData);
     }
 
     /**
@@ -88,27 +115,32 @@ class CustomerController extends Controller
             // Handle profile picture upload
             if ($request->hasFile('profile_picture')) {
                 $validated['profile_picture'] = $request->file('profile_picture')->store('customers/profiles', 'public');
+                Log::info('Profile picture uploaded: ' . $validated['profile_picture']);
             }
 
             // Handle ID card front upload
             if ($request->hasFile('id_card_front')) {
                 $validated['id_card_front'] = $request->file('id_card_front')->store('customers/id_cards', 'public');
+                Log::info('ID card front uploaded: ' . $validated['id_card_front']);
             }
 
             // Handle ID card back upload
             if ($request->hasFile('id_card_back')) {
                 $validated['id_card_back'] = $request->file('id_card_back')->store('customers/id_cards', 'public');
+                Log::info('ID card back uploaded: ' . $validated['id_card_back']);
             }
 
             $validated['is_active'] = $request->has('is_active') ? 1 : 0;
 
             $customer = Customer::create($validated);
+            
+            Log::info('Customer created successfully with ID: ' . $customer->c_id);
 
             return redirect()->route('admin.customers.index')
                 ->with('success', 'Customer created successfully!');
 
         } catch (\Exception $e) {
-            Log::error('Customer creation error: ' . $e->getMessage());
+            Log::error('Customer creation error: ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
             return redirect()->back()
                 ->with('error', 'Error creating customer: ' . $e->getMessage())
                 ->withInput();
@@ -179,6 +211,7 @@ class CustomerController extends Controller
             if ($request->has('remove_profile_picture') && $customer->profile_picture) {
                 Storage::disk('public')->delete($customer->profile_picture);
                 $validated['profile_picture'] = null;
+                Log::info('Profile picture removed for customer ID: ' . $customer->c_id);
             }
 
             // Handle profile picture upload
@@ -188,6 +221,7 @@ class CustomerController extends Controller
                     Storage::disk('public')->delete($customer->profile_picture);
                 }
                 $validated['profile_picture'] = $request->file('profile_picture')->store('customers/profiles', 'public');
+                Log::info('Profile picture uploaded for customer ID: ' . $customer->c_id . ', path: ' . $validated['profile_picture']);
             }
 
             // Handle ID cards removal
@@ -200,6 +234,7 @@ class CustomerController extends Controller
                 }
                 $validated['id_card_front'] = null;
                 $validated['id_card_back'] = null;
+                Log::info('ID cards removed for customer ID: ' . $customer->c_id);
             }
 
             // Handle ID card front upload
@@ -209,6 +244,7 @@ class CustomerController extends Controller
                     Storage::disk('public')->delete($customer->id_card_front);
                 }
                 $validated['id_card_front'] = $request->file('id_card_front')->store('customers/id_cards', 'public');
+                Log::info('ID card front uploaded for customer ID: ' . $customer->c_id . ', path: ' . $validated['id_card_front']);
             }
 
             // Handle ID card back upload
@@ -218,6 +254,7 @@ class CustomerController extends Controller
                     Storage::disk('public')->delete($customer->id_card_back);
                 }
                 $validated['id_card_back'] = $request->file('id_card_back')->store('customers/id_cards', 'public');
+                Log::info('ID card back uploaded for customer ID: ' . $customer->c_id . ', path: ' . $validated['id_card_back']);
             }
 
             $validated['is_active'] = $request->has('is_active') ? 1 : 0;
@@ -226,12 +263,14 @@ class CustomerController extends Controller
             unset($validated['remove_profile_picture'], $validated['remove_id_cards']);
 
             $customer->update($validated);
+            
+            Log::info('Customer updated successfully with ID: ' . $customer->c_id);
 
-            return redirect()->route('admin.customers.edit', $customer->c_id)
+            return redirect()->route('admin.customers.show', $customer->c_id)
                 ->with('success', 'Customer updated successfully!');
 
         } catch (\Exception $e) {
-            Log::error('Customer update error: ' . $e->getMessage());
+            Log::error('Customer update error: ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
             return redirect()->back()
                 ->with('error', 'Error updating customer: ' . $e->getMessage())
                 ->withInput();

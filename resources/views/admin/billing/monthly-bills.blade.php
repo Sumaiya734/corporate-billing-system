@@ -53,9 +53,9 @@
 
    <!-- Statistics Cards -->
     <div class="row mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-primary text-white mb-4">
-                <div class="card-body">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100 bg-primary text-white">
+                <div class="card-body d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
                             <div class="text-xs font-weight-bold text-uppercase mb-1 opacity-75">
@@ -75,11 +75,13 @@
                                 $totalCustomers = $customersWithDue + $fullyPaidCustomers;
                                 $paidPercentage = $totalCustomers > 0 ? round(($fullyPaidCustomers / $totalCustomers) * 100) : 0;
                             @endphp
-                            <small class="h5 mb-2 fw-bold"><i class="fas fa-file-invoice me-1"></i>{{ $totalInvoices }} Total Invoices</small>
-                            <div class="small mt-2 pt-2 border-top border-white border-opacity-25">
-                                <div>
+                            <div class="h5 mb-2 fw-bold"><i class="fas fa-file-invoice me-1"></i>{{ $totalInvoices }} Total Invoices</div>
+                            <div class="small mt-2 pt-2 border-top border-white border-opacity-25 flex-grow-1">
+                                <div class="d-flex justify-content-between">
                                     <span><i class="fas fa-exclamation-circle me-1"></i> Due</span>
                                     <span class="badge bg-warning text-dark fw-bold">{{ $customersWithDue }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1">
                                     <span><i class="fas fa-check-circle me-1"></i> Paid</span>
                                     <span class="badge bg-success fw-bold">{{ $fullyPaidCustomers }}</span>
                                 </div>
@@ -92,11 +94,11 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-success text-white mb-4">
-                <div class="card-body">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100 bg-success text-white">
+                <div class="card-body d-flex flex-column">
                     <div class="d-flex justify-content-between">
-                        <div>
+                        <div class="flex-grow-1">
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Total Billing Amount</div>
                             @php
                                 // Calculate total billing amount from actual invoice data
@@ -108,14 +110,17 @@
                             <i class="fas fa-dollar-sign fa-2x text-white-300"></i>
                         </div>
                     </div>
+                    <div class="mt-auto pt-3">
+                        <small class="text-white-50">Total amount billed</small>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-warning text-white mb-4">
-                <div class="card-body">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100 bg-warning text-white">
+                <div class="card-body d-flex flex-column">
                     <div class="d-flex justify-content-between">
-                        <div>
+                        <div class="flex-grow-1">
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Pending Payments</div>
                             @php
                                 // Calculate pending amount from actual invoice data
@@ -127,14 +132,17 @@
                             <i class="fas fa-clock fa-2x text-white-300"></i>
                         </div>
                     </div>
+                    <div class="mt-auto pt-3">
+                        <small class="text-white-50">Amount yet to be collected</small>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-info text-white mb-4">
-                <div class="card-body">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100 bg-info text-white">
+                <div class="card-body d-flex flex-column">
                     <div class="d-flex justify-content-between">
-                        <div>
+                        <div class="flex-grow-1">
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Paid Amount</div>
                             @php
                                 // Calculate paid amount from actual invoice data
@@ -145,6 +153,9 @@
                         <div class="col-auto">
                             <i class="fas fa-check-circle fa-2x text-white-300"></i>
                         </div>
+                    </div>
+                    <div class="mt-auto pt-3">
+                        <small class="text-white-50">Amount already collected</small>
                     </div>
                 </div>
             </div>

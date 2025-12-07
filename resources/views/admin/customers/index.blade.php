@@ -125,9 +125,7 @@
             </h5>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.customers.index') }}" id="searchForm">
-                <input type="hidden" name="filter" id="filterInput" value="{{ request('filter') }}">
-                <div class="row g-3">
+            <form method="GET" action="{{ route('admin.customers.index') }}" id="searchForm">                <div class="row g-3">
                     <div class="col-lg-6">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0">
@@ -169,34 +167,35 @@
     <div class="row mb-4">
         <div class="d-flex flex-wrap gap-2">
             @php
-                $currentFilter = request('filter', ''); // default to empty string
+                $currentFilter = request('filter', '');
+                $currentStatus = request('status', '');
             @endphp
 
-            <a href="{{ route('admin.customers.index') }}"
-               class="btn btn-sm btn-outline-primary quick-filter-btn {{ $currentFilter === '' ? 'active' : '' }}">
+            <a href="{{ route('admin.customers.index') }}" 
+               class="btn btn-sm btn-outline-primary quick-filter-btn {{ $currentFilter === '' && $currentStatus === '' ? 'active' : '' }}">
                 <i class="fas fa-list me-1"></i>All Customers
                 <span class="badge bg-primary ms-1">{{ $totalCustomers }}</span>
             </a>
 
-            <a href="{{ route('admin.customers.index', ['filter' => 'active']) }}"
-               class="btn btn-sm btn-outline-success quick-filter-btn {{ $currentFilter === 'active' ? 'active' : '' }}">
+            <a href="{{ route('admin.customers.index', ['status' => 'active']) }}" 
+               class="btn btn-sm btn-outline-success quick-filter-btn {{ $currentStatus === 'active' ? 'active' : '' }}">
                 <i class="fas fa-user-check me-1"></i>Active
                 <span class="badge bg-success ms-1">{{ $activeCustomers }}</span>
             </a>
 
-            <a href="{{ route('admin.customers.index', ['filter' => 'inactive']) }}"
-               class="btn btn-sm btn-outline-secondary quick-filter-btn {{ $currentFilter === 'inactive' ? 'active' : '' }}">
+            <a href="{{ route('admin.customers.index', ['status' => 'inactive']) }}" 
+               class="btn btn-sm btn-outline-secondary quick-filter-btn {{ $currentStatus === 'inactive' ? 'active' : '' }}">
                 <i class="fas fa-user-slash me-1"></i>Inactive
                 <span class="badge bg-secondary ms-1">{{ $inactiveCustomers }}</span>
             </a>
 
-            <a href="{{ route('admin.customers.index', ['filter' => 'with_due']) }}"
+            <a href="{{ route('admin.customers.index', ['filter' => 'with_due']) }}" 
                class="btn btn-sm btn-outline-danger quick-filter-btn {{ $currentFilter === 'with_due' ? 'active' : '' }}">
                 <i class="fas fa-exclamation-triangle me-1"></i>With Due
                 <span class="badge bg-danger ms-1">{{ $customersWithDue }}</span>
             </a>
 
-            <a href="{{ route('admin.customers.index', ['filter' => 'new']) }}"
+            <a href="{{ route('admin.customers.index', ['filter' => 'new']) }}" 
                class="btn btn-sm btn-outline-info quick-filter-btn {{ $currentFilter === 'new' ? 'active' : '' }}">
                 <i class="fas fa-star me-1"></i>New This Week
                 <span class="badge bg-info ms-1">{{ $newCustomersCount }}</span>
@@ -288,11 +287,11 @@
                                     return $price;
                                 });
                                 
-                                // Check for due payments
+                                // Check for due payments - consistent with controller logic
                                 $hasDue = $customer->invoices()
                                     ->whereIn('invoices.status', ['unpaid', 'partial'])
-                                    ->exists();
-                                
+                                    ->whereRaw('invoices.total_amount > COALESCE(invoices.received_amount, 0)')
+                                    ->exists();                                
                                 $totalDue = $customer->invoices()
                                     ->whereIn('invoices.status', ['unpaid', 'partial'])
                                     ->sum(DB::raw('invoices.total_amount - invoices.received_amount'));
@@ -523,32 +522,15 @@
                 @endif
 
             @else
-                <!-- Empty State -->
-                <div class="text-center py-5">
-                    <div class="empty-state-icon mb-3">
-                        <i class="fas fa-users fa-4x text-muted opacity-25"></i>
-                    </div>
-                    <h4 class="text-muted mb-2">No Customers Found</h4>
-                    <p class="text-muted mb-4">
-                        @if(request()->has('search') || request()->has('status') || request()->has('filter'))
-                            No customers match your current search criteria.
-                        @else
-                            Get started by adding your first customer to the system.
-                        @endif
-                    </p>
-                    <div class="d-flex justify-content-center gap-2">
-                        <a href="{{ route('admin.customers.create') }}" class="btn btn-primary">
-                            <i class="fas fa-user-plus me-2"></i>Add First Customer
-                        </a>
-                        @if(request()->has('search') || request()->has('status') || request()->has('filter'))
-                            <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-times me-2"></i>Clear Filters
-                            </a>
-                        @endif
-                    </div>
-                </div>
-            @endif
-        </div>
+                @include('admin.customers.partials.table', [
+                    'customers' => $customers,
+                    'totalCustomers' => $totalCustomers,
+                    'activeCustomers' => $activeCustomers,
+                    'inactiveCustomers' => $inactiveCustomers,
+                    'customersWithDue' => $customersWithDue,
+                    'newCustomersCount' => $newCustomersCount
+                ])
+            @endif        </div>
     </div>
 </div>
 
@@ -768,37 +750,53 @@
 }
 
 /* Quick Filter Buttons */
-.btn-sm.btn-outline-primary.active {
+.quick-filter-btn {
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.quick-filter-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-sm.btn-outline-primary.active,
+.btn-sm.btn-outline-primary.active:hover {
     background-color: #0d6efd;
     border-color: #0d6efd;
     color: white;
 }
 
-.btn-sm.btn-outline-success.active {
+.btn-sm.btn-outline-success.active,
+.btn-sm.btn-outline-success.active:hover {
     background-color: #198754;
     border-color: #198754;
     color: white;
 }
 
-.btn-sm.btn-outline-secondary.active {
+.btn-sm.btn-outline-secondary.active,
+.btn-sm.btn-outline-secondary.active:hover {
     background-color: #6c757d;
     border-color: #6c757d;
     color: white;
 }
 
-.btn-sm.btn-outline-danger.active {
+.btn-sm.btn-outline-danger.active,
+.btn-sm.btn-outline-danger.active:hover {
     background-color: #dc3545;
     border-color: #dc3545;
     color: white;
 }
 
-.btn-sm.btn-outline-info.active {
+.btn-sm.btn-outline-info.active,
+.btn-sm.btn-outline-info.active:hover {
     background-color: #0dcaf0;
     border-color: #0dcaf0;
     color: white;
 }
 
-.btn-sm.btn-outline-warning.active {
+.btn-sm.btn-outline-warning.active,
+.btn-sm.btn-outline-warning.active:hover {
     background-color: #ffc107;
     border-color: #ffc107;
     color: #000;
@@ -873,38 +871,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle quick filter buttons
-    document.querySelectorAll('.quick-filter-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault(); // Prevent default link navigation
-            
-            // Get the filter value from the data attribute
-            const filterValue = this.dataset.filter;
-            
-            // Set the value of the hidden input
-            const filterInput = document.getElementById('filterInput');
-            if (filterInput) {
-                filterInput.value = filterValue;
-            }
-            
-            // Submit the main search form
-            document.getElementById('searchForm').submit();
-        });
-    });
+    // Quick filter buttons now use links, no need for click handlers
 
-    // Real-time search with debounce
-    let searchTimeout;
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                if (this.value.length >= 3 || this.value.length === 0) {
-                    document.getElementById('searchForm').submit();
-                }
-            }, 500);
-        });
-    }
+    // Real-time search removed - use form submission instead for consistency
 
     // Sort table by priority (new customers first, then due payments, then others)
     function sortTableByPriority() {

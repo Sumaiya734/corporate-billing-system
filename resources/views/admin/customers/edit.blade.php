@@ -83,8 +83,10 @@
                                     @if($customer->profile_picture)
                                         <img src="{{ asset('storage/' . $customer->profile_picture) }}" 
                                              alt="{{ $customer->name }}" 
-                                             class="img-thumbnail rounded-circle" 
-                                             style="width: 150px; height: 150px; object-fit: cover;">
+                                             class="img-thumbnail rounded-circle img-lightbox-trigger" 
+                                             style="width: 150px; height: 150px; object-fit: cover;"
+                                             data-full-src="{{ asset('storage/' . $customer->profile_picture) }}"
+                                             data-caption="{{ $customer->name }} - Profile Picture">
                                     @else
                                         <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center" 
                                              style="width: 150px; height: 150px; border: 2px dashed #dee2e6;">
@@ -94,11 +96,12 @@
                                 </div>
                                 <p class="text-muted mb-0">Current Profile Picture</p>
                                 @if($customer->profile_picture)
-                                    <a href="{{ asset('storage/' . $customer->profile_picture) }}" 
-                                       target="_blank" 
-                                       class="btn btn-sm btn-outline-info mt-2">
-                                        <i class="fas fa-eye me-1"></i>View Full Image
-                                    </a>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-info mt-2 img-lightbox-btn"
+                                            data-full-src="{{ asset('storage/' . $customer->profile_picture) }}"
+                                            data-caption="{{ $customer->name }} - Profile Picture">
+                                        <i class="fas fa-expand me-1"></i>View Full Image
+                                    </button>
                                 @endif
                             </div>
                         </div>
@@ -399,14 +402,17 @@
                                             <div class="border rounded p-2 text-center">
                                                 <img src="{{ asset('storage/' . $customer->id_card_front) }}" 
                                                      alt="ID Card Front" 
-                                                     class="img-fluid rounded" 
-                                                     style="max-height: 150px;">
+                                                     class="img-fluid rounded img-lightbox-trigger" 
+                                                     style="max-height: 150px;"
+                                                     data-full-src="{{ asset('storage/' . $customer->id_card_front) }}"
+                                                     data-caption="ID Card - Front Side">
                                                 <div class="mt-2">
-                                                    <a href="{{ asset('storage/' . $customer->id_card_front) }}" 
-                                                       target="_blank" 
-                                                       class="btn btn-sm btn-outline-info">
-                                                        <i class="fas fa-eye me-1"></i>View
-                                                    </a>
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-info img-lightbox-btn me-1"
+                                                            data-full-src="{{ asset('storage/' . $customer->id_card_front) }}"
+                                                            data-caption="ID Card - Front Side">
+                                                        <i class="fas fa-expand me-1"></i>View
+                                                    </button>
                                                     <a href="{{ asset('storage/' . $customer->id_card_front) }}" 
                                                        download 
                                                        class="btn btn-sm btn-outline-success">
@@ -423,14 +429,17 @@
                                             <div class="border rounded p-2 text-center">
                                                 <img src="{{ asset('storage/' . $customer->id_card_back) }}" 
                                                      alt="ID Card Back" 
-                                                     class="img-fluid rounded" 
-                                                     style="max-height: 150px;">
+                                                     class="img-fluid rounded img-lightbox-trigger" 
+                                                     style="max-height: 150px;"
+                                                     data-full-src="{{ asset('storage/' . $customer->id_card_back) }}"
+                                                     data-caption="ID Card - Back Side">
                                                 <div class="mt-2">
-                                                    <a href="{{ asset('storage/' . $customer->id_card_back) }}" 
-                                                       target="_blank" 
-                                                       class="btn btn-sm btn-outline-info">
-                                                        <i class="fas fa-eye me-1"></i>View
-                                                    </a>
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-info img-lightbox-btn me-1"
+                                                            data-full-src="{{ asset('storage/' . $customer->id_card_back) }}"
+                                                            data-caption="ID Card - Back Side">
+                                                        <i class="fas fa-expand me-1"></i>View
+                                                    </button>
                                                     <a href="{{ asset('storage/' . $customer->id_card_back) }}" 
                                                        download 
                                                        class="btn btn-sm btn-outline-success">
@@ -556,17 +565,33 @@
                                 <button type="reset" class="btn btn-outline-warning me-2">
                                     <i class="fas fa-undo me-2"></i>Reset
                                 </button>
-                                <!-- <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
                                     <i class="fas fa-save me-2"></i>Update Customer
-                                </button> -->
-                                <a href="{{ route('admin.customers.index') }}" class="btn btn-primary">
-                                    <i class="fas fa-save me-2"></i>Update Customer
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div class="modal fade" id="imageLightboxModal" tabindex="-1" aria-labelledby="imageLightboxModalLabel" aria-hidden="true" data-bs-focus="false" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageLightboxModalLabel">Image Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="lightboxImage" src="" alt="Full size image" class="img-fluid">
+                <p id="lightboxCaption" class="mt-2 mb-0 text-muted"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>
@@ -603,6 +628,17 @@
         right: 5px;
         z-index: 10;
     }
+    
+    /* Lightbox trigger cursor */
+    .img-lightbox-trigger {
+        cursor: zoom-in;
+    }
+    
+    /* Modal image styling */
+    #lightboxImage {
+        max-height: 80vh;
+        object-fit: contain;
+    }
 </style>
 
 <script>
@@ -619,12 +655,69 @@ document.addEventListener('DOMContentLoaded', function() {
     const frontPreviewImage = document.getElementById('frontPreviewImage');
     const backPreviewContainer = document.getElementById('backPreviewContainer');
     const backPreviewImage = document.getElementById('backPreviewImage');
-
-    // Form submission handler
-    form.addEventListener('submit', function() {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+    
+    // Lightbox modal elements
+    let lightboxModalInstance = null;
+    const lightboxModalElement = document.getElementById('imageLightboxModal');
+    const lightboxImage = document.getElementById('lightboxImage');
+    const lightboxCaption = document.getElementById('lightboxCaption');
+    
+    // Initialize modal without focus trap
+    if (lightboxModalElement) {
+        lightboxModalInstance = new bootstrap.Modal(lightboxModalElement, {
+            focus: false,
+            backdrop: 'static'
+        });
+    }
+    
+    // Lightbox trigger function
+    function openLightbox(src, caption) {
+        if (src && lightboxImage) {
+            lightboxImage.src = src;
+            lightboxCaption.textContent = caption || '';
+            if (lightboxModalInstance) {
+                lightboxModalInstance.show();
+            }
+        }
+    }
+    
+    // Add event listeners for lightbox triggers
+    document.querySelectorAll('.img-lightbox-trigger, .img-lightbox-btn').forEach(element => {
+        element.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent event bubbling
+            const src = this.getAttribute('data-full-src');
+            const caption = this.getAttribute('data-caption');
+            openLightbox(src, caption);
+        });
     });
+    
+    // Form submission handler
+    if (submitBtn) {
+        // Clone the button to remove any external event listeners
+        const clonedButton = submitBtn.cloneNode(true);
+        submitBtn.parentNode.replaceChild(clonedButton, submitBtn);
+        
+        // Add our own click handler
+        clonedButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            
+            // Disable button and show loading state
+            clonedButton.disabled = true;
+            clonedButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+            
+            // Submit the form
+            if (form) {
+                form.submit();
+            }
+            
+            // Refresh the page after a short delay to ensure submission
+            setTimeout(function() {
+                window.location.reload();
+            }, 500);
+        });
+    }
 
     // Profile picture preview
     if (profilePictureInput) {
@@ -702,31 +795,43 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Reset form previews
-    form.addEventListener('reset', function() {
-        if (profilePreview) {
-            profilePreview.style.display = 'none';
-        }
-        if (noProfilePreview) {
-            noProfilePreview.style.display = 'block';
-        }
-        if (frontPreviewContainer) {
-            frontPreviewContainer.style.display = 'none';
-        }
-        if (backPreviewContainer) {
-            backPreviewContainer.style.display = 'none';
-        }
-        
-        // Reset remove checkboxes
-        const removeProfileCheckbox = document.getElementById('remove_profile_picture');
-        const removeIdCardsCheckbox = document.getElementById('remove_id_cards');
-        
-        if (removeProfileCheckbox) {
-            removeProfileCheckbox.checked = false;
-        }
-        if (removeIdCardsCheckbox) {
-            removeIdCardsCheckbox.checked = false;
-        }
-    });
+    if (form) {
+        form.addEventListener('reset', function() {
+            if (profilePreview) {
+                profilePreview.style.display = 'none';
+            }
+            if (noProfilePreview) {
+                noProfilePreview.style.display = 'block';
+            }
+            if (frontPreviewContainer) {
+                frontPreviewContainer.style.display = 'none';
+            }
+            if (backPreviewContainer) {
+                backPreviewContainer.style.display = 'none';
+            }
+            
+            // Reset remove checkboxes
+            const removeProfileCheckbox = document.getElementById('remove_profile_picture');
+            const removeIdCardsCheckbox = document.getElementById('remove_id_cards');
+            
+            if (removeProfileCheckbox) {
+                removeProfileCheckbox.checked = false;
+            }
+            if (removeIdCardsCheckbox) {
+                removeIdCardsCheckbox.checked = false;
+            }
+        });
+    }
+    
+    // Handle modal hidden event to prevent focus issues
+    if (lightboxModalElement) {
+        lightboxModalElement.addEventListener('hidden.bs.modal', function () {
+            // Blur any focused elements to prevent focus traps
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
+        });
+    }
 });
 </script>
 @endsection
