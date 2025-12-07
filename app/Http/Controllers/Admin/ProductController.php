@@ -67,7 +67,8 @@ class ProductController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Product created successfully!',
-                'product' => $product
+                'product' => $product,
+                'redirect_url' => route('admin.products.index', ['success' => urlencode('Product created successfully!')])
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to create product: ' . $e->getMessage(), [

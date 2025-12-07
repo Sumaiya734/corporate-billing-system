@@ -332,8 +332,26 @@ class CustomerController extends Controller
      */
     public function getNextCustomerId()
     {
+        $year = date('y');
+        $prefix = "C-{$year}-";
+        
+        // Get the last customer ID with this year's prefix
+        $lastCustomer = Customer::where('customer_id', 'LIKE', $prefix . '%')
+            ->orderByRaw('CAST(SUBSTRING(customer_id, ' . (strlen($prefix) + 1) . ') AS UNSIGNED) DESC')
+            ->first();
+        
+        if ($lastCustomer) {
+            // Extract the number from the last customer ID
+            $lastNumber = (int) str_replace($prefix, '', $lastCustomer->customer_id);
+            $nextNumber = $lastNumber + 1;
+        } else {
+            // Start from 1 if no customers exist for this year
+            $nextNumber = 1;
+        }
+        
         return response()->json([
-            'customer_id' => Customer::generateCustomerId()
+            'customer_id' => $prefix . $nextNumber,
+            'next_number' => $nextNumber
         ]);
     }
 

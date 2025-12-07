@@ -693,29 +693,33 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Form submission handler
-    if (submitBtn) {
-        // Clone the button to remove any external event listeners
-        const clonedButton = submitBtn.cloneNode(true);
-        submitBtn.parentNode.replaceChild(clonedButton, submitBtn);
+    if (submitBtn && form) {
+        // Remove any existing event listeners by cloning and replacing the button
+        const newSubmitBtn = submitBtn.cloneNode(true);
+        submitBtn.parentNode.replaceChild(newSubmitBtn, submitBtn);
         
-        // Add our own click handler
-        clonedButton.addEventListener('click', function(e) {
+        // Track submission state
+        let isSubmitting = false;
+        
+        // Add our own click handler with proper event management
+        newSubmitBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopImmediatePropagation();
             
-            // Disable button and show loading state
-            clonedButton.disabled = true;
-            clonedButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
-            
-            // Submit the form
-            if (form) {
-                form.submit();
+            // Check if form is already being submitted
+            if (isSubmitting) {
+                return;
             }
             
-            // Refresh the page after a short delay to ensure submission
-            setTimeout(function() {
-                window.location.reload();
-            }, 500);
+            // Mark form as submitting
+            isSubmitting = true;
+            
+            // Disable button and show loading state
+            newSubmitBtn.disabled = true;
+            newSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+            
+            // Submit the form
+            form.submit();
         });
     }
 

@@ -185,18 +185,23 @@ class CustomerProductController extends Controller
     public function store(Request $request)
     {
         try {
+            // Log the incoming request for debugging
+            Log::info('Product assignment request received', [
+                'customer_id' => $request->customer_id,
+                'products_count' => count($request->products ?? []),
+                'products_data' => $request->products
+            ]);
+            
             DB::beginTransaction();
             
             $request->validate([
                 'customer_id' => 'required|exists:customers,c_id',
                 'products' => 'required|array|min:1',
-                'products.*.productId' => 'required|exists:products,p_id',
-                'products.*.price' => 'required|numeric|min:0',
-                'products.*.months' => 'required|integer|min:1',
-                'products.*.total' => 'required|numeric|min:0',
-                'products.*.assignDate' => 'required|date',
-                'products.*.dueDate' => 'nullable|date',
-                'products.*.invoiceNumber' => 'required|string'
+                'products.*.product_id' => 'required|exists:products,p_id',
+                'products.*.monthly_price' => 'required|numeric|min:0',
+                'products.*.billing_cycle_months' => 'required|integer|min:1',
+                'products.*.assign_date' => 'required|date',
+                'products.*.due_date_day' => 'nullable|integer|min:1|max:28'
             ]);
 
             $customerId = $request->customer_id;
@@ -206,14 +211,17 @@ class CustomerProductController extends Controller
             $invoiceData = [];
 
             foreach ($products as $productData) {
+                // Log each product being processed
+                Log::info('Processing product assignment', $productData);
+                
                 // Create customer product assignment
                 $customerProduct = CustomerProduct::create([
                     'c_id' => $customerId,
-                    'p_id' => $productData['productId'],
-                    'custom_price' => $productData['total'], // Store total as custom price
-                    'assign_date' => $productData['assignDate'],
-                    'billing_cycle_months' => $productData['months'],
-                    'due_date' => $productData['dueDate'] ?? null,
+                    'p_id' => $productData['product_id'],
+                    'custom_price' => $productData['monthly_price'], // Store total as custom price
+                    'assign_date' => $productData['assign_date'],
+                    'billing_cycle_months' => $productData['billing_cycle_months'],
+                    'due_date_day' => $productData['due_date_day'] ?? null,
                     'status' => 'active',
                     'is_active' => true,
                 ]);
@@ -223,15 +231,15 @@ class CustomerProductController extends Controller
 
                 // Create invoice record
                 $invoice = Invoice::create([
-                    'invoice_id' => $productData['invoiceNumber'],
+                    'invoice_id' => $this->generateInvoiceNumber(),
                     'cp_id' => $customerProduct->cp_id,
                     'c_id' => $customerId,
-                    'issue_date' => $productData['assignDate'],
-                    'due_date' => $productData['dueDate'] ?? null,
-                    'subtotal' => $productData['total'],
-                    'total_amount' => $productData['total'],
+                    'issue_date' => $productData['assign_date'],
+                    'due_date' => $this->calculateDueDate($productData['assign_date'], $productData['due_date_day'] ?? null),
+                    'subtotal' => $productData['monthly_price'],
+                    'total_amount' => $productData['monthly_price'],
                     'received_amount' => 0,
-                    'next_due' => $productData['total'],
+                    'next_due' => $productData['monthly_price'],
                     'status' => 'unpaid'
                 ]);
 
@@ -239,6 +247,11 @@ class CustomerProductController extends Controller
             }
 
             DB::commit();
+            
+            Log::info('Products assigned successfully', [
+                'customer_id' => $customerId,
+                'assigned_products_count' => count($assignedProducts)
+            ]);
 
             return redirect()->route('admin.customer-to-products.index', ['customer_id' => $customerId])
                 ->with('success', count($products) . ' product(s) assigned successfully!');
@@ -355,6 +368,7 @@ class CustomerProductController extends Controller
 
             return redirect()->route('admin.customer-to-products.index')
                 ->with('success', "Product '{$productName}' removed successfully! (Preserved for history)");
+
         } catch (\Exception $e) {
             Log::error('Error marking product as deleted: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to remove product.');
@@ -485,5 +499,31 @@ class CustomerProductController extends Controller
         }
 
         return "{$prefix}{$date}{$newNumber}";
+    }
+
+    /** Calculate due date based on assign date and due day */
+    private function calculateDueDate($assignDate, $dueDay = null)
+    {
+        if (!$dueDay) {
+            // Default to same day as assign date
+            return $assignDate;
+        }
+
+        $date = new \DateTime($assignDate);
+        $year = $date->format('Y');
+        $month = $date->format('m');
+        $day = min($dueDay, (int)$date->format('t')); // Don't exceed days in month
+        
+        // Set to the due day of the same month
+        $dueDate = new \DateTime("{$year}-{$month}-{$day}");
+        
+        // If due date is before assign date, move to next month
+        if ($dueDate < $date) {
+            $dueDate->modify('+1 month');
+            $day = min($dueDay, (int)$dueDate->format('t')); // Adjust for month length
+            $dueDate->setDate((int)$dueDate->format('Y'), (int)$dueDate->format('m'), $day);
+        }
+        
+        return $dueDate->format('Y-m-d');
     }
 }

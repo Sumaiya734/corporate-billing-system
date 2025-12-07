@@ -122,7 +122,6 @@
                     <thead class="table-light">
                         <tr>
                             <th width="60">Product ID</th>
-                            <th width="120">Product Code</th>
                             <th>Product Name</th>
                             <th>Product Type</th>
                             <th>Description</th>
@@ -134,11 +133,6 @@
                         @forelse($products as $product)
                         <tr data-type="{{ $product->product_type_id }}" id="product-row-{{ $product->p_id }}">
                             <td class="fw-bold">{{ $product->p_id }}</td>
-                            <td>
-                                <span class="badge bg-secondary" style="font-size: 0.85rem; font-family: monospace;">
-                                    PROD-{{ $product->product_code }}
-                                </span>
-                            </td>
                             <td>
                                 <div class="d-flex align-items-center">
                                     <div class="product-icon me-3 {{ $product->isRegular() ? 'bg-primary' : 'bg-warning' }}">
@@ -192,7 +186,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="text-center py-4">No products found.</td>
+                            <td colspan="6" class="text-center py-4">No products found.</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -233,16 +227,6 @@
                     <div id="editErrors" class="alert alert-danger d-none"></div>
 
                     <div id="editFields" style="display:none;">
-                        <!-- Product ID (Read-only) -->
-                        <div class="mb-3">
-                            <label class="form-label">Product ID</label>
-                            <div class="input-group">
-                                <span class="input-group-text">PROD-</span>
-                                <input type="text" id="edit_product_code" class="form-control" readonly style="background-color: #f8f9fa;">
-                            </div>
-                            <div class="form-text">Unique product identifier (cannot be changed)</div>
-                        </div>
-
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Product Name *</label>
@@ -412,6 +396,17 @@
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Product management page loaded');
         
+        // Check if there's a success message in the URL (from redirect)
+        const urlParams = new URLSearchParams(window.location.search);
+        const successMessage = urlParams.get('success');
+        if (successMessage) {
+            showToast(decodeURIComponent(successMessage), 'success');
+            
+            // Remove the success parameter from URL without reloading
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+        }
+        
         // CSRF token setup
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         console.log('CSRF Token:', csrfToken);
@@ -436,57 +431,17 @@
             toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
         }
 
-        // Debug function to test AJAX call
-        async function testAjaxCall(url, method = 'GET') {
-            console.log(`Testing ${method} request to: ${url}`);
-            try {
-                const response = await fetch(url, {
-                    method: method,
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                console.log(`Response status: ${response.status}`);
-                console.log(`Response headers:`, Object.fromEntries(response.headers.entries()));
-                const data = await response.json();
-                console.log(`Response data:`, data);
-                return { success: true, data: data, status: response.status };
-            } catch (error) {
-                console.error(`AJAX error:`, error);
-                return { success: false, error: error };
-            }
-        }
-
         // EDIT PRODUCT FUNCTIONALITY
         document.querySelectorAll('.edit-product-btn').forEach(btn => {
-            btn.addEventListener('click', async function() {
+            btn.addEventListener('click', function() {
                 const productId = this.getAttribute('data-id');
                 const productName = this.getAttribute('data-name');
-                console.log('=== EDIT BUTTON CLICKED ===');
-                console.log('Product ID:', productId);
-                console.log('Product Name:', productName);
-                
-                // Test the route first
-                console.log('Testing edit route...');
-                const editRoute = `/admin/products/${productId}/edit`;
-                const testResult = await testAjaxCall(editRoute);
-                
-                if (!testResult.success) {
-                    console.log('Edit route failed, trying show route...');
-                    const showRoute = `/admin/products/${productId}`;
-                    await testAjaxCall(showRoute);
-                }
-                
-                // Now open the modal
+                console.log('Edit button clicked for product:', productId, productName);
                 openEditModal(productId, productName);
             });
         });
 
         async function openEditModal(productId, productName) {
-            console.log('=== OPENING EDIT MODAL ===');
-            console.log('Product ID:', productId);
-            
             // Show the modal
             const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
             modal.show();
@@ -501,107 +456,74 @@
             errorsEl.classList.add('d-none');
             
             try {
-                // First try the edit route
-                let url = `/admin/products/${productId}/edit`;
-                console.log('Fetching from edit route:', url);
+                const url = `{{ url('admin/products') }}/${productId}/edit`;
+                console.log('Fetching product data from:', url);
                 
-                let response = await fetch(url, {
+                const response = await fetch(url, {
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 });
                 
-                // If edit route fails, try the show route
                 if (!response.ok) {
-                    console.log(`Edit route failed with status ${response.status}, trying show route...`);
-                    url = `/admin/products/${productId}`;
-                    console.log('Fetching from show route:', url);
-                    
-                    response = await fetch(url, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                }
-                
-                console.log('Response status:', response.status);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Response error text:', errorText);
-                    throw new Error(`Failed to fetch product data: ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const product = await response.json();
-                console.log('Product data received:', product);
-                
-                // Check if we got valid product data
-                if (!product) {
-                    throw new Error('No product data received');
-                }
+                console.log('Product loaded:', product);
                 
                 // Populate form fields
-                document.getElementById('edit_p_id').value = product.p_id || productId;
-                document.getElementById('edit_product_code').value = product.product_code || '';
-                document.getElementById('edit_name').value = product.name || '';
-                document.getElementById('edit_product_type_id').value = product.product_type_id || '';
-                document.getElementById('edit_monthly_price').value = product.monthly_price || '';
-                document.getElementById('edit_description').value = product.description || '';
+                document.getElementById('edit_p_id').value = product.p_id;
+                document.getElementById('edit_name').value = product.name;
+                document.getElementById('edit_product_type_id').value = product.product_type_id;
+                document.getElementById('edit_monthly_price').value = product.monthly_price;
+                document.getElementById('edit_description').value = product.description;
                 
                 // Update modal title
-                document.getElementById('editProductModalLabel').textContent = `Edit Product: ${product.name || productName}`;
+                document.getElementById('editProductModalLabel').textContent = `Edit Product: ${product.name}`;
                 
                 // Show form fields
                 loadingEl.style.display = 'none';
                 fieldsEl.style.display = '';
                 
-                console.log('Modal populated successfully');
-                
             } catch (error) {
                 console.error('Error loading product:', error);
                 
-                // Show error in modal
                 loadingEl.innerHTML = `
                     <div class="alert alert-danger">
                         <h6>Failed to load product details</h6>
-                        <p>Error: ${error.message}</p>
-                        <p>Please try the following:</p>
-                        <ol>
-                            <li>Check if the product exists</li>
-                            <li>Check your network connection</li>
-                            <li>Refresh the page and try again</li>
-                        </ol>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <p class="mb-2">${error.message}</p>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                     </div>
                 `;
                 
-                showToast('Failed to load product details. Check console for details.', 'danger');
+                showToast('Failed to load product details', 'danger');
             }
         }
 
         // Handle edit form submission
         document.getElementById('editProductForm')?.addEventListener('submit', async function(e) {
             e.preventDefault();
-            console.log('=== FORM SUBMISSION STARTED ===');
             
-            const productId = document.getElementById('edit_p_id').value;
+            const productId = document.getElementById('edit_p_id')?.value;
             const submitBtn = document.getElementById('updateProductBtn');
-            const spinner = submitBtn.querySelector('.spinner-border');
+            const spinner = submitBtn?.querySelector('.spinner-border');
+            const errorsEl = document.getElementById('editErrors');
+            
+            if (!productId || !submitBtn) {
+                console.error('Required elements not found');
+                return;
+            }
             
             submitBtn.disabled = true;
-            spinner.classList.remove('d-none');
-            document.getElementById('editErrors').classList.add('d-none');
+            if (spinner) spinner.classList.remove('d-none');
+            if (errorsEl) errorsEl.classList.add('d-none');
             
             const formData = new FormData(this);
-            const url = `/admin/products/${productId}`;
-            
-            console.log('Updating product at:', url);
-            console.log('Form data:', Object.fromEntries(formData.entries()));
             
             try {
-                const response = await fetch(url, {
+                const response = await fetch(`{{ url('admin/products') }}/${productId}`, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': csrfToken,
@@ -612,40 +534,37 @@
                     body: formData
                 });
                 
-                console.log('Response status:', response.status);
-                
                 const data = await response.json();
-                console.log('Update response:', data);
                 
                 if (data.success) {
                     const modal = bootstrap.Modal.getInstance(document.getElementById('editProductModal'));
-                    modal.hide();
+                    if (modal) modal.hide();
                     showToast(data.message || 'Product updated successfully!', 'success');
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     // Show validation errors
+                    let errorHtml = '';
                     if (data.errors) {
-                        let errorHtml = '';
                         Object.values(data.errors).forEach(errors => {
-                            errors.forEach(error => {
-                                errorHtml += `<div>• ${error}</div>`;
-                            });
+                            errors.forEach(error => errorHtml += `<div>• ${error}</div>`);
                         });
-                        document.getElementById('editErrors').innerHTML = errorHtml;
-                        document.getElementById('editErrors').classList.remove('d-none');
                     } else {
-                        document.getElementById('editErrors').innerHTML = `<div>• ${data.message || 'Update failed'}</div>`;
-                        document.getElementById('editErrors').classList.remove('d-none');
+                        errorHtml = `<div>• ${data.message || 'Update failed'}</div>`;
+                    }
+                    if (errorsEl) {
+                        errorsEl.innerHTML = errorHtml;
+                        errorsEl.classList.remove('d-none');
                     }
                 }
             } catch (error) {
                 console.error('Update error:', error);
-                document.getElementById('editErrors').innerHTML = `<div>• Network error occurred: ${error.message}</div>`;
-                document.getElementById('editErrors').classList.remove('d-none');
+                if (errorsEl) {
+                    errorsEl.innerHTML = `<div>• Network error: ${error.message}</div>`;
+                    errorsEl.classList.remove('d-none');
+                }
             } finally {
                 submitBtn.disabled = false;
-                spinner.classList.add('d-none');
-                console.log('=== FORM SUBMISSION COMPLETED ===');
+                if (spinner) spinner.classList.add('d-none');
             }
         });
 
@@ -678,12 +597,14 @@
             deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
             
             try {
-                const response = await fetch(`/admin/products/${productId}`, {
-                    method: 'DELETE',
+                const response = await fetch(`{{ url('admin/products') }}/${productId}`, {
+                    method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': csrfToken,
+                        'X-HTTP-Method-Override': 'DELETE',
                         'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
                     }
                 });
                 
@@ -700,7 +621,7 @@
                         showToast(data.message || 'Product deleted successfully!', 'success');
                         
                         // Update product count
-                        const visibleRows = document.querySelectorAll('tbody tr').length;
+                        const visibleRows = document.querySelectorAll('tbody tr:not([style*="display: none"])').length;
                         const footerDiv = document.querySelector('.card-footer div');
                         if (footerDiv) {
                             footerDiv.textContent = `Showing ${visibleRows} of ${visibleRows} products`;
@@ -741,18 +662,17 @@
             exportBtn.addEventListener('click', function() {
                 const rows = Array.from(document.querySelectorAll('table tbody tr:not([style*="display: none"])'));
                 const csv = [];
-                csv.push(['ID', 'Product Code', 'Name', 'Type', 'Price', 'Description'].join(','));
+                csv.push(['ID', 'Name', 'Type', 'Price', 'Description'].join(','));
                 
                 rows.forEach(row => {
                     const cols = row.querySelectorAll('td');
-                    if (cols.length >= 7) {
+                    if (cols.length >= 6) {
                         const rowData = [
                             `"${cols[0].textContent.trim()}"`,
-                            `"${cols[1].textContent.trim()}"`,
-                            `"${cols[2].querySelector('h6') ? cols[2].querySelector('h6').textContent.trim() : cols[2].textContent.trim()}"`,
-                            `"${cols[3].textContent.trim()}"`,
-                            `"${cols[5].textContent.trim().replace('/month','').replace('৳','').trim()}"`,
-                            `"${cols[4].querySelector('p') ? cols[4].querySelector('p').textContent.trim() : cols[4].textContent.trim()}"`
+                            `"${cols[1].querySelector('h6') ? cols[1].querySelector('h6').textContent.trim() : cols[1].textContent.trim()}"`,
+                            `"${cols[2].textContent.trim()}"`,
+                            `"${cols[4].textContent.trim().replace('/month','').replace('৳','').trim()}"`,
+                            `"${cols[3].querySelector('p') ? cols[3].querySelector('p').textContent.trim() : cols[3].textContent.trim()}"`
                         ];
                         csv.push(rowData.join(','));
                     }
@@ -770,25 +690,6 @@
         }
 
         console.log('Product management initialized');
-        
-        // Test the routes on page load
-        setTimeout(async () => {
-            console.log('=== TESTING ROUTES ===');
-            
-            // Test edit route with first product
-            const firstProductId = document.querySelector('.edit-product-btn')?.getAttribute('data-id');
-            if (firstProductId) {
-                console.log('Testing routes for product ID:', firstProductId);
-                
-                const editRoute = `/admin/products/${firstProductId}/edit`;
-                console.log('Testing edit route:', editRoute);
-                await testAjaxCall(editRoute);
-                
-                const showRoute = `/admin/products/${firstProductId}`;
-                console.log('Testing show route:', showRoute);
-                await testAjaxCall(showRoute);
-            }
-        }, 1000);
     });
 </script>
 @endsection

@@ -729,13 +729,25 @@ class Customer extends Model
 
     public static function generateCustomerId(): string
     {
-        $prefix = 'CUST' . date('y');
-
-        do {
-            $id = $prefix . str_pad(random_int(1, 9999), 4, '0', STR_PAD_LEFT);
-        } while (self::where('customer_id', $id)->exists());
-
-        return $id;
+        // Format: C-25-1, C-25-2, C-25-3, etc.
+        $year = date('y'); // Get last 2 digits of year (e.g., 25 for 2025)
+        $prefix = "C-{$year}-";
+        
+        // Get the last customer ID with this year's prefix
+        $lastCustomer = self::where('customer_id', 'LIKE', $prefix . '%')
+            ->orderByRaw('CAST(SUBSTRING(customer_id, ' . (strlen($prefix) + 1) . ') AS UNSIGNED) DESC')
+            ->first();
+        
+        if ($lastCustomer) {
+            // Extract the number from the last customer ID
+            $lastNumber = (int) str_replace($prefix, '', $lastCustomer->customer_id);
+            $nextNumber = $lastNumber + 1;
+        } else {
+            // Start from 1 if no customers exist for this year
+            $nextNumber = 1;
+        }
+        
+        return $prefix . $nextNumber;
     }
 
     // ==================== MODEL EVENTS ====================

@@ -234,14 +234,14 @@
         }
 
         // CREATE: submit form
-        const createForm = document.getElementById('createproductTypeForm');
+        const createForm = document.getElementById('createProductTypeForm');
         if (createForm) {
             createForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 console.log('product type form submit event triggered');
                 
                 const form = e.target;
-                const btn = document.getElementById('createproductTypeBtn');
+                const btn = document.getElementById('createProductTypeBtn');
                 const spinner = btn?.querySelector('.spinner-border');
                 const errorContainer = document.getElementById('createErrors');
                 
@@ -290,43 +290,10 @@
                         showToast(jsonResponse.message || 'Product type added successfully!', 'success');
                         form.reset();
                         
-                        // Instead of reloading the page, dynamically add the new product type to the list
-                        if (jsonResponse.type) {
-                            console.log('Adding new product type to list:', jsonResponse.type);
-                            const productTypeList = document.querySelector('.card-body .row');
-                            if (productTypeList) {
-                                console.log('Found product type list container');
-                                const newProductTypeCard = document.createElement('div');
-                                newProductTypeCard.className = 'col-md-12 mb-3';
-                                newProductTypeCard.innerHTML = `
-                                    <div class="d-flex align-items-center justify-content-between p-3 border rounded">
-                                        <div class="d-flex align-items-center">
-                                            <div class="product-type-icon me-3 bg-success">
-                                                <i class="fas fa-tag"></i>
-                                            </div>
-                                            <div>
-                                                <h6 class="mb-1 text-capitalize">${jsonResponse.type.name}</h6>
-                                                ${jsonResponse.type.descriptions ? `<small class="text-muted d-block">${jsonResponse.type.descriptions}</small>` : ''}
-                                                <small class="text-muted">0 products</small>
-                                            </div>
-                                        </div>
-                                        <button class="btn btn-sm btn-outline-danger delete-product-type" 
-                                                data-id="${jsonResponse.type.id}" 
-                                                data-name="${jsonResponse.type.name}"
-                                                title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                `;
-                                productTypeList.appendChild(newProductTypeCard);
-                                console.log('Successfully added new product type to list');
-                            } else {
-                                console.error('Could not find product type list container');
-                            }
-                        }
-                        
-                        // Remove the page reload that was causing navigation
-                        // The success message will remain visible as a toast popup
+                        // Reload the page to show the new product type
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
                     } else {
                         const errorMessage = jsonResponse.message || 'Unknown error occurred';
                         showValidationErrors(errorContainer, errorMessage);

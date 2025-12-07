@@ -34,13 +34,13 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form id="createProductForm" method="POST" action="{{ route('admin.products.store') }}">
+                    <form id="createProductForm">
                         @csrf
                         
                         <div id="createErrors" class="alert alert-danger d-none"></div>
 
                         <!-- Product ID -->
-                        <div class="mb-4">
+                        <!-- <div class="mb-4">
                             <label class="form-label fw-semibold">Product ID</label>
                             <div class="input-group input-group-lg">
                                 <span class="input-group-text">PROD-</span>
@@ -58,7 +58,7 @@
                             <div class="form-text">
                                 Unique 4-digit product identifier (auto-generated)
                             </div>
-                        </div>
+                        </div> -->
 
                         <!-- Product Name -->
                         <div class="mb-4">
@@ -128,7 +128,7 @@
 
 
                         <!-- Features (Optional) -->
-                        <div class="mb-4">
+                        <!-- <div class="mb-4">
                             <label class="form-label fw-semibold">Key Features (Optional)</label>
                             <div class="features-container">
                                 <div class="input-group mb-2">
@@ -141,7 +141,7 @@
                             <div class="form-text">
                                 Add key features that make this product attractive to customers.
                             </div>
-                        </div>
+                        </div> -->
 
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
@@ -160,7 +160,7 @@
 
 
             <!-- Product Preview -->
-            <div class="card mt-4">
+            <!-- <div class="card mt-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
                         <i class="fas fa-eye me-2"></i>Product Preview
@@ -172,7 +172,7 @@
                         <p>Your product preview will appear here as you fill out the form.</p>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
         </div>
     </div>
@@ -252,23 +252,55 @@
         // CSRF token
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         
-        // Toast helper
+        // Toast helper with proper styling
         function showToast(message, type = 'success') {
             const toastId = 'toast-' + Date.now();
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = `
-                <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+            
+            // Map type to Bootstrap color classes
+            const typeMap = {
+                'success': 'success',
+                'error': 'danger',
+                'danger': 'danger',
+                'warning': 'warning',
+                'info': 'info'
+            };
+            
+            const bootstrapType = typeMap[type] || 'success';
+            const iconMap = {
+                'success': 'fa-check-circle',
+                'danger': 'fa-exclamation-circle',
+                'error': 'fa-exclamation-circle',
+                'warning': 'fa-exclamation-triangle',
+                'info': 'fa-info-circle'
+            };
+            
+            const icon = iconMap[type] || 'fa-check-circle';
+            
+            const toastHtml = `
+                <div id="${toastId}" class="toast align-items-center text-bg-${bootstrapType} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
                     <div class="d-flex">
-                        <div class="toast-body">${message}</div>
+                        <div class="toast-body">
+                            <i class="fas ${icon} me-2"></i>${message}
+                        </div>
                         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                     </div>
                 </div>
             `;
-            document.getElementById('toastContainer').appendChild(wrapper.firstElementChild);
+            
+            const container = document.getElementById('toastContainer');
+            container.insertAdjacentHTML('beforeend', toastHtml);
+            
             const toastEl = document.getElementById(toastId);
-            const toast = new bootstrap.Toast(toastEl);
+            const toast = new bootstrap.Toast(toastEl, {
+                autohide: true,
+                delay: 3000
+            });
+            
             toast.show();
-            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+            
+            toastEl.addEventListener('hidden.bs.toast', () => {
+                toastEl.remove();
+            });
         }
 
         // Show validation errors
@@ -398,11 +430,32 @@
                 }
 
                 if (jsonResponse.success) {
+                    // Show success toast
                     showToast(jsonResponse.message || 'Product created successfully!', 'success');
                     
-                    // Redirect to products list after short delay
+                    // Show success alert on the page with enhanced styling
+                    const successAlert = document.createElement('div');
+                    successAlert.className = 'alert alert-success alert-dismissible fade show shadow-sm';
+                    successAlert.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Success!</strong> ${jsonResponse.message || 'Product created successfully!'}
+                        <span class="d-block mt-2">Redirecting to product list... <span class="spinner-border spinner-border-sm ms-2" role="status"></span></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    form.insertBefore(successAlert, form.firstChild);
+                    
+                    // Scroll to top to see the alert
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    
+                    // Reset form
+                    form.reset();
+                    generateProductCode();
+                    hideDuplicateWarnings();
+                    
+                    // Redirect to products list after delay
                     setTimeout(() => {
-                        window.location.href = '{{ route("admin.products.index") }}';
+                        const redirectUrl = jsonResponse.redirect_url || '{{ route("admin.products.index") }}';
+                        window.location.assign(redirectUrl);
                     }, 1500);
                 } else {
                     showValidationErrors(document.getElementById('createErrors'), 
