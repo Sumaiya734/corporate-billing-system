@@ -46,9 +46,9 @@
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6">
-            <div class="card bg-primary text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+            <div class="card h-100 bg-primary text-white mb-4">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between flex-grow-1">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Total Active Customers</div>
                             <div class="h5 mb-0">{{ $totalActiveCustomers ?? 0 }}</div>
@@ -61,9 +61,9 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card bg-success text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+            <div class="card h-100 bg-success text-white mb-4">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between flex-grow-1">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Monthly Revenue</div>
                             <div class="h5 mb-0">৳ {{ number_format($currentMonthRevenue ?? 0, 0) }}</div>
@@ -76,9 +76,9 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card bg-warning text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+            <div class="card h-100 bg-warning text-white mb-4">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between flex-grow-1">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Pending Payments</div>
                             <div class="h5 mb-0">৳ {{ number_format($totalPendingAmount ?? 0, 0) }}</div>
@@ -91,9 +91,9 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card bg-info text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+            <div class="card h-100 bg-info text-white mb-4">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between flex-grow-1">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Previous Month Bills</div>
                             <div class="h5 mb-0">{{ $previousMonthBillsCount ?? 0 }}</div>
@@ -106,7 +106,6 @@
             </div>
         </div>
     </div>
-
     <!-- Empty State -->
     @if(empty($monthlySummary) || $monthlySummary->isEmpty())
     <div class="card">

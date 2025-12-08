@@ -32,9 +32,9 @@
     <!-- Statistics Cards with Soft Colors -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card border-0 shadow-sm" style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="card h-100 stat-card border-0 shadow-sm" style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center flex-grow-1">
                         <div>
                             <h6 class="card-title text-muted mb-2">Total Products</h6>
                             <h2 class="mb-0 display-6 fw-bold text-primary">{{ $stats['total_products'] ?? 0 }}</h2>
@@ -44,7 +44,7 @@
                             <i class="fas fa-cubes fa-3x"></i>
                         </div>
                     </div>
-                    <div class="mt-3 pt-2 border-top" style="border-color: rgba(33, 150, 243, 0.2) !important;">
+                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(33, 150, 243, 0.2) !important;">
                         <small class="text-muted">
                             <i class="fas fa-check-circle me-1 text-success"></i>All active products in system
                         </small>
@@ -54,9 +54,9 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card border-0 shadow-sm" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="card h-100 stat-card border-0 shadow-sm" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center flex-grow-1">
                         <div>
                             <h6 class="card-title text-muted mb-2">Product Types</h6>
                             <h2 class="mb-0 display-6 fw-bold text-success">{{ $stats['total_types'] ?? 0 }}</h2>
@@ -66,7 +66,7 @@
                             <i class="fas fa-tags fa-3x"></i>
                         </div>
                     </div>
-                    <div class="mt-3 pt-2 border-top" style="border-color: rgba(76, 175, 80, 0.2) !important;">
+                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(76, 175, 80, 0.2) !important;">
                         <small class="text-muted">
                             <i class="fas fa-info-circle me-1 text-info"></i>Product categories available
                         </small>
@@ -76,9 +76,9 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card border-0 shadow-sm" style="background: linear-gradient(135deg, #fff3e0 0%, #ffecb3 100%);">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="card h-100 stat-card border-0 shadow-sm" style="background: linear-gradient(135deg, #fff3e0 0%, #ffecb3 100%);">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center flex-grow-1">
                         <div>
                             <h6 class="card-title text-muted mb-2">Most Popular</h6>
                             @if($stats['most_popular_product'] ?? false)
@@ -99,7 +99,7 @@
                             <i class="fas fa-fire fa-3x"></i>
                         </div>
                     </div>
-                    <div class="mt-3 pt-2 border-top" style="border-color: rgba(255, 152, 0, 0.2) !important;">
+                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(255, 152, 0, 0.2) !important;">
                         <small class="text-muted">
                             <i class="fas fa-chart-line me-1 text-danger"></i>Top selling product
                         </small>
@@ -109,9 +109,9 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card border-0 shadow-sm" style="background: linear-gradient(135deg, #e0f7fa 0%, #e1f5fe 100%);">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="card h-100 stat-card border-0 shadow-sm" style="background: linear-gradient(135deg, #e0f7fa 0%, #e1f5fe 100%);">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center flex-grow-1">
                         <div>
                             <h6 class="card-title text-muted mb-2">Active Customers</h6>
                             <h2 class="mb-0 display-6 fw-bold text-info">{{ $stats['active_customers'] ?? '0' }}</h2>
@@ -121,7 +121,7 @@
                             <i class="fas fa-users fa-3x"></i>
                         </div>
                     </div>
-                    <div class="mt-3 pt-2 border-top" style="border-color: rgba(3, 169, 244, 0.2) !important;">
+                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(3, 169, 244, 0.2) !important;">
                         <small class="text-muted">
                             <i class="fas fa-user-check me-1 text-primary"></i>Currently using products
                         </small>
@@ -130,7 +130,6 @@
             </div>
         </div>
     </div>
-
     <!-- Price Statistics Card -->
     <div class="row mb-4">
         <div class="col-12">
@@ -500,6 +499,15 @@
         position: relative;
     }
     
+    .stat-card .card-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .stat-card .card-body > div:last-child {
+        margin-top: auto;
+    }    
     .stat-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
@@ -530,6 +538,7 @@
         font-size: 2rem;
         border-radius: 50%;
         transition: all 0.3s ease;
+        flex-shrink: 0;
     }
     
     .stat-card:hover .avatar-lg {
@@ -543,6 +552,13 @@
     
     .stat-card .border-top {
         border-top: 1px solid rgba(0,0,0,0.05) !important;
+        margin-top: auto;
+    }
+    
+    /* Ensure consistent spacing */
+    .stat-card .mt-3.pt-2 {
+        margin-top: auto !important;
+        padding-top: 1rem !important;
     }
 
     /* Table Styles */

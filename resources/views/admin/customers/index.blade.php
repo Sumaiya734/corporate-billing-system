@@ -53,9 +53,9 @@
     <!-- Customer Statistics Dashboard -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start-4 border-start-primary shadow-sm h-100">
-                <div class="card-body">
-                    <div class="row align-items-center">
+            <div class="card border-start-4 border-start-primary shadow-sm h-100 stat-card">
+                <div class="card-body d-flex flex-column">
+                    <div class="row align-items-center flex-grow-1">
                         <div class="col">
                             <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total Customers</div>
                             <div class="h5 mb-0 fw-bold text-gray-800">{{ $totalCustomers }}</div>
@@ -64,14 +64,17 @@
                             <i class="fas fa-users fa-2x text-gray-300"></i>
                         </div>
                     </div>
+                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(33, 150, 243, 0.2) !important;">
+                        <small class="text-muted">All registered customers</small>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start-4 border-start-success shadow-sm h-100">
-                <div class="card-body">
-                    <div class="row align-items-center">
+            <div class="card border-start-4 border-start-success shadow-sm h-100 stat-card">
+                <div class="card-body d-flex flex-column">
+                    <div class="row align-items-center flex-grow-1">
                         <div class="col">
                             <div class="text-xs fw-bold text-success text-uppercase mb-1">Active Customers</div>
                             <div class="h5 mb-0 fw-bold text-gray-800">{{ $activeCustomers }}</div>
@@ -80,14 +83,17 @@
                             <i class="fas fa-user-check fa-2x text-gray-300"></i>
                         </div>
                     </div>
+                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(76, 175, 80, 0.2) !important;">
+                        <small class="text-muted">{{ $totalCustomers > 0 ? number_format(($activeCustomers / $totalCustomers) * 100, 1) : 0 }}% of total</small>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start-4 border-start-warning shadow-sm h-100">
-                <div class="card-body">
-                    <div class="row align-items-center">
+            <div class="card border-start-4 border-start-warning shadow-sm h-100 stat-card">
+                <div class="card-body d-flex flex-column">
+                    <div class="row align-items-center flex-grow-1">
                         <div class="col">
                             <div class="text-xs fw-bold text-warning text-uppercase mb-1">Inactive Customers</div>
                             <div class="h5 mb-0 fw-bold text-gray-800">{{ $inactiveCustomers }}</div>
@@ -96,14 +102,17 @@
                             <i class="fas fa-user-slash fa-2x text-gray-300"></i>
                         </div>
                     </div>
+                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(255, 152, 0, 0.2) !important;">
+                        <small class="text-muted">{{ $totalCustomers > 0 ? number_format(($inactiveCustomers / $totalCustomers) * 100, 1) : 0 }}% of total</small>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start-4 border-start-danger shadow-sm h-100">
-                <div class="card-body">
-                    <div class="row align-items-center">
+            <div class="card border-start-4 border-start-danger shadow-sm h-100 stat-card">
+                <div class="card-body d-flex flex-column">
+                    <div class="row align-items-center flex-grow-1">
                         <div class="col">
                             <div class="text-xs fw-bold text-danger text-uppercase mb-1">Due Payments</div>
                             <div class="h5 mb-0 fw-bold text-gray-800">{{ $customersWithDue }}</div>
@@ -111,6 +120,9 @@
                         <div class="col-auto">
                             <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
                         </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(220, 53, 69, 0.2) !important;">
+                        <small class="text-muted">Requires immediate attention</small>
                     </div>
                 </div>
             </div>
@@ -811,6 +823,93 @@
 /* Empty State */
 .empty-state-icon {
     opacity: 0.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .action-buttons {
+        min-width: auto;
+    }
+}
+
+/* Card Border Colors */
+.border-start-primary { border-left-color: #0d6efd !important; }
+.border-start-success { border-left-color: #198754 !important; }
+.border-start-warning { border-left-color: #ffc107 !important; }
+.border-start-danger { border-left-color: #dc3545 !important; }
+
+/* Enhanced Stat Cards with Gradient Backgrounds */
+.stat-card {
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #0d6efd, #66a3ff);
+}
+
+.stat-card.border-start-primary::before {
+    background: linear-gradient(90deg, #0d6efd, #66a3ff);
+}
+
+.stat-card.border-start-success::before {
+    background: linear-gradient(90deg, #198754, #5bb98c);
+}
+
+.stat-card.border-start-warning::before {
+    background: linear-gradient(90deg, #ffc107, #ffdb6d);
+}
+
+.stat-card.border-start-danger::before {
+    background: linear-gradient(90deg, #dc3545, #e47a85);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card .card-body {
+    padding: 1.5rem;
+}
+
+.stat-card .text-xs {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.stat-card .h5 {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.stat-card .border-top {
+    border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.stat-card .mt-3.pt-2 {
+    margin-top: auto !important;
 }
 
 /* Responsive Design */

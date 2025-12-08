@@ -30,9 +30,9 @@
     <div class="row mb-4">
         <!-- Total Collected -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card border-left-primary">
-                <div class="card-body">
-                    <div class="row align-items-center">
+            <div class="card h-100 stat-card border-left-primary">
+                <div class="card-body d-flex flex-column">
+                    <div class="row align-items-center flex-grow-1">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Total Collected
@@ -40,15 +40,17 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format($totalCollected, 2) }}
                             </div>
-                            <div class="mt-2 text-success">
-                                <small>
-                                    <i class="fas fa-arrow-up me-1"></i>
-                                    15.2% from last period
-                                </small>
-                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-money-bill-wave fa-2x text-primary opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(33, 150, 243, 0.2) !important;">
+                        <div class="text-success">
+                            <small>
+                                <i class="fas fa-arrow-up me-1"></i>
+                                15.2% from last period
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -57,9 +59,9 @@
 
         <!-- Today's Collection -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card border-left-success">
-                <div class="card-body">
-                    <div class="row align-items-center">
+            <div class="card h-100 stat-card border-left-success">
+                <div class="card-body d-flex flex-column">
+                    <div class="row align-items-center flex-grow-1">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Today's Collection
@@ -67,7 +69,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format($todayCollected ?? 0, 2) }}
                             </div>
-                            <div class="mt-2">
+                            <div class="mt-2 mt-auto">
                                 <small class="text-success">
                                     <i class="fas fa-calendar-day me-1"></i>
                                     {{ \Carbon\Carbon::today()->format('M d, Y') }}
@@ -84,9 +86,9 @@
 
         <!-- This Month Collection -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card border-left-warning">
-                <div class="card-body">
-                    <div class="row align-items-center">
+            <div class="card h-100 stat-card border-left-warning">
+                <div class="card-body d-flex flex-column">
+                    <div class="row align-items-center flex-grow-1">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 This Month Collection
@@ -94,7 +96,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format($monthCollected ?? 0, 2) }}
                             </div>
-                            <div class="mt-2">
+                            <div class="mt-2 mt-auto">
                                 <small class="text-warning">
                                     <i class="fas fa-chart-line me-1"></i>
                                     {{ \Carbon\Carbon::now()->format('F Y') }}
@@ -111,9 +113,9 @@
 
         <!-- Average Collection -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card border-left-info">
-                <div class="card-body">
-                    <div class="row align-items-center">
+            <div class="card h-100 stat-card border-left-info">
+                <div class="card-body d-flex flex-column">
+                    <div class="row align-items-center flex-grow-1">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                 Avg. Collection/Day
@@ -121,7 +123,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format(($totalCollected ?? 0) / max(1, ($collections->total() / 30)), 2) }}
                             </div>
-                            <div class="mt-2 text-info">
+                            <div class="mt-2 text-info mt-auto">
                                 <small>
                                     <i class="fas fa-calculator me-1"></i>
                                     Last 30 days average
@@ -135,9 +137,7 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Charts Section -->
+    </div>    <!-- Charts Section -->
     <div class="row mb-4">
         <!-- Collection Trend Chart -->
         <div class="col-xl-8 col-lg-7">

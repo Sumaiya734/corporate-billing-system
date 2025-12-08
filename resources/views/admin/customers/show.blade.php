@@ -46,9 +46,9 @@
     <!-- Statistics Cards -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex align-items-center flex-grow-1">
                         <div class="flex-shrink-0">
                             <div class="bg-primary bg-opacity-10 text-primary rounded p-3">
                                 <i class="fas fa-file-invoice fa-2x"></i>
@@ -63,9 +63,9 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex align-items-center flex-grow-1">
                         <div class="flex-shrink-0">
                             <div class="bg-success bg-opacity-10 text-success rounded p-3">
                                 <i class="fas fa-check-circle fa-2x"></i>
@@ -80,9 +80,9 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex align-items-center flex-grow-1">
                         <div class="flex-shrink-0">
                             <div class="bg-danger bg-opacity-10 text-danger rounded p-3">
                                 <i class="fas fa-exclamation-circle fa-2x"></i>
@@ -97,9 +97,9 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex align-items-center flex-grow-1">
                         <div class="flex-shrink-0">
                             <div class="bg-info bg-opacity-10 text-info rounded p-3">
                                 <i class="fas fa-box fa-2x"></i>
