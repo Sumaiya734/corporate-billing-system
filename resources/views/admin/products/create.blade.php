@@ -39,27 +39,6 @@
                         
                         <div id="createErrors" class="alert alert-danger d-none"></div>
 
-                        <!-- Product ID -->
-                        <!-- <div class="mb-4">
-                            <label class="form-label fw-semibold">Product ID</label>
-                            <div class="input-group input-group-lg">
-                                <span class="input-group-text">PROD-</span>
-                                <input type="text" 
-                                       name="product_code" 
-                                       id="productCode"
-                                       class="form-control" 
-                                       placeholder="Auto-generated"
-                                       readonly
-                                       style="background-color: #f8f9fa;">
-                                <button type="button" class="btn btn-outline-secondary" onclick="generateProductCode()" title="Generate New ID">
-                                    <i class="fas fa-sync"></i>
-                                </button>
-                            </div>
-                            <div class="form-text">
-                                Unique 4-digit product identifier (auto-generated)
-                            </div>
-                        </div> -->
-
                         <!-- Product Name -->
                         <div class="mb-4">
                             <label class="form-label fw-semibold">Product Name *</label>
@@ -76,7 +55,6 @@
                             <div id="nameDuplicateWarning" class="text-warning small mt-1 d-none">
                                 <i class="fas fa-exclamation-triangle me-1"></i>
                                 <span id="duplicateMessage"></span>
-
                             </div>
                         </div>
 
@@ -117,6 +95,7 @@
                         <div class="mb-4">
                             <label class="form-label fw-semibold">Product Description *</label>
                             <textarea name="description" 
+                                      id="productDescription"
                                       class="form-control" 
                                       rows="4" 
                                       placeholder="Describe the product features, speed, benefits, and any limitations..."
@@ -125,23 +104,6 @@
                                 Provide detailed information about what this product includes.
                             </div>
                         </div>
-
-
-                        <!-- Features (Optional) -->
-                        <!-- <div class="mb-4">
-                            <label class="form-label fw-semibold">Key Features (Optional)</label>
-                            <div class="features-container">
-                                <div class="input-group mb-2">
-                                    <input type="text" class="form-control feature-input" placeholder="e.g., 100 Mbps Speed">
-                                    <button type="button" class="btn btn-outline-primary add-feature-btn">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="form-text">
-                                Add key features that make this product attractive to customers.
-                            </div>
-                        </div> -->
 
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
@@ -157,22 +119,6 @@
                     </form>
                 </div>
             </div>
-
-
-            <!-- Product Preview -->
-            <!-- <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-eye me-2"></i>Product Preview
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div id="productPreview" class="text-muted text-center py-4">
-                        <i class="fas fa-cube fa-3x mb-3"></i>
-                        <p>Your product preview will appear here as you fill out the form.</p>
-                    </div>
-                </div>
-            </div> -->
 
         </div>
     </div>
@@ -191,7 +137,6 @@
         font-size: 1.1rem;
     }
 
-
     .feature-tag {
         display: inline-block;
         background: #e9ecef;
@@ -199,16 +144,6 @@
         margin: 2px;
         border-radius: 20px;
         font-size: 0.9rem;
-    }
-
-    .feature-tag .remove-feature {
-        cursor: pointer;
-        margin-left: 8px;
-        color: #6c757d;
-    }
-
-    .feature-tag .remove-feature:hover {
-        color: #dc3545;
     }
 
     .product-preview-item {
@@ -232,245 +167,301 @@
     .is-conflict {
         border-color: #fd7e14 !important;
         background-color: #fff4e6;
-
     }
 </style>
 @endsection
 
 @section('scripts')
 <script>
-    // Generate unique 4-digit product code
-    function generateProductCode() {
-        const code = Math.floor(1000 + Math.random() * 9000);
-        document.getElementById('productCode').value = code;
-    }
-
     document.addEventListener('DOMContentLoaded', function() {
-        // Auto-generate product code on page load
-        generateProductCode();
-        
-        // CSRF token
+        // Get CSRF token
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         
-        // Toast helper with proper styling
-        function showToast(message, type = 'success') {
-            const toastId = 'toast-' + Date.now();
-            
-            // Map type to Bootstrap color classes
-            const typeMap = {
-                'success': 'success',
-                'error': 'danger',
-                'danger': 'danger',
-                'warning': 'warning',
-                'info': 'info'
-            };
-            
-            const bootstrapType = typeMap[type] || 'success';
-            const iconMap = {
-                'success': 'fa-check-circle',
-                'danger': 'fa-exclamation-circle',
-                'error': 'fa-exclamation-circle',
-                'warning': 'fa-exclamation-triangle',
-                'info': 'fa-info-circle'
-            };
-            
-            const icon = iconMap[type] || 'fa-check-circle';
-            
-            const toastHtml = `
-                <div id="${toastId}" class="toast align-items-center text-bg-${bootstrapType} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div class="d-flex">
-                        <div class="toast-body">
-                            <i class="fas ${icon} me-2"></i>${message}
-                        </div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                    </div>
-                </div>
-            `;
-            
-            const container = document.getElementById('toastContainer');
-            container.insertAdjacentHTML('beforeend', toastHtml);
-            
-            const toastEl = document.getElementById(toastId);
-            const toast = new bootstrap.Toast(toastEl, {
-                autohide: true,
-                delay: 3000
-            });
-            
-            toast.show();
-            
-            toastEl.addEventListener('hidden.bs.toast', () => {
-                toastEl.remove();
-            });
+        if (!csrfToken) {
+            console.error('CSRF token not found!');
+            showError('Security token missing. Please refresh the page.');
+            return;
         }
-
-        // Show validation errors
-        function showValidationErrors(containerEl, errors) {
-            if (!containerEl) return;
-            containerEl.classList.remove('d-none');
-            
-            let errorHtml = '';
-            if (typeof errors === 'string') {
-                errorHtml = errors;
-            } else if (errors.message) {
-                errorHtml = errors.message;
-            } else if (errors.errors) {
-                errorHtml = Object.values(errors.errors).flat().map(e => `<div>• ${e}</div>`).join('');
-            } else {
-                errorHtml = Object.values(errors).flat().map(e => `<div>• ${e}</div>`).join('');
-            }
-            
-            containerEl.innerHTML = errorHtml;
-        }
-
-        // Clear validation errors
-        function clearValidationErrors() {
-            const errorsEl = document.getElementById('createErrors');
-            if (errorsEl) {
-                errorsEl.classList.add('d-none');
-                errorsEl.innerHTML = '';
-            }
-        }
-
-        // Real-time duplicate checking for products (NAME ONLY)
-        let duplicateCheckTimeout;
         
-        function checkForDuplicates() {
-            const productName = document.getElementById('productName').value.trim();
-            
-            if (productName.length < 2) {
-                hideDuplicateWarnings();
-                return;
-            }
-            
-            clearTimeout(duplicateCheckTimeout);
-            duplicateCheckTimeout = setTimeout(async () => {
-                try {
-                    const params = new URLSearchParams({
-                        check_duplicate: productName
-                    });
-                    
-                    const response = await fetch(`{{ route('admin.products.index') }}?${params}`, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        handleDuplicateResponse(data);
-                    }
-                } catch (error) {
-                    console.error('Duplicate check failed:', error);
-                }
-            }, 800);
+        // Get form elements
+        const form = document.getElementById('createProductForm');
+        const submitBtn = document.getElementById('createProductBtn');
+        const spinner = submitBtn.querySelector('.spinner-border');
+        const errorDiv = document.getElementById('createErrors');
+        
+        if (!form) {
+            console.error('Create product form not found!');
+            return;
         }
-
-        function handleDuplicateResponse(data) {
-            const nameWarning = document.getElementById('nameDuplicateWarning');
-            const duplicateMessage = document.getElementById('duplicateMessage');
-            const productNameInput = document.getElementById('productName');
-            
-            // Reset warnings
-            hideDuplicateWarnings();
-            productNameInput.classList.remove('is-duplicate', 'is-conflict');
-            
-            if (data.duplicates && data.duplicates.name_exact) {
-                // Exact name match
-                nameWarning.classList.remove('d-none');
-                duplicateMessage.textContent = `A product with the exact name "${data.duplicates.name_exact.name}" already exists.`;
-                productNameInput.classList.add('is-conflict');
-            } else if (data.duplicates && data.duplicates.name_similar) {
-                // Similar name match
-                nameWarning.classList.remove('d-none');
-                duplicateMessage.textContent = `A similar product "${data.duplicates.name_similar.name}" already exists.`;
-                productNameInput.classList.add('is-duplicate');
-            }
-        }
-
-        function hideDuplicateWarnings() {
-            document.getElementById('nameDuplicateWarning').classList.add('d-none');
-        }
-
-        // Event listeners for real-time duplicate checking (NAME ONLY)
-        document.getElementById('productName').addEventListener('input', checkForDuplicates);
-
-        // Form submission
-        document.getElementById('createProductForm').addEventListener('submit', async function(e) {
+        
+        // Form submission handler
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const form = e.target;
-            const btn = document.getElementById('createProductBtn');
-            const spinner = btn.querySelector('.spinner-border');
+            console.log('=== FORM SUBMISSION STARTED ===');
             
-            // Disable button and show loading
-            btn.disabled = true;
+            // Reset previous errors
+            errorDiv.classList.add('d-none');
+            errorDiv.innerHTML = '';
+            
+            // Show loading state
+            submitBtn.disabled = true;
             spinner.classList.remove('d-none');
-            clearValidationErrors();
-
-            const formData = new FormData(form);
             
             try {
+                // Get form data
+                const formData = {
+                    name: document.getElementById('productName').value.trim(),
+                    product_type_id: document.getElementById('productType').value,
+                    description: document.getElementById('productDescription').value.trim(),
+                    monthly_price: document.getElementById('monthlyPrice').value,
+                    _token: csrfToken
+                };
+                
+                console.log('Form data to send:', formData);
+                
+                // Basic client-side validation
+                if (!formData.name) {
+                    throw new Error('Product name is required');
+                }
+                if (!formData.product_type_id) {
+                    throw new Error('Please select a product type');
+                }
+                if (!formData.description) {
+                    throw new Error('Product description is required');
+                }
+                if (!formData.monthly_price || parseFloat(formData.monthly_price) <= 0) {
+                    throw new Error('Please enter a valid monthly price');
+                }
+                
+                // Make API request
                 const response = await fetch('{{ route("admin.products.store") }}', {
                     method: 'POST',
                     headers: {
-                        'X-CSRF-TOKEN': csrfToken,
+                        'Content-Type': 'application/json',
                         'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: formData
+                    body: JSON.stringify(formData)
                 });
-
-                const jsonResponse = await response.json();
-
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                let result;
+                try {
+                    result = await response.json();
+                    console.log('Response data:', result);
+                } catch (jsonError) {
+                    console.error('Failed to parse JSON response:', jsonError);
+                    throw new Error('Server returned invalid response. Please try again.');
+                }
+                
                 if (!response.ok) {
-                    showValidationErrors(document.getElementById('createErrors'), 
-                        jsonResponse.errors || jsonResponse.message || 'Failed to create product');
+                    // Handle validation errors
+                    if (result.errors) {
+                        let errorHtml = '<ul class="mb-0">';
+                        for (const [field, messages] of Object.entries(result.errors)) {
+                            if (Array.isArray(messages)) {
+                                messages.forEach(message => {
+                                    errorHtml += `<li><strong>${field}:</strong> ${message}</li>`;
+                                });
+                            } else {
+                                errorHtml += `<li><strong>${field}:</strong> ${messages}</li>`;
+                            }
+                        }
+                        errorHtml += '</ul>';
+                        errorDiv.innerHTML = errorHtml;
+                        errorDiv.classList.remove('d-none');
+                    } else if (result.message) {
+                        errorDiv.innerHTML = result.message;
+                        errorDiv.classList.remove('d-none');
+                    } else {
+                        errorDiv.innerHTML = 'An unexpected error occurred. Please try again.';
+                        errorDiv.classList.remove('d-none');
+                    }
                     return;
                 }
-
-                if (jsonResponse.success) {
+                
+                if (result.success) {
                     // Show success toast
-                    showToast(jsonResponse.message || 'Product created successfully!', 'success');
+                    showToast('success', result.message || 'Product created successfully!');
                     
-                    // Show success alert on the page with enhanced styling
+                    // Show success message on page
                     const successAlert = document.createElement('div');
-                    successAlert.className = 'alert alert-success alert-dismissible fade show shadow-sm';
+                    successAlert.className = 'alert alert-success alert-dismissible fade show shadow-sm mb-4';
                     successAlert.innerHTML = `
                         <i class="fas fa-check-circle me-2"></i>
-                        <strong>Success!</strong> ${jsonResponse.message || 'Product created successfully!'}
+                        <strong>Success!</strong> ${result.message || 'Product created successfully!'}
                         <span class="d-block mt-2">Redirecting to product list... <span class="spinner-border spinner-border-sm ms-2" role="status"></span></span>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     `;
-                    form.insertBefore(successAlert, form.firstChild);
+                    form.parentNode.insertBefore(successAlert, form);
                     
                     // Scroll to top to see the alert
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     
                     // Reset form
                     form.reset();
-                    generateProductCode();
+                    
+                    // Clear duplicate warnings
                     hideDuplicateWarnings();
                     
-                    // Redirect to products list after delay
+                    // Redirect after delay
                     setTimeout(() => {
-                        const redirectUrl = jsonResponse.redirect_url || '{{ route("admin.products.index") }}';
-                        window.location.assign(redirectUrl);
-                    }, 1500);
+                        window.location.href = result.redirect_url || '{{ route("admin.products.index") }}';
+                    }, 2000);
                 } else {
-                    showValidationErrors(document.getElementById('createErrors'), 
-                        jsonResponse.message || 'Unknown error occurred');
+                    errorDiv.innerHTML = result.message || 'Failed to create product';
+                    errorDiv.classList.remove('d-none');
                 }
+                
             } catch (error) {
-                console.error('Error:', error);
-                showValidationErrors(document.getElementById('createErrors'), 
-                    'Network error occurred. Please try again.');
+                console.error('Submission error:', error);
+                errorDiv.innerHTML = error.message || 'Network error occurred. Please try again.';
+                errorDiv.classList.remove('d-none');
             } finally {
-                btn.disabled = false;
+                // Reset button state
+                submitBtn.disabled = false;
                 spinner.classList.add('d-none');
             }
         });
+        
+        // Real-time duplicate checking
+        document.getElementById('productName').addEventListener('input', checkForDuplicates);
+        
+        // Log form changes for debugging
+        document.getElementById('productType').addEventListener('change', function() {
+            console.log('Product type selected:', this.value);
+        });
+        
+        document.getElementById('monthlyPrice').addEventListener('input', function() {
+            console.log('Monthly price changed:', this.value);
+        });
+        
+        document.getElementById('productName').addEventListener('input', function() {
+            console.log('Product name changed:', this.value);
+        });
     });
+    
+    // Toast function
+    function showToast(type, message) {
+        const toastContainer = document.getElementById('toastContainer');
+        const toastId = 'toast-' + Date.now();
+        
+        const toast = document.createElement('div');
+        toast.id = toastId;
+        toast.className = `toast align-items-center text-bg-${type} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // Initialize and show toast
+        if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        } else {
+            // Fallback if Bootstrap not loaded
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+        
+        // Remove toast after it hides
+        toast.addEventListener('hidden.bs.toast', function() {
+            toast.remove();
+        });
+    }
+    
+    // Show error function
+    function showError(message) {
+        const errorDiv = document.getElementById('createErrors');
+        if (errorDiv) {
+            errorDiv.innerHTML = message;
+            errorDiv.classList.remove('d-none');
+        }
+    }
+    
+    // Duplicate checking
+    let duplicateCheckTimeout = null;
+    
+    function checkForDuplicates() {
+        const productName = document.getElementById('productName').value.trim();
+        const nameWarning = document.getElementById('nameDuplicateWarning');
+        const duplicateMessage = document.getElementById('duplicateMessage');
+        const productNameInput = document.getElementById('productName');
+        
+        if (productName.length < 2) {
+            hideDuplicateWarnings();
+            productNameInput.classList.remove('is-duplicate', 'is-conflict');
+            return;
+        }
+        
+        clearTimeout(duplicateCheckTimeout);
+        duplicateCheckTimeout = setTimeout(async () => {
+            try {
+                const params = new URLSearchParams({
+                    check_duplicate: productName
+                });
+                
+                const response = await fetch(`{{ route('admin.products.index') }}?${params}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    handleDuplicateResponse(data);
+                }
+            } catch (error) {
+                console.error('Duplicate check failed:', error);
+            }
+        }, 800);
+    }
+    
+    function handleDuplicateResponse(data) {
+        const nameWarning = document.getElementById('nameDuplicateWarning');
+        const duplicateMessage = document.getElementById('duplicateMessage');
+        const productNameInput = document.getElementById('productName');
+        
+        // Reset warnings
+        hideDuplicateWarnings();
+        productNameInput.classList.remove('is-duplicate', 'is-conflict');
+        
+        if (data.duplicates && data.duplicates.name_exact) {
+            // Exact name match
+            nameWarning.classList.remove('d-none');
+            duplicateMessage.textContent = `A product with the exact name "${data.duplicates.name_exact.name}" already exists.`;
+            productNameInput.classList.add('is-conflict');
+        } else if (data.duplicates && data.duplicates.name_similar) {
+            // Similar name match
+            nameWarning.classList.remove('d-none');
+            duplicateMessage.textContent = `A similar product "${data.duplicates.name_similar.name}" already exists.`;
+            productNameInput.classList.add('is-duplicate');
+        }
+    }
+    
+    function hideDuplicateWarnings() {
+        const nameWarning = document.getElementById('nameDuplicateWarning');
+        if (nameWarning) {
+            nameWarning.classList.add('d-none');
+        }
+    }
 </script>
 @endsection
-

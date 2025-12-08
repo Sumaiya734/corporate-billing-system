@@ -69,8 +69,8 @@ Route::prefix('products')->name('products.')->group(function () {
     Route::get('/types', [ProductController::class, 'productTypes'])->name('types');
     
     Route::get('/test', function () {
-        return view('admin.products.test');
-    })->name('test');
+        return view('admin.products.test2');
+    })->name('admin.products.test2');
     Route::get('/debug/{id}', function ($id) {
         $product = \App\Models\Product::where('p_id', $id)->first();
         return response()->json([

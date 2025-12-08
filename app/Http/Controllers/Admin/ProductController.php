@@ -11,11 +11,37 @@ use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        // Handle duplicate checking request
+        if ($request->has('check_duplicate')) {
+            $productName = $request->get('check_duplicate');
+            
+            // Check for exact name match
+            $exactMatch = Product::where('name', $productName)->first();
+            
+            // Check for similar names (case insensitive partial match)
+            $similarMatch = Product::where('name', 'LIKE', '%' . $productName . '%')
+                ->where('name', '!=', $productName)
+                ->first();
+            
+            $duplicates = [];
+            if ($exactMatch) {
+                $duplicates['name_exact'] = $exactMatch;
+            }
+            if ($similarMatch) {
+                $duplicates['name_similar'] = $similarMatch;
+            }
+            
+            return response()->json([
+                'success' => true,
+                'duplicates' => $duplicates
+            ]);
+        }
+        
         $products = Product::with('type')
-            ->orderBy('created_at', 'desc') // Latest products first
-            ->orderBy('p_id', 'desc') // Then by ID descending
+            ->orderBy('created_at', 'desc')
+            ->orderBy('p_id', 'desc')
             ->get();
         $productTypes = ProductType::all();
         $stats = $this->getProductStats();
@@ -31,26 +57,71 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        Log::info('Product creation request received', [
-            'method' => $request->method(),
-            'url' => $request->url(),
-            'all_data' => $request->all(),
-            'content_type' => $request->header('Content-Type'),
-            'accept' => $request->header('Accept'),
-            'x_requested_with' => $request->header('X-Requested-With'),
+        Log::info('=== PRODUCT STORE METHOD START ===');
+        Log::info('Request method: ' . $request->method());
+        Log::info('Request URL: ' . $request->url());
+        Log::info('Request data:', $request->all());
+        Log::info('Headers:', [
+            'Content-Type' => $request->header('Content-Type'),
+            'Accept' => $request->header('Accept'),
+            'X-Requested-With' => $request->header('X-Requested-With'),
         ]);
         
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:120',
-            'product_type_id' => 'required|exists:product_type,id',
-            'description' => 'required|string',
-            'monthly_price' => 'required|numeric|min:0',
-        ]);
+        // Log available product types for debugging
+        $availableTypes = ProductType::pluck('id', 'name')->toArray();
+        Log::info('Available product types in database:', $availableTypes);
+        Log::info('Request product_type_id: ' . $request->input('product_type_id'));
         
-        Log::info('Product validation passed', $validatedData);
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:120|unique:products,name',
+                'product_type_id' => 'required|exists:product_type,id',
+                'description' => 'required|string',
+                'monthly_price' => 'required|numeric|min:0',
+            ]);
+            
+            Log::info('✅ Validation passed:', $validatedData);
+            
+            // Double-check that product_type_id exists
+            $typeExists = DB::table('product_type')->where('id', $validatedData['product_type_id'])->exists();
+            if (!$typeExists) {
+                Log::error('❌ Product type does not exist in database:', ['id' => $validatedData['product_type_id']]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selected product type does not exist.',
+                    'errors' => ['product_type_id' => ['The selected product type is invalid.']]
+                ], 422);
+            }
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('❌ Validation failed:', [
+                'errors' => $e->errors(),
+                'input' => $request->all(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'errors' => $e->errors(),
+                'message' => 'Validation failed. Please check your input.',
+                'debug' => [
+                    'product_type_id_received' => $request->input('product_type_id'),
+                    'product_types_in_db' => $availableTypes,
+                ]
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('❌ Exception during validation: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error: ' . $e->getMessage()
+            ], 500);
+        }
 
         try {
-            // Remove created_at and updated_at from the data since Laravel handles them automatically
+            // Create product data array
             $productData = [
                 'name' => $validatedData['name'],
                 'product_type_id' => $validatedData['product_type_id'],
@@ -58,27 +129,38 @@ class ProductController extends Controller
                 'monthly_price' => $validatedData['monthly_price'],
             ];
             
-            Log::info('Creating product with data', $productData);
+            Log::info('Creating product with data:', $productData);
             
+            // Create the product
             $product = Product::create($productData);
             
-            Log::info('Product created successfully', ['product_id' => $product->p_id]);
+            Log::info('✅ Product created successfully!', [
+                'product_id' => $product->p_id,
+                'product_name' => $product->name,
+                'full_product' => $product->toArray()
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Product created successfully!',
                 'product' => $product,
-                'redirect_url' => route('admin.products.index', ['success' => urlencode('Product created successfully!')])
+                'redirect_url' => route('admin.products.index')
             ]);
+            
         } catch (\Exception $e) {
-            Log::error('Failed to create product: ' . $e->getMessage(), [
+            Log::error('❌ Failed to create product: ' . $e->getMessage(), [
                 'exception' => $e,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'product_data' => $productData ?? null,
             ]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create product: ' . $e->getMessage()
+                'message' => 'Failed to create product: ' . $e->getMessage(),
+                'debug' => [
+                    'error_type' => get_class($e),
+                    'product_data' => $productData ?? null,
+                ]
             ], 500);
         }
     }
@@ -157,19 +239,19 @@ class ProductController extends Controller
             'x_requested_with' => $request->header('X-Requested-With'),
         ]);
         
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:120',
-            'product_type_id' => 'required|exists:product_type,id',
-            'description' => 'required|string',
-            'monthly_price' => 'required|numeric|min:0',
-        ]);
-        
-        Log::info('Product update validation passed', $validatedData);
-
         try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:120|unique:products,name,' . $id . ',p_id',
+                'product_type_id' => 'required|exists:product_type,id',
+                'description' => 'required|string',
+                'monthly_price' => 'required|numeric|min:0',
+            ]);
+            
+            Log::info('Product update validation passed', $validatedData);
+            
             $product = Product::where('p_id', $id)->firstOrFail();
             
-            // Remove updated_at from the data since Laravel handles it automatically
+            // Update product data
             $productData = [
                 'name' => $validatedData['name'],
                 'product_type_id' => $validatedData['product_type_id'],
@@ -188,6 +270,17 @@ class ProductController extends Controller
                 'message' => 'Product updated successfully!',
                 'product' => $product
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Update validation failed:', [
+                'errors' => $e->errors(),
+                'input' => $request->all(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'errors' => $e->errors(),
+                'message' => 'Validation failed'
+            ], 422);
         } catch (\Exception $e) {
             Log::error('Failed to update product: ' . $e->getMessage(), [
                 'exception' => $e,
@@ -247,14 +340,11 @@ class ProductController extends Controller
             ->where('status', 'active')
             ->count();
 
-        // Get total product types
         $totalTypes = ProductType::count();
 
-        // Get most popular product name
         $mostPopularProduct = $this->getMostPopularProduct();
         $mostPopularName = $mostPopularProduct ? $mostPopularProduct->name : 'N/A';
 
-        // Get regular and special product stats
         $regularType = ProductType::where('name', 'regular')->first();
         $specialType = ProductType::where('name', 'special')->first();
 
@@ -298,12 +388,10 @@ class ProductController extends Controller
     // Product Type Management
     // -------------------------
 
-    // Update your product type methods in ProductController
     public function productTypes()
     {
         $productTypes = ProductType::withCount('products')->orderBy('name')->get();
         
-        // Calculate product counts for each type
         $productCounts = [];
         foreach ($productTypes as $type) {
             $productCounts[$type->name] = $type->products_count;
@@ -314,7 +402,6 @@ class ProductController extends Controller
 
     public function addProductType(Request $request)
     {
-        // Debug the incoming request
         Log::info('Add Product Type Request:', [
             'method' => $request->method(),
             'url' => $request->url(),
@@ -377,7 +464,6 @@ class ProductController extends Controller
         try {
             $type = ProductType::findOrFail($id);
 
-            // Check if there are any products associated with this type
             $productCount = $type->products()->count();
             
             if ($productCount > 0) {
@@ -388,7 +474,6 @@ class ProductController extends Controller
                 ], 400);
             }
 
-            // If no products are associated, delete the product type
             $type->delete();
 
             return response()->json([
