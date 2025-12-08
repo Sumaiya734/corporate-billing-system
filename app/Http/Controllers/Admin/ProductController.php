@@ -377,21 +377,23 @@ class ProductController extends Controller
         try {
             $type = ProductType::findOrFail($id);
 
-            // Check if this is a protected type
-            if (in_array($type->name, ['regular', 'special'])) {
+            // Check if there are any products associated with this type
+            $productCount = $type->products()->count();
+            
+            if ($productCount > 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cannot delete protected product types (regular, special).'
+                    'message' => "Cannot delete product type. There are {$productCount} product(s) associated with this type. Please delete all associated products first.",
+                    'product_count' => $productCount
                 ], 400);
             }
 
-            // Delete products belonging to this type
-            $type->products()->delete();
+            // If no products are associated, delete the product type
             $type->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product type and associated products deleted successfully!'
+                'message' => 'Product type deleted successfully!'
             ]);
         } catch (\Exception $e) {
             return response()->json([

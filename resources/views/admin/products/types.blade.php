@@ -92,7 +92,7 @@
                 <div class="card-body">
                     <div class="row">
                         @foreach($productTypes as $type)
-                        <div class="col-md-12 mb-3">
+                        <div class="col-md-12 mb-3" data-id="{{ $type->id }}">
                             <div class="d-flex align-items-center justify-content-between p-3 border rounded">
                                 <div class="d-flex align-items-center">
                                     <div class="product-type-icon me-3 {{ $type->name === 'regular' ? 'bg-primary' : ($type->name === 'special' ? 'bg-warning' : 'bg-success') }}">
@@ -109,8 +109,7 @@
                                 <button class="btn btn-sm btn-outline-danger delete-product-type" 
                                         data-id="{{ $type->id }}" 
                                         data-name="{{ $type->name }}"
-                                        title="Delete"
-                                        {{ in_array($type->name, ['regular', 'special']) ? 'disabled' : '' }}>
+                                        title="Delete">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -132,8 +131,6 @@
     </div>
 
 
-<!-- Include Delete Confirmation Modal -->
-<x-delete-confirmation-modal />
 @endsection
 
 @section('styles')
@@ -167,6 +164,11 @@
 @section('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Test if showDeleteModal function is available
+        if (typeof showDeleteModal !== 'function') {
+            console.error('showDeleteModal function is not available. Make sure the delete confirmation modal is properly included.');
+        }
+        
         // CSRF token with error handling
         let csrfToken = null;
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
@@ -318,16 +320,21 @@
         document.body.addEventListener('click', function(e) {
             const delBtn = e.target.closest('.delete-product-type');
             if (!delBtn) return;
+            
             const typeId = delBtn.getAttribute('data-id');
             const typeName = delBtn.getAttribute('data-name');
             
-            const message = `Are you sure you want to delete the product type <strong>"${typeName}"</strong>?<br><small class="text-danger">This action cannot be undone and will affect all associated products.</small>`;
+            const message = `Are you sure you want to delete the product type <strong>"${typeName}"</strong>?<br><small class="text-danger">This action cannot be undone.</small>`;
             const action = `/admin/products/delete-type/${typeId}`;
-            const row = document.querySelector(`[data-id="${typeId}"]`).closest('.col-md-12');
+            const row = delBtn.closest('.col-md-12');
             
             showDeleteModal(message, action, row);
         });
 
     });
 </script>
+
+<!-- Include Delete Confirmation Modal -->
+<x-delete-confirmation-modal />
+
 @endsection
