@@ -84,6 +84,7 @@ Route::prefix('products')->name('products.')->group(function () {
     Route::post('/', [ProductController::class, 'store'])->name('store');
     Route::post('/add-type', [ProductController::class, 'addProductType'])->name('add-type');
     Route::delete('/delete-type/{id}', [ProductController::class, 'deleteProductType'])->name('delete-type');
+    Route::post('/delete-type/{id}', [ProductController::class, 'deleteProductType'])->name('delete-type.post');   // <-- REQUIRED for your modal
     
     // IMPORTANT: Specific routes with {id} MUST come BEFORE generic {id} routes
     Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
