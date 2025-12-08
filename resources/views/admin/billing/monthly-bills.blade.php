@@ -4,7 +4,7 @@
 
 @section('content')
 <!-- Toast Notification Container -->
-
+<div id="toastContainer" style="position: fixed; top: 80px; right: 20px; z-index: 9999;"></div>
 
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -243,22 +243,15 @@
                             @endphp
 
                             @php
-                                // Check if this row should be displayed based on due date logic
+                                // Calculate due date for display
+                                // Note: Filtering is already done in the controller
                                 $assignDate = \Carbon\Carbon::parse($customerProduct->assign_date);
                                 $invoiceMonth = \Carbon\Carbon::parse($month . '-01');
-                                $actualDueDate = null;
                                 $billingCycleMonths = $customerProduct->billing_cycle_months ?? 1;
-
-                                // Simplified due date logic
-                                if ($assignDate->diffInMonths($invoiceMonth) % $billingCycleMonths === 0) {
-                                    $dueDay = $customerProduct->due_date ? \Carbon\Carbon::parse($customerProduct->due_date)->day : $assignDate->day;
-                                    $actualDueDate = $invoiceMonth->copy()->day(min($dueDay, $invoiceMonth->daysInMonth));
-                                }
-
-                                // Skip this row if there's no actual due date
-                                if (!$actualDueDate) {
-                                    continue;
-                                }
+                                
+                                // Calculate the actual due date for this month
+                                $dueDay = $customerProduct->due_date ? \Carbon\Carbon::parse($customerProduct->due_date)->day : $assignDate->day;
+                                $actualDueDate = $invoiceMonth->copy()->day(min($dueDay, $invoiceMonth->daysInMonth));
                             @endphp
 
                             <tr class="{{ $rowClass }}" data-invoice-id="{{ $invoice->invoice_id }}">
@@ -289,40 +282,34 @@
 
                                     {{-- Single Product Info with Due Date --}}
                                    <td>
-                                        @php
-                                            $assignDate = \Carbon\Carbon::parse($customerProduct->assign_date);
-                                            $invoiceMonth = \Carbon\Carbon::parse($month . '-01');
-                                            $actualDueDate = null;
-                                            $billingCycleMonths = $customerProduct->billing_cycle_months ?? 1;
-
-                                            // Simplified due date logic
-                                            if ($assignDate->diffInMonths($invoiceMonth) % $billingCycleMonths === 0) {
-                                                $dueDay = $customerProduct->due_date ? \Carbon\Carbon::parse($customerProduct->due_date)->day : $assignDate->day;
-                                                $actualDueDate = $invoiceMonth->copy()->day(min($dueDay, $invoiceMonth->daysInMonth));
-                                            }
-                                        @endphp
-
-                                        @if($actualDueDate)
-                                            <div class="fw-medium text-dark">{{ $product->name ?? 'Unknown Product' }}</div>
-                                            <div class="text-muted small">
-                                                ৳ {{ number_format($product->monthly_price ?? 0, 0) }}/month
-                                                @if($customerProduct->billing_cycle_months > 1)
-                                                <span class="badge bg-info ms-1">({{ $customerProduct->billing_cycle_months }} months cycle)</span>
-                                                @endif
-                                            </div>
-                                            <div class="mt-1">
-                                                <small class="text-success">
-                                                    <i class="fas fa-calendar-check me-1"></i>
-                                                    <strong>Due: {{ $actualDueDate->format('M j, Y') }}</strong>
-                                                </small>
-                                            </div>
-                                        @else
-                                            {{-- Hide this row if there's no actual due date --}}
+                                        <div class="fw-medium text-dark">{{ $product->name ?? 'Unknown Product' }}</div>
+                                        <div class="text-muted small">
                                             @php
-                                                // Skip this row by ending the loop early
-                                                continue;
+                                                $monthlyPrice = $product->monthly_price ?? 0;
+                                                $billingCycle = $customerProduct->billing_cycle_months ?? 1;
+                                                $customPrice = $customerProduct->custom_price ?? null;
+                                                $standardPrice = $monthlyPrice * $billingCycle;
+                                                $isCustomPrice = $customPrice && abs($customPrice - $standardPrice) > 0.01;
                                             @endphp
-                                        @endif
+                                            
+                                            @if($isCustomPrice)
+                                                <span class="badge bg-warning text-dark">Custom</span>
+                                                @if($billingCycle > 1)
+                                                    <span class="badge bg-info ms-1">({{ $billingCycle }} months cycle)</span>
+                                                @endif
+                                            @else
+                                                ৳ {{ number_format($monthlyPrice, 2) }}/month
+                                                @if($billingCycle > 1)
+                                                    <span class="badge bg-info ms-1">({{ $billingCycle }} months cycle)</span>
+                                                @endif
+                                            @endif
+                                        </div>
+                                        <div class="mt-1">
+                                            <small class="text-success">
+                                                <i class="fas fa-calendar-check me-1"></i>
+                                                <strong>Due: {{ $actualDueDate->format('M j, Y') }}</strong>
+                                            </small>
+                                        </div>
                                     </td>
 
                                     {{-- Product Amount (from database) --}}
@@ -2083,7 +2070,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .val('')
             .attr({
                 'min': '0.01',
-                'max': dueAmount.toFixed(0),
+                'max': dueAmount.toFixed(2),
                 'step': '0.01'
             })
             .prop('disabled', dueAmount <= 0)
@@ -2092,7 +2079,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (dueAmount <= 0) {
             $amountInput.attr('placeholder', 'Invoice already paid');
         } else {
-            $amountInput.attr('placeholder', `Enter amount (0.01 to ${dueAmount.toFixed(0)})`);
+            $amountInput.attr('placeholder', `Enter amount (0.01 to ${dueAmount.toFixed(2)})`);
         }
 
         $('#payment_amount_error').hide();
@@ -2106,7 +2093,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Calculate and update next due
         const nextDue = Math.max(0, due - paid);
-        $('#next_due').val(nextDue.toFixed(0));
+        $('#next_due').val(nextDue.toFixed(2));
 
         // Validate amount
         if (paid > (due + 0.01)) {
@@ -2135,7 +2122,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         if (paid > (due + 0.01)) {
-            showToast(`Cannot pay more than due amount (৳${due.toFixed(0)})!`, 'danger');
+            showToast(`Cannot pay more than due amount (৳${due.toFixed(2)})!`, 'danger');
             return;
         }
 

@@ -221,7 +221,7 @@ class CustomerProductController extends Controller
                     'custom_price' => $productData['monthly_price'], // Store total as custom price
                     'assign_date' => $productData['assign_date'],
                     'billing_cycle_months' => $productData['billing_cycle_months'],
-                    'due_date_day' => $productData['due_date_day'] ?? null,
+                    'due_date' => $this->calculateDueDate($productData['assign_date'], $productData['due_date_day'] ?? null),
                     'status' => 'active',
                     'is_active' => true,
                 ]);

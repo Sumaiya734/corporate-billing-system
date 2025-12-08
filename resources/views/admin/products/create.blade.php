@@ -398,6 +398,7 @@
         // Form submission
         document.getElementById('createProductForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            e.stopPropagation();
             
             const form = e.target;
             const btn = document.getElementById('createProductBtn');
