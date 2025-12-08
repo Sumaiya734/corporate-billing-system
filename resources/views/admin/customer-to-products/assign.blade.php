@@ -231,17 +231,22 @@
                                                 @enderror
                                             </div>
 
-                                            <div class="col-md-1">
-                                                <label class="form-label">Due Day *</label>
-                                                <select class="form-select due-day @error('products.0.due_date_day') is-invalid @enderror"
-                                                        name="products[0][due_date_day]" data-index="0" required>
-                                                    @for($i = 1; $i <= 28; $i++)
-                                                        <option value="{{ $i }}" {{ old('products.0.due_date_day', date('j')) == $i ? 'selected' : '' }}>
-                                                            {{ $i }}{{ $i == 1 ? 'st' : ($i == 2 ? 'nd' : ($i == 3 ? 'rd' : 'th')) }}
-                                                        </option>
-                                                    @endfor
-                                                </select>
-                                                @error('products.0.due_date_day')
+                                            <div class="col-md-2">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <label class="form-label mb-0">Due Date *</label>
+                                                    <div class="form-check mb-0">
+                                                        <input class="form-check-input use-custom-due-date" type="checkbox" data-index="0" id="useCustomDueDate0">
+                                                        <label class="form-check-label small text-muted" for="useCustomDueDate0">
+                                                            Custom
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <input type="date" class="form-control due-date-input @error('products.0.custom_due_date') is-invalid @enderror"
+                                                       name="products[0][custom_due_date]" 
+                                                       data-index="0" 
+                                                       value="{{ old('products.0.custom_due_date', '') }}" 
+                                                       readonly required>
+                                                @error('products.0.custom_due_date')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
                                             </div>
@@ -1000,6 +1005,55 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function setupCustomDueDateToggle(idx) {
+        const checkbox = document.querySelector(`.use-custom-due-date[data-index="${idx}"]`);
+        const dateInput = document.querySelector(`.due-date-input[data-index="${idx}"]`);
+        const assignDateInput = document.querySelector(`.assign-date[data-index="${idx}"]`);
+        const billingMonths = document.querySelector(`.billing-months[data-index="${idx}"]`);
+
+        if (!checkbox || !dateInput) return;
+
+        checkbox.addEventListener('change', function () {
+            if (this.checked) {
+                dateInput.removeAttribute('readonly');
+                dateInput.classList.add('border-warning');
+                dateInput.focus();
+            } else {
+                dateInput.setAttribute('readonly', true);
+                dateInput.classList.remove('border-warning');
+                // Reset to calculated due date
+                calculateAndSetDueDate(idx);
+            }
+        });
+    }
+
+    function calculateAndSetDueDate(idx) {
+        const assignDateInput = document.querySelector(`.assign-date[data-index="${idx}"]`);
+        const billingMonths = document.querySelector(`.billing-months[data-index="${idx}"]`);
+        const dateInput = document.querySelector(`.due-date-input[data-index="${idx}"]`);
+
+        if (!assignDateInput || !billingMonths || !dateInput) return;
+
+        const assignDate = assignDateInput.value;
+        const months = parseInt(billingMonths.value) || 1;
+
+        if (!assignDate) {
+            dateInput.value = '';
+            return;
+        }
+
+        // Calculate due date by adding billing cycle months to assign date
+        const date = new Date(assignDate);
+        date.setMonth(date.getMonth() + months);
+        
+        // Format as YYYY-MM-DD
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        
+        dateInput.value = `${year}-${month}-${day}`;
+    }
+
     document.getElementById('addProductBtn').addEventListener('click', function () {
         const idx = getNextAvailableIndex();
         const row = document.createElement('div');
@@ -1051,15 +1105,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     <input type="date" class="form-control assign-date" name="products[${idx}][assign_date]"
                            value="{{ date('Y-m-d') }}" data-index="${idx}" required>
                 </div>
-                <div class="col-md-1">
-                    <label class="form-label">Due Day *</label>
-                    <select class="form-select due-day" name="products[${idx}][due_date_day]" data-index="${idx}" required>
-                        @for($i = 1; $i <= 28; $i++)
-                            <option value="{{ $i }}" {{ date('j') == $i ? 'selected' : '' }}>
-                                {{ $i }}{{ $i == 1 ? 'st' : ($i == 2 ? 'nd' : ($i == 3 ? 'rd' : 'th')) }}
-                            </option>
-                        @endfor
-                    </select>
+                <div class="col-md-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label mb-0">Due Date *</label>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input use-custom-due-date" type="checkbox" data-index="${idx}" id="useCustomDueDate${idx}">
+                            <label class="form-check-label small text-muted" for="useCustomDueDate${idx}">
+                                Custom
+                            </label>
+                        </div>
+                    </div>
+                    <input type="date" class="form-control due-date-input" 
+                           name="products[${idx}][custom_due_date]" data-index="${idx}" 
+                           value="" readonly required>
                 </div>
                 <div class="col-md-1">
                     <label class="form-label">Total</label>
@@ -1100,18 +1158,26 @@ document.addEventListener('DOMContentLoaded', function () {
             calculateProductAmount(idx);
             updateSubmitButton();
             updateInvoicePreview();
+            
+            // Recalculate due date when billing cycle changes
+            const dueDateCheckbox = row.querySelector('.use-custom-due-date');
+            if (!dueDateCheckbox || !dueDateCheckbox.checked) {
+                calculateAndSetDueDate(idx);
+            }
         });
 
         // Setup custom price toggle for this row
         setupCustomPriceToggle(idx);
 
-        // Auto-set due day when assign date changes
-        row.querySelector('.assign-date').addEventListener('change', function() {
-            const dueDaySelect = row.querySelector('.due-day');
-            if (!dueDaySelect || !this.value) return;
+        // Setup custom due date toggle for this row
+        setupCustomDueDateToggle(idx);
 
-            const day = new Date(this.value).getDate();
-            dueDaySelect.value = day;
+        // Auto-calculate due date when assign date changes
+        row.querySelector('.assign-date').addEventListener('change', function() {
+            const dueDateCheckbox = row.querySelector('.use-custom-due-date');
+            if (!dueDateCheckbox || !dueDateCheckbox.checked) {
+                calculateAndSetDueDate(idx);
+            }
         });
 
         const summary = document.createElement('div');
@@ -1346,18 +1412,26 @@ document.addEventListener('DOMContentLoaded', function () {
         calculateProductAmount(0); 
         updateSubmitButton();
         updateInvoicePreview();
+        
+        // Recalculate due date when billing cycle changes
+        const dueDateCheckbox = document.querySelector('.use-custom-due-date[data-index="0"]');
+        if (!dueDateCheckbox || !dueDateCheckbox.checked) {
+            calculateAndSetDueDate(0);
+        }
     });
 
     // Setup custom price toggle for initial row
     setupCustomPriceToggle(0);
 
-    // Auto-set due day for initial row
-    initDate?.addEventListener('change', function() {
-        const dueDaySelect = document.querySelector('.due-day[data-index="0"]');
-        if (!dueDaySelect || !this.value) return;
+    // Setup custom due date toggle for initial row
+    setupCustomDueDateToggle(0);
 
-        const day = new Date(this.value).getDate();
-        dueDaySelect.value = day;
+    // Auto-calculate due date for initial row
+    initDate?.addEventListener('change', function() {
+        const dueDateCheckbox = document.querySelector('.use-custom-due-date[data-index="0"]');
+        if (!dueDateCheckbox || !dueDateCheckbox.checked) {
+            calculateAndSetDueDate(0);
+        }
     });
     
     // Update button text based on invoice generation checkbox
@@ -1376,11 +1450,9 @@ document.addEventListener('DOMContentLoaded', function () {
         updateInvoicePreview();
     });
 
-    // Set initial due day based on assign date
+    // Calculate initial due date based on assign date and billing cycle
     if (initDate?.value) {
-        const day = new Date(initDate.value).getDate();
-        const initDue = document.querySelector('.due-day[data-index="0"]');
-        if (initDue) initDue.value = day;
+        calculateAndSetDueDate(0);
     }
 
     updateSelectedProducts();

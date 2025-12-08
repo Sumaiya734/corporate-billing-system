@@ -245,15 +245,19 @@
                             @php
                                 // Calculate due date for display
                                 // Note: Filtering is already done in the controller
-                                $assignDate = \Carbon\Carbon::parse($customerProduct->assign_date);
-                                $invoiceMonth = \Carbon\Carbon::parse($month . '-01');
-                                $billingCycleMonths = $customerProduct->billing_cycle_months ?? 1;
-                                
-                                // Calculate the actual due date for this month
-                                $dueDay = $customerProduct->due_date ? \Carbon\Carbon::parse($customerProduct->due_date)->day : $assignDate->day;
-                                $actualDueDate = $invoiceMonth->copy()->day(min($dueDay, $invoiceMonth->daysInMonth));
+                                $actualDueDate = null;
+                                if ($customerProduct) {
+                                    $assignDate = \Carbon\Carbon::parse($customerProduct->assign_date);
+                                    $invoiceMonth = \Carbon\Carbon::parse($month . '-01');
+                                    $billingCycleMonths = $customerProduct->billing_cycle_months ?? 1;
+                                    
+                                    // Calculate the actual due date for this month
+                                    $dueDay = $customerProduct->due_date ? \Carbon\Carbon::parse($customerProduct->due_date)->day : $assignDate->day;
+                                    $actualDueDate = $invoiceMonth->copy()->day(min($dueDay, $invoiceMonth->daysInMonth));
+                                }
                             @endphp
 
+                            @if($customerProduct && $customer && $product)
                             <tr class="{{ $rowClass }}" data-invoice-id="{{ $invoice->invoice_id }}">
                                 @if($customer && $product)
                                     {{-- Invoice ID --}}
@@ -538,6 +542,14 @@
                                             </td>
                                         @endif
                                     </tr>
+                            @else
+                                <tr>
+                                    <td colspan="11" class="text-center text-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        Invoice #{{$invoice->invoice_number ?? 'N/A'}} has missing customer product data.
+                                    </td>
+                                </tr>
+                            @endif
                                                 @empty
                                                     <tr>
                                                         <td colspan="11" class="text-center py-4">

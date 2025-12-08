@@ -29,6 +29,7 @@ class CustomerProduct extends Model
         'assign_date',
         'billing_cycle_months',
         'due_date',
+        'custom_due_date',
         'status',
         'is_active',
         'deleted_at'
@@ -37,6 +38,7 @@ class CustomerProduct extends Model
     protected $casts = [
         'assign_date' => 'date',
         'due_date' => 'date',
+        'custom_due_date' => 'date',
         'billing_cycle_months' => 'integer',
         'is_active' => 'boolean',
         'created_at' => 'datetime',

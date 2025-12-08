@@ -689,43 +689,68 @@ class BillingController extends Controller
 
     /**
      * Calculate data for a specific month
+     * Shows: 1) Assign months, 2) Due months (billing cycle), 3) Unpaid carry-forward months
      */
     private function calculateMonthData($month)
     {
         $monthDate = Carbon::createFromFormat('Y-m', $month);
-        $startDate = $monthDate->copy()->startOfMonth();
-        $endDate = $monthDate->copy()->endOfMonth();
         
-        // Get products that are due this month (filtered by billing cycle)
-        $dueProducts = $this->getDueCustomersForMonth($monthDate);
-        
-        // Calculate expected revenue from due products
-        // Each product amount = monthly_price × billing_cycle_months
-        $totalProductAmount = $dueProducts->sum(function($product) {
-            return ($product->monthly_price ?? 0) * ($product->billing_cycle_months ?? 1);
-        });
-        
-        // Get unique customers count - SAME LOGIC AS monthlyDetails page
-        // Count all customers who had active products during this month
-        $activeCustomersCount = DB::table('customers as c')
+        // Count customers who should show in this month:
+        // 1. Customers assigned in this month (for advance payment)
+        // 2. Customers due in this month (based on billing cycle)
+        $customersInThisMonth = DB::table('customers as c')
             ->join('customer_to_products as cp', 'c.c_id', '=', 'cp.c_id')
             ->where('c.is_active', 1)
             ->where('cp.status', 'active')
             ->where('cp.is_active', 1)
-            ->where(function($query) use ($startDate, $endDate) {
-                // Customers who were active during this month
-                $query->where('cp.assign_date', '<=', $endDate)
-                      ->where(function($q) use ($startDate) {
-                          $q->where('cp.due_date', '>=', $startDate)
-                            ->orWhereNull('cp.due_date');
-                      });
+            ->where(function($query) use ($monthDate) {
+                // Condition 1: Assigned in this month
+                $query->where(function($q) use ($monthDate) {
+                    $q->whereYear('cp.assign_date', $monthDate->year)
+                      ->whereMonth('cp.assign_date', $monthDate->month);
+                })
+                // Condition 2: Due in this month (billing cycle)
+                ->orWhereRaw('
+                    PERIOD_DIFF(
+                        DATE_FORMAT(?, "%Y%m"),
+                        DATE_FORMAT(cp.assign_date, "%Y%m")
+                    ) % cp.billing_cycle_months = 0
+                ', [$monthDate->format('Y-m-01')]);
             })
             ->distinct('c.c_id')
             ->count('c.c_id');
         
-        // Get actual invoice total amounts for this month (includes previous due)
-        $invoiceSummary = Invoice::whereYear('issue_date', $monthDate->year)
-            ->whereMonth('issue_date', $monthDate->month)
+        // Get invoices for this month:
+        // 1. Invoices issued in this month (for customers assigned this month)
+        // 2. Invoices for customers due this month (billing cycle)
+        // 3. Unpaid invoices from previous months (carry forward)
+        $invoiceSummary = Invoice::where(function($query) use ($monthDate) {
+                // Condition 1: Invoices issued in this month
+                $query->where(function($q) use ($monthDate) {
+                    $q->whereYear('issue_date', $monthDate->year)
+                      ->whereMonth('issue_date', $monthDate->month);
+                })
+                // Condition 2: Customers due in this month (billing cycle)
+                ->orWhere(function($q) use ($monthDate) {
+                    $q->whereHas('customerProduct', function($query) use ($monthDate) {
+                        $query->where('status', 'active')
+                              ->where('is_active', 1)
+                              ->whereRaw('
+                                  PERIOD_DIFF(
+                                      DATE_FORMAT(?, "%Y%m"),
+                                      DATE_FORMAT(assign_date, "%Y%m")
+                                  ) % billing_cycle_months = 0
+                              ', [$monthDate->format('Y-m-01')]);
+                    })
+                    ->where('issue_date', '<=', $monthDate->endOfMonth());
+                })
+                // Condition 3: Unpaid invoices from previous months (carry forward)
+                ->orWhere(function($q) use ($monthDate) {
+                    $q->where('issue_date', '<', $monthDate->startOfMonth())
+                      ->whereIn('status', ['unpaid', 'partial'])
+                      ->where('next_due', '>', 0);
+                });
+            })
             ->selectRaw('
                 SUM(total_amount) as total, 
                 SUM(COALESCE(received_amount, 0)) as received,
@@ -733,7 +758,7 @@ class BillingController extends Controller
             ')
             ->first();
 
-        // Use actual invoice totals - exactly as monthly-bills does
+        // Use actual invoice totals
         $totalAmount = floatval($invoiceSummary->total ?? 0);
         $receivedAmount = floatval($invoiceSummary->received ?? 0);
         $dueAmount = floatval($invoiceSummary->due ?? 0);
@@ -742,7 +767,7 @@ class BillingController extends Controller
         $status = $this->calculateStatus($totalAmount, $receivedAmount, $dueAmount);
         
         return [
-            'total_customers' => $activeCustomersCount,
+            'total_customers' => $customersInThisMonth,
             'total_amount' => $totalAmount,
             'received_amount' => $receivedAmount,
             'due_amount' => $dueAmount,

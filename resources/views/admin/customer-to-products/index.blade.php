@@ -196,14 +196,15 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="due-day">
-                                        @if($cp->due_date)
+                                        @if($cp->custom_due_date)
+                                            {{ \Carbon\Carbon::parse($cp->custom_due_date)->format('M d, Y') }}
+                                        @elseif($cp->due_date)
                                             {{ \Carbon\Carbon::parse($cp->due_date)->format('M d, Y') }}
                                         @else
                                             @php
                                                 $assignDate = \Carbon\Carbon::parse($cp->assign_date);
                                                 $billingCycleMonths = $cp->billing_cycle_months ?? 1;
-                                                $defaultDay = $assignDate->day > 28 ? 28 : $assignDate->day;
-                                                $displayDate = $assignDate->copy()->addMonths($billingCycleMonths)->day($defaultDay);
+                                                $displayDate = $assignDate->copy()->addMonths($billingCycleMonths);
                                             @endphp
                                             <span class="text-muted">{{ $displayDate->format('M d, Y') }}*</span>
                                         @endif
@@ -324,17 +325,18 @@
                                             </div>
                                         </td>
 
-                                        <!-- FIXED: Due Date - shows saved value or default -->
+                                        <!-- Due Date - shows custom_due_date -->
                                         <td class="text-center">
                                             <div class="due-day">
-                                                @if($cp->due_date)
+                                                @if($cp->custom_due_date)
+                                                    {{ \Carbon\Carbon::parse($cp->custom_due_date)->format('M d, Y') }}
+                                                @elseif($cp->due_date)
                                                     {{ \Carbon\Carbon::parse($cp->due_date)->format('M d, Y') }}
                                                 @else
                                                     @php
                                                         $assignDate = \Carbon\Carbon::parse($cp->assign_date);
                                                         $billingCycleMonths = $cp->billing_cycle_months ?? 1;
-                                                        $defaultDay = $assignDate->day > 28 ? 28 : $assignDate->day;
-                                                        $displayDate = $assignDate->copy()->addMonths($billingCycleMonths)->day($defaultDay);
+                                                        $displayDate = $assignDate->copy()->addMonths($billingCycleMonths);
                                                     @endphp
                                                     <span class="text-muted">{{ $displayDate->format('M d, Y') }}*</span>
                                                 @endif

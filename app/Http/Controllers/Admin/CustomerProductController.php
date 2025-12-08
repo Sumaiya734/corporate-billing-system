@@ -201,7 +201,7 @@ class CustomerProductController extends Controller
                 'products.*.monthly_price' => 'required|numeric|min:0',
                 'products.*.billing_cycle_months' => 'required|integer|min:1',
                 'products.*.assign_date' => 'required|date',
-                'products.*.due_date_day' => 'nullable|integer|min:1|max:28'
+                'products.*.custom_due_date' => 'required|date'
             ]);
 
             $customerId = $request->customer_id;
@@ -215,13 +215,23 @@ class CustomerProductController extends Controller
                 Log::info('Processing product assignment', $productData);
                 
                 // Create customer product assignment
+                // Calculate due_date (always auto-calculated from assign_date + billing_cycle_months)
+                $calculatedDueDate = $this->calculateDueDate(
+                    $productData['assign_date'], 
+                    $productData['billing_cycle_months']
+                );
+                
+                // custom_due_date: from form (either user's custom choice or auto-calculated value)
+                $customDueDate = $productData['custom_due_date'];
+                
                 $customerProduct = CustomerProduct::create([
                     'c_id' => $customerId,
                     'p_id' => $productData['product_id'],
                     'custom_price' => $productData['monthly_price'], // Store total as custom price
                     'assign_date' => $productData['assign_date'],
                     'billing_cycle_months' => $productData['billing_cycle_months'],
-                    'due_date' => $this->calculateDueDate($productData['assign_date'], $productData['due_date_day'] ?? null),
+                    'due_date' => $calculatedDueDate, // Always auto-calculated
+                    'custom_due_date' => $customDueDate, // From form (user's choice or calculated)
                     'status' => 'active',
                     'is_active' => true,
                 ]);
@@ -235,7 +245,7 @@ class CustomerProductController extends Controller
                     'cp_id' => $customerProduct->cp_id,
                     'c_id' => $customerId,
                     'issue_date' => $productData['assign_date'],
-                    'due_date' => $this->calculateDueDate($productData['assign_date'], $productData['due_date_day'] ?? null),
+                    'due_date' => $customDueDate, // Use custom_due_date (from form)
                     'subtotal' => $productData['monthly_price'],
                     'total_amount' => $productData['monthly_price'],
                     'received_amount' => 0,
@@ -501,29 +511,11 @@ class CustomerProductController extends Controller
         return "{$prefix}{$date}{$newNumber}";
     }
 
-    /** Calculate due date based on assign date and due day */
-    private function calculateDueDate($assignDate, $dueDay = null)
+    /** Calculate due date based on assign date and billing cycle months */
+    private function calculateDueDate($assignDate, $billingCycleMonths)
     {
-        if (!$dueDay) {
-            // Default to same day as assign date
-            return $assignDate;
-        }
-
         $date = new \DateTime($assignDate);
-        $year = $date->format('Y');
-        $month = $date->format('m');
-        $day = min($dueDay, (int)$date->format('t')); // Don't exceed days in month
-        
-        // Set to the due day of the same month
-        $dueDate = new \DateTime("{$year}-{$month}-{$day}");
-        
-        // If due date is before assign date, move to next month
-        if ($dueDate < $date) {
-            $dueDate->modify('+1 month');
-            $day = min($dueDay, (int)$dueDate->format('t')); // Adjust for month length
-            $dueDate->setDate((int)$dueDate->format('Y'), (int)$dueDate->format('m'), $day);
-        }
-        
-        return $dueDate->format('Y-m-d');
+        $date->modify("+{$billingCycleMonths} months");
+        return $date->format('Y-m-d');
     }
 }
