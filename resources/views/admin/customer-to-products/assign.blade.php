@@ -1152,11 +1152,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const sel = document.querySelector(`.product-select[data-index="${idx}"]`);
         const monthsSel = document.querySelector(`.billing-months[data-index="${idx}"]`);
         const priceInput = document.querySelector(`.monthly-price[data-index="${idx}"]`);
+        const checkbox = document.querySelector(`.use-custom-price[data-index="${idx}"]`);
         
         const productName = sel?.selectedOptions[0]?.text?.split(' - ')[0] || `Product ${displayNumber}`;
         const monthlyPrice = parseFloat(sel?.selectedOptions[0]?.dataset.price) || 0;
         const months = parseInt(monthsSel?.value) || 1;
         const editedTotal = parseFloat(priceInput?.value) || 0;
+        const isCustom = checkbox?.checked || false;
         
         const cycleText = months === 1 ? '1 month' : 
                          months === 2 ? '2 months' :
@@ -1164,12 +1166,17 @@ document.addEventListener('DOMContentLoaded', function () {
                          months === 6 ? '6 months' :
                          months === 12 ? '12 months' : `${months} months`;
         
+        // Show "Custom" instead of price when custom checkbox is checked
+        const priceDisplay = isCustom 
+            ? '<span class="badge bg-warning text-dark">Custom</span>' 
+            : `৳${monthlyPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/month`;
+        
         sum.innerHTML = `
             <div class="d-flex justify-content-between align-items-start mb-2">
                 <div class="flex-grow-1">
                     <div class="fw-bold text-dark summary-product-name">${productName}</div>
                     <div class="text-muted small summary-product-details">
-                        <span class="summary-price">৳${monthlyPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}/month</span> × 
+                        <span class="summary-price">${priceDisplay}</span> × 
                         <span class="summary-cycle">${cycleText}</span>
                     </div>
                 </div>
@@ -1204,8 +1211,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const months = parseInt(document.querySelector(`.billing-months[data-index="${idx}"]`).value) || 1;
         const priceInput = document.querySelector(`.monthly-price[data-index="${idx}"]`);
         const monthly = parseFloat(sel.selectedOptions[0]?.dataset.price) || 0;
-        const total = monthly * months;
-        if (total > 0) priceInput.value = total.toFixed(2);
+        const total = (monthly * months).toFixed(2);
+        if (parseFloat(total) > 0) priceInput.value = total;
     }
 
     function calculateProductAmount(idx) {
@@ -1214,8 +1221,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const finalAmount = parseFloat(priceInput.value) || 0;
 
-        // Update the amount display (this is just the final total)
-        amtDiv.querySelector('.amount-final').textContent = `৳ ${finalAmount.toFixed(2)}`;
+        // Update the amount display with 2 decimal places
+        amtDiv.querySelector('.amount-final').textContent = `৳ ${finalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
         productAmounts[idx] = finalAmount;
 
@@ -1475,6 +1482,7 @@ async function updateInvoicePreview() {
         const priceInput = row.querySelector('.monthly-price');
         const monthsSelect = row.querySelector('.billing-months');
         const assignDateInput = row.querySelector('.assign-date');
+        const checkbox = row.querySelector('.use-custom-price');
         
         if (select && select.value && priceInput) {
             const productName = select.selectedOptions[0]?.text?.split(' - ')[0] || 'Unknown Product';
@@ -1482,6 +1490,7 @@ async function updateInvoicePreview() {
             const months = parseInt(monthsSelect?.value) || 1;
             const monthlyPrice = parseFloat(select.selectedOptions[0]?.dataset.price) || 0;
             const assignDate = assignDateInput?.value || new Date().toISOString().split('T')[0];
+            const isCustom = checkbox?.checked || false;
             
             if (amount > 0) {
                 products.push({
@@ -1489,7 +1498,8 @@ async function updateInvoicePreview() {
                     amount: amount,
                     months: months,
                     monthlyPrice: monthlyPrice,
-                    assignDate: assignDate
+                    assignDate: assignDate,
+                    isCustom: isCustom
                 });
             }
         }
@@ -1545,6 +1555,11 @@ async function updateInvoicePreview() {
                              invoice.months === 6 ? '6 months' :
                              invoice.months === 12 ? '12 months' : `${invoice.months} months`;
             
+            // Show "Custom" badge if custom price is used
+            const priceDisplay = invoice.isCustom 
+                ? '<span class="badge bg-warning text-dark">Custom</span>' 
+                : `৳${invoice.monthly_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/month`;
+            
             html += `
                 <div class="invoice-preview-item">
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -1554,7 +1569,7 @@ async function updateInvoicePreview() {
                             </div>
                             <div class="invoice-product-name mb-1">${invoice.product_name}</div>
                             <div class="invoice-details">
-                                <i class="fas fa-tag me-1"></i>৳${invoice.monthly_price.toLocaleString(undefined, {minimumFractionDigits: 2})}/month × ${cycleText}
+                                <i class="fas fa-tag me-1"></i>${priceDisplay} × ${cycleText}
                             </div>
                         </div>
                         <div class="text-end">

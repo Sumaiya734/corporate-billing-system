@@ -127,7 +127,7 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
+                            <!-- <div class="mb-3">
                                 <label for="connection_address" class="form-label required">Connection Address</label>
                                 <textarea class="form-control @error('connection_address') is-invalid @enderror" 
                                           id="connection_address" name="connection_address" rows="3" required 
@@ -135,7 +135,7 @@
                                 @error('connection_address')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                            </div>
+                            </div> -->
                         </div>
                     </div>
                 </div>

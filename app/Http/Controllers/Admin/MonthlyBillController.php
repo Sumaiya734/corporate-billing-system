@@ -43,14 +43,33 @@ class MonthlyBillController extends Controller
                     ->with('error', "Cannot access {$displayMonth}. Please close {$previousMonth} first.");
             }
 
-            // Get invoices for the selected month with relationships - paginated
+            // Get invoices for customers whose billing cycle falls in this month
+            // Note: We don't filter by issue_date because invoices might be created in advance
+            // Instead, we filter by whether the customer is DUE in the viewing month
             $invoices = Invoice::with([
                 'payments', 
                 'customerProduct.product', 
                 'customerProduct.customer'
             ])
-            ->whereYear('issue_date', $monthDate->year)
-            ->whereMonth('issue_date', $monthDate->month)
+            ->whereHas('customerProduct', function($query) use ($monthDate) {
+                $query->where('status', 'active')
+                      ->where('is_active', 1)
+                      ->where(function($q) use ($monthDate) {
+                          // Calculate if this customer is due in the current viewing month
+                          // Logic: Check if the difference in months between assign_date and viewing month
+                          // is divisible by billing_cycle_months (same logic as blade file)
+                          // This ensures customers only show up in months they're actually due
+                          $q->whereRaw('
+                              PERIOD_DIFF(
+                                  DATE_FORMAT(?, "%Y%m"),
+                                  DATE_FORMAT(assign_date, "%Y%m")
+                              ) % billing_cycle_months = 0
+                          ', [$monthDate->format('Y-m-01')]);
+                      });
+            })
+            // Also filter to show invoices that were created for this month or earlier
+            // This prevents showing future invoices
+            ->where('issue_date', '<=', $monthDate->endOfMonth())
             ->orderBy('issue_date', 'desc')
             ->orderBy('invoice_id', 'desc')
             ->paginate(20);
@@ -792,7 +811,6 @@ class MonthlyBillController extends Controller
             'amount' => 'required|numeric|min:0', // Minimum 0 taka,cz month close hole disable hoye jabe r next due ty aita show korbe
             'payment_method' => 'required|in:cash,bank_transfer,mobile_banking,card,online',
             'payment_date' => 'required|date',
-            'cp_id' => 'nullable|exists:customer_to_products,cp_id',
             'notes' => 'nullable|string',
         ]);
 
@@ -822,7 +840,7 @@ class MonthlyBillController extends Controller
             // Create payment record
             $paymentData = [
                 'invoice_id' => $invoice->invoice_id,
-                'cp_id' => $request->cp_id, // Link payment to specific product
+                'c_id' => $invoice->customerProduct->c_id, // Link payment to customer
                 'amount' => $amount,
                 'payment_method' => $request->payment_method,
                 'payment_date' => $request->payment_date,

@@ -197,6 +197,7 @@
         // Form submission handler
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
+            e.stopPropagation();
             
             console.log('=== FORM SUBMISSION STARTED ===');
             
