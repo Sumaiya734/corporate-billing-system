@@ -813,6 +813,41 @@
 
 @section('scripts')
 <script>
+function checkExistingProducts(customerId, productId, index) {
+    if (!customerId || !productId) return Promise.resolve(true);
+    const baseUrl = '{{ url("/") }}';
+    return fetch(`${baseUrl}/admin/customer-to-products/check-existing?customer_id=${customerId}&product_id=${productId}`)
+        .then(r => r.json())
+        .then(data => {
+            const select = document.querySelector(`.product-select[data-index="${index}"]`);
+            if (!select) return true;
+            
+            const row = select.closest('.product-row');
+            if (!row) return true;
+            
+            let warn = row.querySelector('.product-warning');
+            if (data.exists) {
+                if (!warn) {
+                    warn = document.createElement('div');
+                    warn.className = 'product-warning alert alert-warning mt-2';
+                    row.appendChild(warn);
+                }
+                warn.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${data.message}`;
+                warn.style.display = 'block';
+                select.classList.add('is-invalid');
+                return false;
+            } else {
+                if (warn) warn.style.display = 'none';
+                select.classList.remove('is-invalid');
+                return true;
+            }
+        })
+        .catch(err => {
+            console.error('Error checking existing products:', err);
+            return true; // Allow submission on error
+        });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     let productCount = 1;
     let productAmounts = {};
@@ -1306,40 +1341,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('totalAmount').textContent = `৳ ${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     }
 
-    function checkExistingProducts(customerId, productId, index) {
-        if (!customerId || !productId) return Promise.resolve(true);
-        const baseUrl = '{{ url("/") }}';
-        return fetch(`${baseUrl}/admin/customer-to-products/check-existing?customer_id=${customerId}&product_id=${productId}`)
-            .then(r => r.json())
-            .then(data => {
-                const select = document.querySelector(`.product-select[data-index="${index}"]`);
-                if (!select) return true;
-                
-                const row = select.closest('.product-row');
-                if (!row) return true;
-                
-                let warn = row.querySelector('.product-warning');
-                if (data.exists) {
-                    if (!warn) {
-                        warn = document.createElement('div');
-                        warn.className = 'product-warning alert alert-warning mt-2';
-                        row.appendChild(warn);
-                    }
-                    warn.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${data.message}`;
-                    warn.style.display = 'block';
-                    select.classList.add('is-invalid');
-                    return false;
-                } else {
-                    if (warn) warn.style.display = 'none';
-                    select.classList.remove('is-invalid');
-                    return true;
-                }
-            })
-            .catch(err => {
-                console.error('Error checking existing products:', err);
-                return true; // Allow submission on error
-            });
-    }
+    
 
     document.getElementById('assignProductForm').addEventListener('submit', function(e) {
         e.preventDefault();
