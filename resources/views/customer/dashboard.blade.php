@@ -258,73 +258,65 @@
                     <!-- Statistics Cards -->
                     <div class="row g-4 mb-4">
                         <div class="col-xl-3 col-md-6">
-                            <div class="card h-100 stat-card border-left-primary">
-                                <div class="card-body d-flex flex-column">
-                                    <div class="d-flex justify-content-between align-items-center flex-grow-1">
+                            <div class="card stat-card border-left-primary">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="card-title text-muted">Current Bill</h6>
                                             <h3 class="text-primary">৳0.00</h3>
+                                            <small class="text-muted">Due in 15 days</small>
                                         </div>
                                         <div class="text-primary">
                                             <i class="fas fa-file-invoice fa-2x"></i>
                                         </div>
                                     </div>
-                                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(33, 150, 243, 0.2) !important;">
-                                        <small class="text-muted">Due in 15 days</small>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-xl-3 col-md-6">
-                            <div class="card h-100 stat-card border-left-success">
-                                <div class="card-body d-flex flex-column">
-                                    <div class="d-flex justify-content-between align-items-center flex-grow-1">
+                            <div class="card stat-card border-left-success">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="card-title text-muted">Active products</h6>
                                             <h3 class="text-success">1</h3>
+                                            <small class="text-muted">Services active</small>
                                         </div>
                                         <div class="text-success">
                                             <i class="fas fa-wifi fa-2x"></i>
                                         </div>
                                     </div>
-                                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(76, 175, 80, 0.2) !important;">
-                                        <small class="text-muted">Services active</small>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-xl-3 col-md-6">
-                            <div class="card h-100 stat-card border-left-warning">
-                                <div class="card-body d-flex flex-column">
-                                    <div class="d-flex justify-content-between align-items-center flex-grow-1">
+                            <div class="card stat-card border-left-warning">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="card-title text-muted">Support Tickets</h6>
                                             <h3 class="text-warning">0</h3>
+                                            <small class="text-muted">Open requests</small>
                                         </div>
                                         <div class="text-warning">
                                             <i class="fas fa-ticket-alt fa-2x"></i>
                                         </div>
                                     </div>
-                                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(255, 152, 0, 0.2) !important;">
-                                        <small class="text-muted">Open requests</small>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-xl-3 col-md-6">
-                            <div class="card h-100 stat-card border-left-info">
-                                <div class="card-body d-flex flex-column">
-                                    <div class="d-flex justify-content-between align-items-center flex-grow-1">
+                            <div class="card stat-card border-left-info">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="card-title text-muted">Member Since</h6>
                                             <h3 class="text-info">{{ $customer->created_at->format('M Y') }}</h3>
+                                            <small class="text-muted">Loyal customer</small>
                                         </div>
                                         <div class="text-info">
                                             <i class="fas fa-calendar-alt fa-2x"></i>
                                         </div>
-                                    </div>
-                                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(0, 188, 212, 0.2) !important;">
-                                        <small class="text-muted">Loyal customer</small>
                                     </div>
                                 </div>
                             </div>

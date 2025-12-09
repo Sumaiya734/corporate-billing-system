@@ -46,9 +46,9 @@
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100 bg-primary text-white mb-4">
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex justify-content-between flex-grow-1">
+            <div class="card bg-primary text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Total Active Customers</div>
                             <div class="h5 mb-0">{{ $totalActiveCustomers ?? 0 }}</div>
@@ -61,9 +61,9 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100 bg-success text-white mb-4">
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex justify-content-between flex-grow-1">
+            <div class="card bg-success text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Monthly Revenue</div>
                             <div class="h5 mb-0">৳ {{ number_format($currentMonthRevenue ?? 0, 0) }}</div>
@@ -76,9 +76,9 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100 bg-warning text-white mb-4">
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex justify-content-between flex-grow-1">
+            <div class="card bg-warning text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Pending Payments</div>
                             <div class="h5 mb-0">৳ {{ number_format($totalPendingAmount ?? 0, 0) }}</div>
@@ -91,9 +91,9 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100 bg-info text-white mb-4">
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex justify-content-between flex-grow-1">
+            <div class="card bg-info text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
                         <div>
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Previous Month Bills</div>
                             <div class="h5 mb-0">{{ $previousMonthBillsCount ?? 0 }}</div>
@@ -106,6 +106,7 @@
             </div>
         </div>
     </div>
+
     <!-- Empty State -->
     @if(empty($monthlySummary) || $monthlySummary->isEmpty())
     <div class="card">
@@ -169,7 +170,7 @@
                             $isFutureMonth = isset($month->is_future_month) ? $month->is_future_month : false;
                             $isDynamic = isset($month->is_dynamic) ? $month->is_dynamic : false;
                         @endphp
-                        @if(!$isFutureMonth)
+                        @if(!$isFutureMonth && ($month->total_customers ?? 0) > 0)
                         <tr class="{{ $isCurrentMonth ? 'table-info' : '' }}" data-month="{{ $month->billing_month }}">
                             <td>
                                 <strong>{{ $month->display_month ?? $month->billing_month }}</strong>
@@ -247,13 +248,13 @@
                         <tr class="fw-bold">
                             <td colspan="2" class="text-end">TOTALS:</td>
                             <td class="text-dark">
-                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('total_amount'), 0) }}
+                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('total_amount'), 0) }}
                             </td>
                             <td class="text-success">
-                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('received_amount'), 0) }}
+                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('received_amount'), 0) }}
                             </td>
                             <td class="text-danger">
-                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->sum('due_amount'), 0) }}
+                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('due_amount'), 0) }}
                             </td>
                             <td colspan="3"></td>
                         </tr>
@@ -266,7 +267,7 @@
                 <div class="col-md-6">
                     <small class="text-muted">
                         <i class="fas fa-check-circle text-success me-1"></i>
-                        Showing {{ $monthlySummary->where('is_future_month', false)->count() }} monthly summaries with real-time data
+                        Showing {{ $monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->count() }} monthly summaries with real-time data
                     </small>
                 </div>
                 <div class="col-md-6 text-end">
@@ -363,7 +364,7 @@
                         <div class="col-md-3">
                             <div class="text-center p-3 bg-white rounded shadow-sm">
                                 <i class="fas fa-calendar-check fa-2x text-warning mb-2"></i>
-                                <h5 class="mb-0">{{ $monthlySummary->where('is_future_month', false)->count() }}</h5>
+                                <h5 class="mb-0">{{ $monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->count() }}</h5>
                                 <small class="text-muted">Billing Months</small>
                                 <div class="mt-2">
                                     <small class="text-warning">Tracked</small>

@@ -82,9 +82,9 @@
     <div class="row mb-4">
         <!-- Total Revenue Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-primary">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-primary">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Total Revenue (Year {{ date('Y') }})
@@ -92,7 +92,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format($yrRev, 2) }}
                             </div>
-                            <div class="mt-2 text-success mt-auto">
+                            <div class="mt-2 text-success">
                                 <small>
                                     <i class="fas fa-arrow-up me-1"></i>
                                     {{ number_format($revenueGrowth, 1) }}% vs last month
@@ -109,9 +109,9 @@
 
         <!-- Collected Revenue Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-success">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-success">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Collected Amount
@@ -119,7 +119,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format($yrCol, 2) }}
                             </div>
-                            <div class="mt-2 mt-auto">
+                            <div class="mt-2">
                                 <small class="text-success">
                                     Collection Rate: {{ $yrRev > 0 ? number_format(($yrCol / $yrRev) * 100, 1) : 0 }}%
                                 </small>
@@ -135,9 +135,9 @@
 
         <!-- Pending Amount Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-warning">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-warning">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Pending Collection
@@ -145,7 +145,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format($yrPend, 2) }}
                             </div>
-                            <div class="mt-2 mt-auto">
+                            <div class="mt-2">
                                 <small class="text-warning">
                                     <i class="fas fa-clock me-1"></i>
                                     Awaiting payment
@@ -162,9 +162,9 @@
 
         <!-- Current Month Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-info">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-info">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                 Current Month ({{ date('F Y') }})
@@ -172,7 +172,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format($curMonthRev, 2) }}
                             </div>
-                            <div class="mt-2 text-info mt-auto">
+                            <div class="mt-2 text-info">
                                 <small>
                                     <i class="fas fa-calendar me-1"></i>
                                     {{ $curMonthRev > 0 ? number_format(($curMonthCol / $curMonthRev) * 100, 1) : 0 }}% collected
@@ -186,7 +186,9 @@
                 </div>
             </div>
         </div>
-    </div>    <!-- Charts and Visualizations -->
+    </div>
+
+    <!-- Charts and Visualizations -->
     <div class="row mb-4">
         <!-- Revenue Trend Chart -->
         <div class="col-xl-8 col-lg-7">

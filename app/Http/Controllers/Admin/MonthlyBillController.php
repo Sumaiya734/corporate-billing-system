@@ -443,6 +443,7 @@ class MonthlyBillController extends Controller
             ->where('cp.status', 'active')
             ->where('cp.is_active', 1)
             ->where('c.is_active', 1)
+            ->where('cp.assign_date', '<=', $monthDate->endOfMonth())
             ->where(function($query) use ($monthDate) {
                 // Customers whose billing cycle falls in this month
                 $query->where(function($q) use ($monthDate) {
@@ -453,9 +454,9 @@ class MonthlyBillController extends Controller
                 // Quarterly, Semi-annual, Annual billing
                 ->orWhere(function($q) use ($monthDate) {
                     $q->where('cp.billing_cycle_months', '>', 1)
-                      ->whereRaw('DATE_ADD(cp.assign_date, INTERVAL cp.billing_cycle_months MONTH) > ?', 
-                                [$monthDate->startOfMonth()])
-                      ->where('cp.assign_date', '<=', $monthDate->startOfMonth());
+                      ->whereRaw('PERIOD_DIFF(?, DATE_FORMAT(cp.assign_date, "%Y%m")) % cp.billing_cycle_months = 0', 
+                                [$monthDate->format('Ym')])
+                      ->where('cp.assign_date', '<=', $monthDate->endOfMonth());
                 });
             })
             ->groupBy('c.c_id', 'c.name', 'c.customer_id', 'c.email', 'c.phone')

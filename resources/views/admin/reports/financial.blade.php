@@ -89,9 +89,9 @@
     <div class="row mb-4">
         <!-- Total Revenue -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-primary">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-primary">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Total Revenue
@@ -99,7 +99,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format($totals->total_revenue ?? 0, 2) }}
                             </div>
-                            <div class="mt-2 text-success mt-auto">
+                            <div class="mt-2 text-success">
                                 <small>
                                     <i class="fas fa-arrow-up me-1"></i>
                                     12.5% from last period
@@ -116,9 +116,9 @@
 
         <!-- Total Collected -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-success">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-success">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Total Collected
@@ -126,7 +126,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format($totals->total_collected ?? 0, 2) }}
                             </div>
-                            <div class="mt-2 mt-auto">
+                            <div class="mt-2">
                                 <small class="text-success">
                                     <i class="fas fa-check-circle me-1"></i>
                                     Collection Rate: {{ $totals->total_revenue > 0 ? number_format(($totals->total_collected / $totals->total_revenue) * 100, 1) : 0 }}%
@@ -143,9 +143,9 @@
 
         <!-- Pending Collection -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-warning">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-warning">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Pending Collection
@@ -153,7 +153,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format($totals->total_pending ?? 0, 2) }}
                             </div>
-                            <div class="mt-2 mt-auto">
+                            <div class="mt-2">
                                 <small class="text-warning">
                                     <i class="fas fa-clock me-1"></i>
                                     Awaiting payment
@@ -170,9 +170,9 @@
 
         <!-- Average Transaction -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-info">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-info">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                 Avg. Transaction
@@ -180,7 +180,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 ৳{{ number_format(($totals->total_revenue ?? 0) / max(1, ($topCustomers->count())), 2) }}
                             </div>
-                            <div class="mt-2 text-info mt-auto">
+                            <div class="mt-2 text-info">
                                 <small>
                                     <i class="fas fa-chart-line me-1"></i>
                                     Per customer

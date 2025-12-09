@@ -27,25 +27,23 @@
     <div class="row mb-4">
         <!-- Total Customers -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-primary">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-primary">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Total Customers
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $totalCustomers }}</div>
+                            <div class="mt-2 text-success">
+                                <small>
+                                    <i class="fas fa-arrow-up me-1"></i>
+                                    {{ $newCustomers->sum('count') }} new this period
+                                </small>
+                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-users fa-2x text-primary opacity-50"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(33, 150, 243, 0.2) !important;">
-                        <div class="text-success">
-                            <small>
-                                <i class="fas fa-arrow-up me-1"></i>
-                                {{ $newCustomers->sum('count') }} new this period
-                            </small>
                         </div>
                     </div>
                 </div>
@@ -54,25 +52,23 @@
 
         <!-- Active Customers -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-success">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-success">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Active Customers
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $activeCustomers }}</div>
+                            <div class="mt-2">
+                                <small class="text-success">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    {{ $totalCustomers > 0 ? number_format(($activeCustomers / $totalCustomers) * 100, 1) : 0 }}% Active Rate
+                                </small>
+                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-user-check fa-2x text-success opacity-50"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(76, 175, 80, 0.2) !important;">
-                        <div class="text-success">
-                            <small>
-                                <i class="fas fa-check-circle me-1"></i>
-                                {{ $totalCustomers > 0 ? number_format(($activeCustomers / $totalCustomers) * 100, 1) : 0 }}% Active Rate
-                            </small>
                         </div>
                     </div>
                 </div>
@@ -81,25 +77,23 @@
 
         <!-- Inactive Customers -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-warning">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-warning">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Inactive Customers
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $inactiveCustomers ?? ($totalCustomers - $activeCustomers) }}</div>
+                            <div class="mt-2">
+                                <small class="text-warning">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Needs attention
+                                </small>
+                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-user-clock fa-2x text-warning opacity-50"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(255, 152, 0, 0.2) !important;">
-                        <div class="text-warning">
-                            <small>
-                                <i class="fas fa-clock me-1"></i>
-                                Needs attention
-                            </small>
                         </div>
                     </div>
                 </div>
@@ -108,9 +102,9 @@
 
         <!-- Growth Rate -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card h-100 stat-card border-left-info">
-                <div class="card-body d-flex flex-column">
-                    <div class="row align-items-center flex-grow-1">
+            <div class="card stat-card border-left-info">
+                <div class="card-body">
+                    <div class="row align-items-center">
                         <div class="col">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                 Growth Rate
@@ -118,17 +112,15 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 +{{ $newCustomers->sum('count') }}
                             </div>
+                            <div class="mt-2 text-info">
+                                <small>
+                                    <i class="fas fa-chart-line me-1"></i>
+                                    Last 6 months
+                                </small>
+                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-chart-bar fa-2x text-info opacity-50"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3 pt-2 border-top mt-auto" style="border-color: rgba(0, 188, 212, 0.2) !important;">
-                        <div class="text-info">
-                            <small>
-                                <i class="fas fa-chart-line me-1"></i>
-                                Last 6 months
-                            </small>
                         </div>
                     </div>
                 </div>
