@@ -169,15 +169,11 @@
                                 <td class="product-cell">
                                     <div class="product-badge {{ optional($cp->product)->product_type === 'regular' ? 'regular-product' : 'special-product' }} {{ $cp->status !== 'active' ? 'deactivated-product' : '' }}">
                                         {{ optional($cp->product)->name ?? 'Unknown product' }}
-                                        @if(optional($cp->product)->product_type === 'regular')
-                                            <small class="d-block text-muted">Main product</small>
-                                        @else
-                                            <small class="d-block text-muted">Add-on</small>
-                                        @endif
+                                        <small class="d-block text-muted">{{ optional($cp->product->type)->name ?? 'Unknown type' }}</small>
                                     </div>
                                 </td>
                                 <td class="price-cell">
-                                    <div><span class="currency">৳</span> {{ number_format($cp->product_price, 2) }}</div>
+                                    <div><span class="currency">৳</span> {{ number_format(optional($cp->product)->monthly_price ?? 0, 2) }}</div>
                                 </td>
                                 <td class="text-center">
                                     <div>{{ \Carbon\Carbon::parse($cp->assign_date)->format('M d, Y') }}</div>
@@ -190,7 +186,7 @@
                                     <div class="total-price">
                                         <strong class="text-dark">৳ {{ number_format($cp->total_amount, 2) }}</strong>
                                         <div class="text-muted small">
-                                            {{ $cp->billing_cycle_months }} month{{ $cp->billing_cycle_months > 1 ? 's' : '' }} × ৳{{ number_format($cp->product_price, 2) }}
+                                            {{ $cp->billing_cycle_months }} month{{ $cp->billing_cycle_months > 1 ? 's' : '' }} × ৳{{ number_format(optional($cp->product)->monthly_price ?? 0, 2) }}
                                         </div>
                                     </div>
                                 </td>
@@ -294,16 +290,12 @@
                                         <td class="product-cell">
                                             <div class="product-badge {{ optional($cp->product)->product_type === 'regular' ? 'regular-product' : 'special-product' }} {{ $cp->status !== 'active' ? 'deactivated-product' : '' }}">
                                                 {{ optional($cp->product)->name ?? 'Unknown product' }}
-                                                @if(optional($cp->product)->product_type === 'regular')
-                                                    <small class="d-block text-muted">Main product</small>
-                                                @else
-                                                    <small class="d-block text-muted">Add-on</small>
-                                                @endif
+                                                <small class="d-block text-muted">{{ optional($cp->product->type)->name ?? 'Unknown type' }}</small>
                                             </div>
                                         </td>
 
                                         <td class="price-cell">
-                                            <div><span class="currency">৳</span> {{ number_format($cp->product_price, 2) }}</div>
+                                            <div><span class="currency">৳</span> {{ number_format(optional($cp->product)->monthly_price ?? 0, 2) }}</div>
                                         </td>
 
                                         <td class="text-center">
@@ -320,7 +312,7 @@
                                             <div class="total-price">
                                                 <strong class="text-dark">৳ {{ number_format($cp->total_amount, 2) }}</strong>
                                                 <div class="text-muted small">
-                                                    {{ $cp->billing_cycle_months }} month{{ $cp->billing_cycle_months > 1 ? 's' : '' }} × ৳{{ number_format($cp->product_price, 2) }}
+                                                    {{ $cp->billing_cycle_months }} month{{ $cp->billing_cycle_months > 1 ? 's' : '' }} × ৳{{ number_format(optional($cp->product)->monthly_price ?? 0, 2) }}
                                                 </div>
                                             </div>
                                         </td>

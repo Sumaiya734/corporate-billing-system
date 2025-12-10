@@ -338,6 +338,7 @@
                                             @endif
                                         </div>
                                     </td>
+                                    
 
                                     {{-- Previous Due (from database) --}}
                                     <td>
