@@ -942,15 +942,16 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- <div class="alert alert-warning mb-0">
+                                                <div class="alert alert-warning mb-0">
                                                     <strong><i class="fas fa-exclamation-triangle me-2"></i>What happens next?</strong>
                                                     <ul class="mb-0 mt-2">
-                                                        <li>The remaining amount will be carried forward to next month</li>
+                                                        <li>The remaining amount will be carried forward to the next billing cycle</li>
                                                         <li>This customer's billing for this month will be marked as confirmed</li>
                                                         <li>No further payments can be added for this month</li>
+                                                        <li>A new subtotal charge will be added in the next billing cycle</li>
                                                         <li>Due amount will still be visible and added to next payment</li>
                                                     </ul>
-                                                </div> -->
+                                                </div>
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -1539,41 +1540,54 @@ window.closeMonth = function() {
     .then(data => {
         if (data.success) {
             showToast('Success', data.message, 'success');
-            try {
-                // Wait briefly so the user can read the success toast,
-                // then notify other tabs and close this modal/page.
-                const payload = { month: month, ts: Date.now() };
-                setTimeout(() => {
-                    try {
-                        // localStorage broadcast (works across tabs)
-                        localStorage.setItem('billing_month_closed', JSON.stringify(payload));
-
-                        // BroadcastChannel for modern browsers (works across same-origin contexts)
-                        if (window.BroadcastChannel) {
-                            try {
-                                const bc = new BroadcastChannel('billing_channel');
-                                bc.postMessage(payload);
-                                bc.close();
-                            } catch (e) {
-                                console.warn('BroadcastChannel error', e);
-                            }
-                        }
-                    } catch (err) {
-                        console.warn('Notify refresh failed', err);
-                    }
-                }, 1500);
-            } catch (e) {
-                console.warn('Notify scheduling failed', e);
-            }
-
-            // Close modal (if open) and reload this page after toast + notify
+            
+            // Close modal immediately
             try {
                 const modalEl = document.getElementById('closeMonthModal');
                 const modalInst = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
                 if (modalInst) modalInst.hide();
             } catch (ignore) {}
 
-            setTimeout(() => location.reload(), 2600);
+            // ENHANCED: Handle redirect and auto-refresh
+            if (data.redirect_to) {
+                // Show redirect message
+                showToast('Redirecting', 'Redirecting to Billing & Invoices page...', 'info');
+                
+                // Set flag for auto-refresh on billing-invoices page
+                if (data.auto_refresh) {
+                    localStorage.setItem('billing_auto_refresh', JSON.stringify({
+                        timestamp: Date.now(),
+                        month_closed: month,
+                        message: data.message
+                    }));
+                }
+                
+                // Notify other tabs about month closure
+                try {
+                    const payload = { month: month, ts: Date.now(), redirect_to: data.redirect_to };
+                    localStorage.setItem('billing_month_closed', JSON.stringify(payload));
+
+                    if (window.BroadcastChannel) {
+                        try {
+                            const bc = new BroadcastChannel('billing_channel');
+                            bc.postMessage(payload);
+                            bc.close();
+                        } catch (e) {
+                            console.warn('BroadcastChannel error', e);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Notify refresh failed', err);
+                }
+                
+                // Redirect to billing-invoices page after brief delay
+                setTimeout(() => {
+                    window.location.href = data.redirect_to;
+                }, 1500);
+            } else {
+                // Fallback: reload current page if no redirect specified
+                setTimeout(() => location.reload(), 2000);
+            }
         } else {
             throw new Error(data.message || 'Failed to close month');
         }
@@ -1693,12 +1707,26 @@ window.executeConfirmUserPayment = function() {
             }, 100);
 
             // Show success toast WITHOUT page refresh
-            const details = `
+            let details = `
                 <div><strong>Customer:</strong> ${customerName}</div>
                 <div><strong>Product:</strong> ${productName}</div>
                 <div><strong>Carried Forward:</strong> ৳${parseFloat(nextDue).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                <div class="mt-1"><small><i class="fas fa-info-circle me-1"></i>Due amount will be added to next payment</small></div>
             `;
+            
+            // Add information about next month if available
+            if (data.next_month_url) {
+                details += `
+                <div class="mt-2"><strong>Next Month:</strong> <a href="${data.next_month_url}" class="btn btn-sm btn-outline-primary">View Next Month's Billing</a></div>
+                <div class="mt-1"><small><i class="fas fa-arrow-right me-1"></i>Next month's invoice has been created with the carried forward amount</small></div>
+                <div class="mt-1"><small><i class="fas fa-plus-circle me-1 text-success"></i>A new subtotal charge of ৳${parseFloat(data.next_cycle_subtotal || 0).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})} will be added in the next billing cycle</small></div>
+                `;
+            } else {
+                details += `
+                <div class="mt-1"><small><i class="fas fa-info-circle me-1"></i>Due amount will be added to next payment</small></div>
+                <div class="mt-1"><small><i class="fas fa-plus-circle me-1 text-success"></i>A new subtotal charge of ৳${parseFloat(data.next_cycle_subtotal || 0).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})} will be added in the next billing cycle</small></div>
+                `;
+            }
+            
             showToast('Payment Confirmed Successfully!', 'success', details);
 
             // Small delay to ensure modal is fully closed before updating UI

@@ -20,7 +20,7 @@ class RollingBillingHelper
         if (!$customerProduct) return false;
         
         $assignDate = Carbon::parse($customerProduct->assign_date);
-        $billingCycle = $customerProduct->billing_cycle_months;
+        $billingCycle = $customerProduct->billing_cycle_months ?? 1;
         
         // If assignment is in the future, don't bill
         if ($assignDate > $monthDate->endOfMonth()) {
@@ -44,7 +44,7 @@ class RollingBillingHelper
         if (!$customerProduct) return 0;
         
         $assignDate = Carbon::parse($customerProduct->assign_date);
-        $billingCycle = $customerProduct->billing_cycle_months;
+        $billingCycle = $customerProduct->billing_cycle_months ?? 1;
         $monthsSinceAssign = $assignDate->diffInMonths($monthDate);
         
         // Position in current cycle
@@ -60,7 +60,7 @@ class RollingBillingHelper
         if (!$customerProduct) return 1;
         
         $assignDate = Carbon::parse($customerProduct->assign_date);
-        $billingCycle = $customerProduct->billing_cycle_months;
+        $billingCycle = $customerProduct->billing_cycle_months ?? 1;
         $monthsSinceAssign = $assignDate->diffInMonths($monthDate);
         
         // Cycle number (starting from 1)
@@ -68,7 +68,28 @@ class RollingBillingHelper
     }
     
     /**
+     * Get the next billing cycle month date
+     */
+    public static function getNextBillingCycleMonth($cpId, $currentMonthDate)
+    {
+        $customerProduct = CustomerProduct::find($cpId);
+        if (!$customerProduct) return $currentMonthDate->copy()->addMonth();
+        
+        $assignDate = Carbon::parse($customerProduct->assign_date);
+        $billingCycle = $customerProduct->billing_cycle_months ?? 1;
+        
+        // Get current cycle position
+        $monthsSinceAssign = $assignDate->diffInMonths($currentMonthDate);
+        $currentCycle = floor($monthsSinceAssign / $billingCycle);
+        
+        // Next billing cycle month
+        $nextCycleMonths = ($currentCycle + 1) * $billingCycle;
+        return $assignDate->copy()->addMonths($nextCycleMonths);
+    }
+    
+    /**
      * Calculate subtotal for this month
+     * Modified to always add subtotal on billing cycle months for continuous billing
      */
     public static function calculateSubtotal($cpId, $monthDate)
     {
@@ -79,15 +100,15 @@ class RollingBillingHelper
         $cyclePosition = self::getCyclePosition($cpId, $monthDate);
         
         if ($cyclePosition == 0) {
-            // Start of cycle: charge full cycle amount
+            // Billing cycle month: ALWAYS charge full cycle amount for continuous billing
             $monthlyPrice = DB::table('products')
                 ->where('p_id', $customerProduct->p_id)
                 ->value('monthly_price');
             
-            return $monthlyPrice * $customerProduct->billing_cycle_months;
+            return $monthlyPrice * ($customerProduct->billing_cycle_months ?? 1);
         }
         
-        // Middle of cycle: no new subtotal
+        // Middle of cycle: no new subtotal (unchanged)
         return 0;
     }
 }

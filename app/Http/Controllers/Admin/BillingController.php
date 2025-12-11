@@ -634,8 +634,24 @@ private function getDynamicMonthlySummary()
     // Get all due months based on billing cycles
     $dueMonths = $this->getAllDueMonthsFromAssignments($assignmentMonths);
     
-    // Always include current month
+    // Generate all months from earliest assignment to current month
+    $allMonthsList = collect();
+    if ($assignmentMonths->isNotEmpty()) {
+        $earliestMonth = $assignmentMonths->min();
+        $earliestDate = Carbon::createFromFormat('Y-m', $earliestMonth)->startOfMonth();
+        $currentDateObj = Carbon::createFromFormat('Y-m', $currentMonth)->startOfMonth();
+        
+        // Generate all months between earliest assignment and current month
+        $tempDate = $earliestDate->copy();
+        while ($tempDate <= $currentDateObj) {
+            $allMonthsList->push($tempDate->format('Y-m'));
+            $tempDate->addMonth();
+        }
+    }
+    
+    // Combine all months: assignment months + due months + all months in range + current month
     $allMonths = $assignmentMonths->merge($dueMonths)
+        ->merge($allMonthsList)
         ->push($currentMonth)
         ->unique()
         ->sort()
@@ -647,26 +663,25 @@ private function getDynamicMonthlySummary()
     foreach ($allMonths as $month) {
         $monthData = $this->calculateNewMonthData($month);
         
-        // Only show months that have activity OR are the current month
-        if ($monthData['has_activity'] || $month === $currentMonth) {
-            $months->push((object)[
-                'id' => $month,
-                'display_month' => Carbon::createFromFormat('Y-m', $month)->format('F Y'),
-                'billing_month' => $month,
-                'total_customers' => $monthData['total_customers'],
-                'total_amount' => $monthData['total_amount'],
-                'received_amount' => $monthData['received_amount'],
-                'due_amount' => $monthData['due_amount'],
-                'is_current_month' => $month === $currentMonth,
-                'is_future_month' => $month > $currentMonth,
-                'is_locked' => false,
-                'is_closed' => false,
-                'is_dynamic' => true,
-                'status' => $monthData['status'],
-                'notes' => $monthData['notes'],
-                'has_activity' => $monthData['has_activity']
-            ]);
-        }
+        // Show all months from earliest assignment to current month
+        // This ensures visibility into carry forward data in ALL months including middle months of billing cycles
+        $months->push((object)[
+            'id' => $month,
+            'display_month' => Carbon::createFromFormat('Y-m', $month)->format('F Y'),
+            'billing_month' => $month,
+            'total_customers' => $monthData['total_customers'],
+            'total_amount' => $monthData['total_amount'],
+            'received_amount' => $monthData['received_amount'],
+            'due_amount' => $monthData['due_amount'],
+            'is_current_month' => $month === $currentMonth,
+            'is_future_month' => $month > $currentMonth,
+            'is_locked' => false,
+            'is_closed' => false,
+            'is_dynamic' => true,
+            'status' => $monthData['status'],
+            'notes' => $monthData['notes'],
+            'has_activity' => $monthData['has_activity']
+        ]);
     }
     
     return $months->sortByDesc('billing_month')->values();
@@ -764,7 +779,7 @@ private function calculateNewMonthData($month)
     // Determine if this month has any activity
     $hasActivity = $this->monthHasActivity($month, $customers, $amounts);
     
-    // Get status
+    // Get status based on actual payment data
     $status = $this->calculateNewStatus($amounts['total_amount'], $amounts['received_amount'], $amounts['due_amount']);
     
     // Get notes
@@ -831,7 +846,7 @@ private function calculateAmountsForCustomers($customers, $month)
     $receivedAmount = 0;
     $dueAmount = 0;
     
-    // For each customer, calculate what their amount should be for this specific month
+    // For each customer, get actual invoice data from database
     foreach ($customerIds as $customerId) {
         // Get customer product details
         $customerProduct = DB::table('customer_to_products as cp')
@@ -843,22 +858,39 @@ private function calculateAmountsForCustomers($customers, $month)
             ->first();
         
         if ($customerProduct) {
-            // Get the subtotal amount from the invoice (use the original subtotal from database)
-            $invoice = Invoice::where('cp_id', $customerProduct->cp_id)->first();
-            $subtotalAmount = $invoice ? $invoice->subtotal : 0; // Use actual subtotal from database
+            // Get the actual invoice data from the database (instead of calculating)
+            $invoice = Invoice::where('cp_id', $customerProduct->cp_id)
+                ->where('issue_date', '<=', $monthDate)
+                ->orderBy('issue_date', 'desc')
+                ->first();
             
-            // Calculate what the amounts should be for this specific month
-            $monthlyAmounts = $this->calculateMonthlyAmounts(
-                $customerProduct->assign_date,
-                $customerProduct->billing_cycle_months,
-                $subtotalAmount,
-                $month
-            );
-            
-            if ($monthlyAmounts['total_amount'] > 0) {
-                $totalAmount += $monthlyAmounts['total_amount'];
-                $receivedAmount += 0; // Assuming no payments for now
-                $dueAmount += $monthlyAmounts['total_amount'];
+            if ($invoice) {
+                // Use actual database values instead of calculated ones
+                $totalAmount += $invoice->total_amount ?? 0;
+                $receivedAmount += $invoice->received_amount ?? 0;
+                $dueAmount += $invoice->next_due ?? ($invoice->total_amount - ($invoice->received_amount ?? 0));
+            } else {
+                // Fallback to calculated amounts if no invoice exists
+                // Calculate the subtotal from customer product details
+                if ($customerProduct->is_custom_price && $customerProduct->custom_price > 0) {
+                    $subtotalAmount = $customerProduct->custom_price;
+                } else {
+                    $subtotalAmount = $customerProduct->product->monthly_price * $customerProduct->billing_cycle_months;
+                }
+                
+                // Calculate what the amounts should be for this specific month
+                $monthlyAmounts = $this->calculateMonthlyAmounts(
+                    $customerProduct->assign_date,
+                    $customerProduct->billing_cycle_months,
+                    $subtotalAmount,
+                    $month
+                );
+                
+                if ($monthlyAmounts['total_amount'] > 0) {
+                    $totalAmount += $monthlyAmounts['total_amount'];
+                    $receivedAmount += 0; // Assuming no payments for now
+                    $dueAmount += $monthlyAmounts['total_amount'];
+                }
             }
         }
     }
@@ -877,10 +909,10 @@ private function calculateAmountsForCustomers($customers, $month)
 private function calculateMonthlyAmounts($assignDate, $billingCycle, $subtotalAmount, $targetMonth) {
     $assignMonth = Carbon::parse($assignDate)->startOfMonth();
     $targetMonthDate = Carbon::createFromFormat('Y-m', $targetMonth)->startOfMonth();
-    
+        
     // Calculate months since assignment
     $monthsSinceAssign = $assignMonth->diffInMonths($targetMonthDate);
-    
+        
     if ($monthsSinceAssign < 0) {
         // Target month is before assignment
         return [
@@ -891,12 +923,12 @@ private function calculateMonthlyAmounts($assignDate, $billingCycle, $subtotalAm
             'cycle_position' => 0
         ];
     }
-    
+        
     // Determine if this is a billing cycle month
     $isBillingCycleMonth = ($monthsSinceAssign % $billingCycle) == 0;
     $cycleNumber = floor($monthsSinceAssign / $billingCycle) + 1;
     $cyclePosition = $monthsSinceAssign % $billingCycle;
-    
+        
     if ($monthsSinceAssign == 0) {
         // Initial month
         return [
@@ -907,11 +939,12 @@ private function calculateMonthlyAmounts($assignDate, $billingCycle, $subtotalAm
             'cycle_position' => 0
         ];
     } else if ($isBillingCycleMonth) {
-        // New billing cycle month - add new subtotal + carry forward previous total
+        // New billing cycle month - ALWAYS add new subtotal + carry forward previous total
+        // This ensures continuous billing for ongoing products
         $completedCycles = floor($monthsSinceAssign / $billingCycle);
         $previousDue = $completedCycles * $subtotalAmount;
         $totalAmount = $subtotalAmount + $previousDue;
-        
+            
         return [
             'subtotal' => $subtotalAmount,
             'previous_due' => $previousDue,
@@ -923,7 +956,7 @@ private function calculateMonthlyAmounts($assignDate, $billingCycle, $subtotalAm
         // Carry forward month - subtotal = 0, previous_due = total_amount
         $completedCycles = floor($monthsSinceAssign / $billingCycle);
         $totalAmount = ($completedCycles + 1) * $subtotalAmount;
-        
+            
         return [
             'subtotal' => 0,
             'previous_due' => $totalAmount,

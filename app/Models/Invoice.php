@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Helpers\RollingBillingHelper;
 
 class Invoice extends Model
 {
@@ -19,9 +20,6 @@ class Invoice extends Model
         'cp_id', // Links to customer_to_products (each invoice is for one product)
         'issue_date',
         'previous_due',
-        'service_charge',
-        'vat_percentage',
-        'vat_amount',
         'subtotal',
         'total_amount',
         'received_amount',
@@ -331,9 +329,9 @@ class Invoice extends Model
     public function recalculateTotals(): bool
     {
         $productTotal = $this->getTotalProductAmount();
-        $subtotal = $productTotal + $this->previous_due + $this->service_charge;
-        $vatAmount = $subtotal * ($this->vat_percentage / 100);
-        $totalAmount = $subtotal + $vatAmount;
+        $subtotal = $productTotal + $this->previous_due; // Service charge removed as per requirements
+        $vatAmount = 0; // VAT removed as per requirements
+        $totalAmount = $subtotal; // No VAT added
 
         return $this->update([
             'subtotal' => $subtotal,
@@ -341,6 +339,34 @@ class Invoice extends Model
             'total_amount' => $totalAmount,
             'next_due' => max(0, $totalAmount - $this->received_amount),
             'status' => $this->calculateStatus($this->received_amount),
+        ]);
+    }
+
+    /**
+     * Recalculate payment amounts based on actual payments in database
+     * This ensures next_due = total_amount - received_amount is always accurate
+     */
+    public function recalculatePaymentAmounts(): bool
+    {
+        // Get actual sum of payments from database
+        $actualReceivedAmount = $this->payments()->sum('amount');
+        
+        // Calculate correct next_due
+        $correctNextDue = max(0, $this->total_amount - $actualReceivedAmount);
+        
+        // Determine correct status
+        $correctStatus = 'unpaid';
+        if ($actualReceivedAmount >= $this->total_amount) {
+            $correctStatus = 'paid';
+            $correctNextDue = 0; // Ensure it's exactly 0 when fully paid
+        } elseif ($actualReceivedAmount > 0) {
+            $correctStatus = 'partial';
+        }
+
+        return $this->update([
+            'received_amount' => $actualReceivedAmount,
+            'next_due' => $correctNextDue,
+            'status' => $correctStatus,
         ]);
     }
 
@@ -410,7 +436,8 @@ class Invoice extends Model
 
             // Initialize amounts if not set
             $invoice->received_amount = $invoice->received_amount ?? 0.00;
-            $invoice->next_due = $invoice->next_due ?? $invoice->total_amount ?? 0.00;
+            // Always calculate next_due properly: max(0, total_amount - received_amount)
+            $invoice->next_due = max(0, ($invoice->total_amount ?? 0.00) - ($invoice->received_amount ?? 0.00));
         });
 
         static::created(function ($invoice) {
@@ -486,7 +513,7 @@ class Invoice extends Model
             'billing_cycle_number' => $cycleNumber,
             'cycle_position' => $cyclePosition,
             'cycle_start_date' => $monthDate->format('Y-m-d'),
-            'notes' => "Cycle {$cycleNumber}, Month " . ($cyclePosition + 1) . " of {$customerProduct->billing_cycle_months}-month cycle"
+            'notes' => "Cycle {$cycleNumber}, Month " . ($cyclePosition + 1) . " of " . ($customerProduct->billing_cycle_months ?? 1) . "-month cycle"
         ]);
         
         return $invoice;
@@ -502,7 +529,7 @@ class Invoice extends Model
         
         if (!$customerProduct) return $invoice;
         
-        $billingCycle = $customerProduct->billing_cycle_months;
+        $billingCycle = $customerProduct->billing_cycle_months ?? 1;
         $cyclePosition = RollingBillingHelper::getCyclePosition($cpId, $monthDate);
         $subtotal = RollingBillingHelper::calculateSubtotal($cpId, $monthDate);
         

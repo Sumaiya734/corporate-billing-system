@@ -113,7 +113,7 @@ class CustomerProduct extends Model
 
     public function getBillingCycleTextAttribute(): string
     {
-        return match ($this->billing_cycle_months) {
+        return match ($this->billing_cycle_months ?? 1) {
             1 => 'Monthly',
             3 => 'Quarterly',
             6 => 'Half-Yearly',

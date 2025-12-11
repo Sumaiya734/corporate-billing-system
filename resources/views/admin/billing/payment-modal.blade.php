@@ -108,9 +108,9 @@
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0">৳</span>
                                             <input type="number" step="0.01" name="next_due" class="form-control border-start-0" 
-                                                   id="next_due" min="0" placeholder="0.00" readonly>
+                                                   id="next_due" min="0" placeholder="0.00" style="background-color: #f8f9fa;">
                                         </div>
-                                        <div class="form-text text-muted">Amount remaining after this payment</div>
+                                        <div class="form-text text-muted">Amount remaining after this payment (editable)</div>
                                     </div>
                                 </div>
                                 

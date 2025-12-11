@@ -170,7 +170,7 @@
                             $isFutureMonth = isset($month->is_future_month) ? $month->is_future_month : false;
                             $isDynamic = isset($month->is_dynamic) ? $month->is_dynamic : false;
                         @endphp
-                        @if(!$isFutureMonth && ($month->total_customers ?? 0) > 0)
+                        @if(!$isFutureMonth)
                         <tr class="{{ $isCurrentMonth ? 'table-info' : '' }}" data-month="{{ $month->billing_month }}">
                             <td>
                                 <strong>{{ $month->display_month ?? $month->billing_month }}</strong>
@@ -244,21 +244,7 @@
                         @endif
                         @endforeach
                     </tbody>
-                    <tfoot class="table-light">
-                        <tr class="fw-bold">
-                            <td colspan="2" class="text-end">TOTALS:</td>
-                            <td class="text-dark">
-                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('total_amount'), 0) }}
-                            </td>
-                            <td class="text-success">
-                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('received_amount'), 0) }}
-                            </td>
-                            <td class="text-danger">
-                                ৳ {{ number_format($monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('due_amount'), 0) }}
-                            </td>
-                            <td colspan="3"></td>
-                        </tr>
-                    </tfoot>
+                    
                 </table>
             </div>
         </div>
@@ -267,7 +253,7 @@
                 <div class="col-md-6">
                     <small class="text-muted">
                         <i class="fas fa-check-circle text-success me-1"></i>
-                        Showing {{ $monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->count() }} monthly summaries with real-time data
+                        Showing {{ $monthlySummary->where('is_future_month', false)->count() }} monthly summaries with real-time data
                     </small>
                 </div>
                 <div class="col-md-6 text-end">
@@ -364,7 +350,7 @@
                         <div class="col-md-3">
                             <div class="text-center p-3 bg-white rounded shadow-sm">
                                 <i class="fas fa-calendar-check fa-2x text-warning mb-2"></i>
-                                <h5 class="mb-0">{{ $monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->count() }}</h5>
+                                <h5 class="mb-0">{{ $monthlySummary->where('is_future_month', false)->count() }}</h5>
                                 <small class="text-muted">Billing Months</small>
                                 <div class="mt-2">
                                     <small class="text-warning">Tracked</small>
@@ -756,6 +742,34 @@
 <script>
     // Validate that received + due = total amount
     document.addEventListener('DOMContentLoaded', function() {
+        // ENHANCED: Check for auto-refresh flag from month closing redirect
+        try {
+            const autoRefreshData = localStorage.getItem('billing_auto_refresh');
+            if (autoRefreshData) {
+                const data = JSON.parse(autoRefreshData);
+                const now = Date.now();
+                
+                // Only auto-refresh if the flag is recent (within 30 seconds)
+                if (data.timestamp && (now - data.timestamp) < 30000) {
+                    // Show success message about month closure
+                    if (data.message && window.showToast) {
+                        showToast('Month Closed Successfully', data.message, 'success');
+                    }
+                    
+                    // Auto-refresh the page after showing the message
+                    setTimeout(() => {
+                        console.log('Auto-refreshing billing-invoices page after month closure');
+                        location.reload();
+                    }, 2000);
+                }
+                
+                // Clean up the flag regardless of age
+                localStorage.removeItem('billing_auto_refresh');
+            }
+        } catch (e) {
+            console.warn('Error checking auto-refresh flag:', e);
+        }
+
         const totalAmount = document.querySelector('input[name="total_amount"]');
         const receivedAmount = document.querySelector('input[name="received_amount"]');
         const dueAmount = document.querySelector('input[name="due_amount"]');
@@ -911,5 +925,48 @@
             console.warn('BroadcastChannel not available', err);
         }
     }
+
+    // ENHANCED: Toast notification function for billing-invoices page
+    window.showToast = function(title, message, type = 'info') {
+        const toastId = 'toast-' + Date.now();
+        const icon = type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle';
+        const bgColor = type === 'success' ? '#06d6a0' : type === 'danger' ? '#ef476f' : type === 'warning' ? '#ffd166' : '#118ab2';
+
+        // Create toast container if it doesn't exist
+        let toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999;';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-white border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true" 
+                 style="background-color: ${bgColor}; min-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center">
+                        <i class="fas fa-${icon} me-2"></i>
+                        <div>
+                            <div class="fw-bold">${title}</div>
+                            <div class="small">${message}</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+        toast.show();
+
+        // Remove toast element after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            this.remove();
+        });
+    };
 </script>
 @endsection
