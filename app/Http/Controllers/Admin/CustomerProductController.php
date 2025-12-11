@@ -86,7 +86,7 @@ class CustomerProductController extends Controller
     }
 
     /** ➕ Show product assignment form */
-    public function assign()
+    public function assign(Request $request)
     {
         try {
             $products = Product::orderBy('name')->get();
@@ -94,8 +94,14 @@ class CustomerProductController extends Controller
             $customers = Customer::where('is_active', true)
                 ->orderBy('name')
                 ->get();
+            
+            // Get pre-selected customer if customer_id is provided
+            $preSelectedCustomer = null;
+            if ($request->has('customer_id')) {
+                $preSelectedCustomer = Customer::find($request->customer_id);
+            }
                 
-            return view('admin.customer-to-products.assign', compact('products', 'customers'));
+            return view('admin.customer-to-products.assign', compact('products', 'customers', 'preSelectedCustomer'));
         } catch (\Exception $e) {
             Log::error('Error loading assign form: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to load assignment form.');
@@ -416,19 +422,41 @@ class CustomerProductController extends Controller
         try {
             $request->validate([
                 'name' => 'required|string|max:255',
-                'customer_id' => 'required|string|max:50|unique:customers,customer_id',
+                'customer_id' => 'nullable|string|max:50|unique:customers,customer_id',
                 'phone' => 'required|string|max:20',
-                'email' => 'nullable|email|max:255',
-                'address' => 'nullable|string|max:500',
+                'email' => 'nullable|email|max:255|unique:customers,email',
+                'address' => 'required|string|max:500',
+                'id_type' => 'nullable|string|in:NID,Passport,Driving License',
+                'id_number' => 'nullable|string|max:100',
             ]);
 
-            $customer = Customer::create([
+            $customerData = [
                 'name' => $request->name,
-                'customer_id' => $request->customer_id,
                 'phone' => $request->phone,
                 'email' => $request->email,
                 'address' => $request->address,
+                'id_type' => $request->id_type,
+                'id_number' => $request->id_number,
+                'user_id' => auth()->id(), // Set the current authenticated user
                 'is_active' => true,
+            ];
+
+            // Only set customer_id if provided, otherwise let the model auto-generate it
+            if ($request->filled('customer_id')) {
+                $customerData['customer_id'] = $request->customer_id;
+            }
+
+            $customer = Customer::create($customerData);
+
+            // Refresh the customer to get the auto-generated customer_id
+            $customer->refresh();
+
+            // Log the created customer for debugging
+            Log::info('Customer created via AJAX', [
+                'customer_id' => $customer->customer_id,
+                'user_id' => $customer->user_id,
+                'name' => $customer->name,
+                'email' => $customer->email
             ]);
 
             return response()->json([
@@ -437,6 +465,11 @@ class CustomerProductController extends Controller
                 'customer' => $customer
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all())
+            ], 422);
         } catch (\Exception $e) {
             Log::error('Error creating customer: ' . $e->getMessage());
             

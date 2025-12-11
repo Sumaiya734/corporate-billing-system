@@ -75,6 +75,14 @@
                                     </button>
                                 </div>
 
+                                @if(isset($preSelectedCustomer) && $preSelectedCustomer)
+                                    <div class="alert alert-info mb-3">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Pre-selected Customer:</strong> {{ $preSelectedCustomer->name }} ({{ $preSelectedCustomer->customer_id }})
+                                        <br><small>This customer was selected from the customer list. You can change the selection below if needed.</small>
+                                    </div>
+                                @endif
+
                                 <div class="mb-3">
                                     <input type="text" class="form-control" id="customerSearch"
                                            placeholder="Search customers by name, phone, email, or ID..."
@@ -355,7 +363,7 @@
 </template>
 
 <!-- New Customer Modal -->
-<div class="modal fade" id="newCustomerModal" tabindex="-1" aria-labelledby="newCustomerModalLabel" aria-hidden="true">
+<div class="modal fade" id="newCustomerModal" tabindex="-1" aria-labelledby="newCustomerModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -415,16 +423,16 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="address" class="form-label required">Residential Address</label>
+                                    <label for="address" class="form-label required"> Address</label>
                                     <textarea class="form-control" id="address" name="address" rows="3" required placeholder="Enter residential address"></textarea>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <!-- <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="connection_address" class="form-label required">Connection Address</label>
                                     <textarea class="form-control" id="connection_address" name="connection_address" rows="3" required placeholder="Enter connection installation address"></textarea>
                                 </div>
-                            </div>
+                            </div> -->
                         </div>
                     </div>
 
@@ -833,7 +841,7 @@ function checkExistingProducts(customerId, productId, index) {
                     row.appendChild(warn);
                 }
                 warn.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${data.message}`;
-                warn.style.display = 'block';
+                if (warn) warn.style.display = 'block';
                 select.classList.add('is-invalid');
                 return false;
             } else {
@@ -846,6 +854,26 @@ function checkExistingProducts(customerId, productId, index) {
             console.error('Error checking existing products:', err);
             return true; // Allow submission on error
         });
+}
+
+// Global error handler for uncaught errors
+window.addEventListener('error', function(e) {
+    console.error('Uncaught error in assign page:', e.error);
+    // Prevent the error from breaking the page
+    return true;
+});
+
+// Safe DOM operation helper
+function safeSetStyle(element, property, value) {
+    try {
+        if (element && element.style && typeof element.style[property] !== 'undefined') {
+            element.style[property] = value;
+            return true;
+        }
+    } catch (error) {
+        console.error('Failed to set style:', error);
+    }
+    return false;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -861,27 +889,48 @@ document.addEventListener('DOMContentLoaded', function () {
     const submitBtn = document.getElementById('submitBtn');
     const productOptionsTemplate = document.getElementById('productOptionsTemplate');
 
-    // Check if we need to auto-select a newly created customer
-    const newCustomerId = sessionStorage.getItem('newCustomerId');
-    if (newCustomerId) {
-        const name = sessionStorage.getItem('newCustomerName');
-        const phone = sessionStorage.getItem('newCustomerPhone');
-        const email = sessionStorage.getItem('newCustomerEmail');
-        const custId = sessionStorage.getItem('newCustomerCustomerId');
-        
-        // Auto-select the customer
-        selectCustomer(newCustomerId, name, phone, email, custId);
-        
-        // Show success toast
-        showToast(`Customer "${name}" has been created and selected!`);
-        
-        // Clear sessionStorage
-        sessionStorage.removeItem('newCustomerId');
-        sessionStorage.removeItem('newCustomerName');
-        sessionStorage.removeItem('newCustomerPhone');
-        sessionStorage.removeItem('newCustomerEmail');
-        sessionStorage.removeItem('newCustomerCustomerId');
+    // Check if essential elements exist
+    if (!customerSearch || !customerResults || !customerIdInput) {
+        console.error('Essential DOM elements not found on assign page');
+        return;
     }
+
+    // Check if we have a pre-selected customer from URL parameter
+    @if(isset($preSelectedCustomer) && $preSelectedCustomer)
+        // Auto-select the pre-selected customer
+        selectCustomer(
+            '{{ $preSelectedCustomer->c_id }}',
+            '{{ $preSelectedCustomer->name }}',
+            '{{ $preSelectedCustomer->phone ?? "No phone" }}',
+            '{{ $preSelectedCustomer->email ?? "No email" }}',
+            '{{ $preSelectedCustomer->customer_id }}'
+        );
+        
+        // Show info toast
+        showToast(`Customer "${{ $preSelectedCustomer->name }}" has been pre-selected for product assignment.`);
+    @else
+        // Check if we need to auto-select a newly created customer
+        const newCustomerId = sessionStorage.getItem('newCustomerId');
+        if (newCustomerId) {
+            const name = sessionStorage.getItem('newCustomerName');
+            const phone = sessionStorage.getItem('newCustomerPhone');
+            const email = sessionStorage.getItem('newCustomerEmail');
+            const custId = sessionStorage.getItem('newCustomerCustomerId');
+            
+            // Auto-select the customer
+            selectCustomer(newCustomerId, name, phone, email, custId);
+            
+            // Show success toast
+            showToast(`Customer "${name}" has been created and selected!`);
+            
+            // Clear sessionStorage
+            sessionStorage.removeItem('newCustomerId');
+            sessionStorage.removeItem('newCustomerName');
+            sessionStorage.removeItem('newCustomerPhone');
+            sessionStorage.removeItem('newCustomerEmail');
+            sessionStorage.removeItem('newCustomerCustomerId');
+        }
+    @endif
 
     function updateSubmitButton() {
         const hasCustomer = !!customerIdInput.value;
@@ -898,18 +947,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const query = this.value.trim().toLowerCase();
         
         if (query.length === 0) {
-            customerResults.style.display = 'none';
+            if (customerResults) customerResults.style.display = 'none';
             // Reset all items to be visible for next search
             document.querySelectorAll('.customer-result-item').forEach(item => {
-                item.style.display = 'block';
+                if (item && item.style) item.style.display = 'block';
             });
             return;
         }
 
-        customerResults.style.display = 'block';
+        if (customerResults) customerResults.style.display = 'block';
         let hasMatch = false;
 
         document.querySelectorAll('.customer-result-item').forEach(item => {
+            if (!item) return;
             const name = (item.dataset.customerName || '').toLowerCase();
             const phone = (item.dataset.customerPhone || '').toLowerCase();
             const email = (item.dataset.customerEmail || '').toLowerCase();
@@ -918,10 +968,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const matches = name.includes(query) || phone.includes(query) || email.includes(query) || custId.includes(query);
             
             if (matches) {
-                item.style.display = 'block';
+                if (item) item.style.display = 'block';
                 hasMatch = true;
             } else {
-                item.style.display = 'none';
+                if (item) item.style.display = 'none';
             }
         });
 
@@ -943,7 +993,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div>No customers found for "<strong>${escapeHtml(query)}</strong>"</div>
                     <small class="d-block mt-2">Try searching by name, phone, email, or ID</small>
                 `;
-                noResultsMsg.style.display = 'block';
+                if (noResultsMsg) noResultsMsg.style.display = 'block';
             }
         } else {
             if (noResultsMsg) {
@@ -963,7 +1013,7 @@ document.addEventListener('DOMContentLoaded', function () {
     customerSearch.addEventListener('focus', function() {
         const query = this.value.trim();
         if (query.length > 0) {
-            customerResults.style.display = 'block';
+            if (customerResults) customerResults.style.display = 'block';
         }
     });
     
@@ -971,16 +1021,16 @@ document.addEventListener('DOMContentLoaded', function () {
     customerSearch.addEventListener('click', function() {
         if (this.value.trim().length === 0) {
             // Show all customers when clicking empty search
-            customerResults.style.display = 'block';
+            if (customerResults) customerResults.style.display = 'block';
             document.querySelectorAll('.customer-result-item').forEach(item => {
-                item.style.display = 'block';
+                if (item) item.style.display = 'block';
             });
         }
     });
 
     // Hide results when clicking outside
     document.addEventListener('click', function(e) {
-        if (!customerSearch.contains(e.target) && !customerResults.contains(e.target)) {
+        if (customerSearch && customerResults && !customerSearch.contains(e.target) && !customerResults.contains(e.target)) {
             customerResults.style.display = 'none';
         }
     });
@@ -1016,13 +1066,13 @@ document.addEventListener('DOMContentLoaded', function () {
             if (this.checked) {
                 priceInput.removeAttribute('readonly');
                 priceInput.classList.add('border-warning');
-                badge.style.display = 'block';
+                if (badge) badge.style.display = 'block';
                 priceInput.focus();
                 priceInput.select();
             } else {
                 priceInput.setAttribute('readonly', true);
                 priceInput.classList.remove('border-warning');
-                badge.style.display = 'none';
+                if (badge) badge.style.display = 'none';
                 // Reset to calculated price
                 const months = parseInt(billingMonths.value) || 1;
                 const monthly = parseFloat(productSelect.selectedOptions[0]?.dataset.price) || 0;
@@ -1717,16 +1767,18 @@ document.getElementById('saveCustomerBtn')?.addEventListener('click', function(e
     });
     
     if (!isValid) {
-        errorDiv.textContent = 'Please fill in all required fields';
-        errorDiv.style.display = 'block';
+        if (errorDiv) {
+            errorDiv.textContent = 'Please fill in all required fields';
+            errorDiv.style.display = 'block';
+        }
         return;
     }
     
     // Disable button and show loading
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
-    errorDiv.style.display = 'none';
-    successDiv.style.display = 'none';
+    if (errorDiv) errorDiv.style.display = 'none';
+    if (successDiv) successDiv.style.display = 'none';
     
     const formData = new FormData(form);
     
@@ -1795,8 +1847,10 @@ document.getElementById('saveCustomerBtn')?.addEventListener('click', function(e
             }, 500);
         } else {
             // Show error message
-            errorDiv.textContent = data.message || 'Failed to create customer';
-            errorDiv.style.display = 'block';
+            if (errorDiv) {
+                errorDiv.textContent = data.message || 'Failed to create customer';
+                errorDiv.style.display = 'block';
+            }
         }
     })
     .catch(error => {
@@ -1810,7 +1864,7 @@ document.getElementById('saveCustomerBtn')?.addEventListener('click', function(e
         } else {
             errorDiv.textContent = 'An error occurred while creating the customer';
         }
-        errorDiv.style.display = 'block';
+        if (errorDiv) errorDiv.style.display = 'block';
     })
     .finally(() => {
         // Re-enable button
@@ -1821,28 +1875,17 @@ document.getElementById('saveCustomerBtn')?.addEventListener('click', function(e
 
 // Reset form when modal is closed
 document.getElementById('newCustomerModal')?.addEventListener('hidden.bs.modal', function() {
-    document.getElementById('newCustomerForm').reset();
-    document.getElementById('newCustomerError').style.display = 'none';
-    document.getElementById('newCustomerSuccess').style.display = 'none';
+    const form = document.getElementById('newCustomerForm');
+    const errorDiv = document.getElementById('newCustomerError');
+    const successDiv = document.getElementById('newCustomerSuccess');
+    
+    if (form) form.reset();
+    if (errorDiv) errorDiv.style.display = 'none';
+    if (successDiv) successDiv.style.display = 'none';
     // Remove validation classes
     document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
 });
 
-// Auto-generate customer ID
-document.getElementById('name')?.addEventListener('blur', generateCustomerId);
-document.getElementById('phone')?.addEventListener('blur', generateCustomerId);
-
-function generateCustomerId() {
-    const nameInput = document.getElementById('name');
-    const phoneInput = document.getElementById('phone');
-    const customerIdInput = document.getElementById('customer_id');
-    
-    if (nameInput && nameInput.value && phoneInput && phoneInput.value && customerIdInput && !customerIdInput.value) {
-        const namePart = nameInput.value.split(' ')[0].toUpperCase().substring(0, 4);
-        const phonePart = phoneInput.value.slice(-4);
-        const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        customerIdInput.value = `CUST${namePart}${phonePart}${randomPart}`;
-    }
-}
+// Customer ID will be auto-generated by the backend if left empty
 </script>
 @endsection

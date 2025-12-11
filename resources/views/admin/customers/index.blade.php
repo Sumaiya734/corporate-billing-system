@@ -399,7 +399,7 @@
                                         <div class="no-product text-center py-2">
                                             <i class="fas fa-exclamation-triangle text-warning fa-lg mb-2"></i>
                                             <div class="text-muted small">No Active product</div>
-                                            <a href="{{ route('admin.customer-to-products.assign') }}" class="btn btn-sm btn-outline-primary mt-1">
+                                            <a href="{{ route('admin.customer-to-products.assign', ['customer_id' => $customer->c_id]) }}" class="btn btn-sm btn-outline-primary mt-1">
                                                 Assign product
                                             </a>
                                         </div>
@@ -467,6 +467,14 @@
                                         title="View Details"
                                         data-bs-toggle="tooltip" target="_blank">
                                             <i class="fas fa-eye"></i>
+                                        </a>
+
+                                        <!-- Assign Product -->
+                                        <a href="{{ route('admin.customer-to-products.assign', ['customer_id' => $customer->c_id]) }}" 
+                                        class="btn btn-sm btn-outline-success action-btn" 
+                                        title="Assign Product"
+                                        data-bs-toggle="tooltip">
+                                            <i class="fas fa-user-tag"></i>
                                         </a>
 
                                         <!-- Edit Customer -->
@@ -700,7 +708,7 @@
 
 /* Action Buttons */
 .action-buttons {
-    min-width: 160px;
+    min-width: 200px;
 }
 
 .action-btn {

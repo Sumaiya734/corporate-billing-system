@@ -390,6 +390,9 @@ class BillingController extends Controller
      */
     public function recordPayment(Request $request, $invoiceId)
     {
+        // Log request data
+        Log::info('Payment Request Data:', $request->all());
+        
         $request->validate([
             'amount' => 'required|numeric|min:0',
             'payment_method' => 'required|string|max:50',
@@ -398,8 +401,18 @@ class BillingController extends Controller
             'note' => 'nullable|string'
         ]);
 
+        DB::beginTransaction(); // Start database transaction
+        
         try {
             $invoice = Invoice::findOrFail($invoiceId);
+            
+            // Log current invoice data
+            Log::info('Current Invoice Data', [
+                'id' => $invoice->invoice_id,
+                'total' => $invoice->total_amount,
+                'received' => $invoice->received_amount,
+                'next_due' => $invoice->next_due
+            ]);
 
             $payment = Payment::create([
                 'invoice_id' => $invoiceId,
@@ -420,26 +433,89 @@ class BillingController extends Controller
                 $newDue = 0;
                 $status = 'paid';
             } else {
-                $status = $newReceivedAmount > 0 ? 'partial' : 'unpaid';
+                // If there's a partial payment, set status to 'confirmed'
+                $status = 'confirmed';
             }
+            
+            // Log calculation results
+            Log::info('Payment Calculation Results', [
+                'newReceivedAmount' => $newReceivedAmount,
+                'newDue' => $newDue,
+                'status' => $status
+            ]);
 
-            $invoice->update([
+            $updateResult = $invoice->update([
                 'received_amount' => $newReceivedAmount,
                 'next_due' => $newDue,
                 'status' => $status
             ]);
+            
+            // Quick fix: Force refresh and manual save
+            $invoice->refresh(); // Database থেকে fresh data আনো
 
-            // If the request is AJAX, return JSON to the frontend
+            // যদি next_due still incorrect হয়
+            if ($invoice->next_due != $newDue) {
+                Log::warning('Next due not updated properly, forcing update');
+                
+                // Direct DB query
+                DB::table('invoices')
+                    ->where('invoice_id', $invoiceId)
+                    ->update([
+                        'next_due' => $newDue,
+                        'received_amount' => $newReceivedAmount,
+                        'status' => $status
+                    ]);
+                
+                // আবার refresh
+                $invoice->refresh();
+            }
+
+            // Verify final values
+            Log::info('Final Invoice Values:', [
+                'next_due' => $invoice->next_due,
+                'received_amount' => $invoice->received_amount,
+                'status' => $invoice->status
+            ]);
+            
+            // Log after update
+            Log::info('Invoice Update Result', [
+                'success' => $updateResult,
+                'invoice_id' => $invoice->invoice_id
+            ]);
+
+            // Handle carry-forward of remaining due to next month
+            $this->carryForwardDueToNextMonth($invoice, $newDue);
+            
+            DB::commit(); // Commit the transaction if everything is successful
+            
+            // Log successful completion
+            Log::info('Payment Recorded Successfully', [
+                'invoice_id' => $invoice->invoice_id,
+                'payment_id' => $payment->id ?? null
+            ]);
+            
+            // If the request is AJAX, return JSON to the frontend with updated invoice data
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Payment recorded successfully!'
+                    'message' => 'Payment recorded successfully!',
+                    'invoice_id' => $invoice->invoice_id,
+                    'next_due' => $invoice->next_due,
+                    'received_amount' => $invoice->received_amount,
+                    'status' => $invoice->status,
+                    'carried_forward' => $newDue > 0 ? true : false
                 ]);
             }
             return redirect()->back()->with('success', 'Payment recorded successfully!');
 
         } catch (\Exception $e) {
-            Log::error('Record payment error: ' . $e->getMessage());
+            DB::rollBack(); // Rollback the transaction on error
+            Log::error('Payment Error Details:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             // If AJAX request, return JSON so front-end can handle it
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -533,9 +609,9 @@ class BillingController extends Controller
                 ->whereMonth('payment_date', now()->month)
                 ->sum('amount');
                 
-            // Total pending amount across all unpaid/partial invoices
-            $totalPendingAmount = Invoice::whereIn('status', ['unpaid', 'partial'])
-                ->sum(DB::raw('GREATEST(total_amount - COALESCE(received_amount, 0), 0)'));
+            // Total pending amount across all invoices (calculated properly)
+            $totalPendingAmount = Invoice::selectRaw('SUM(GREATEST(total_amount - COALESCE(received_amount, 0), 0)) as pending')
+                ->value('pending') ?? 0;
             
             // Calculate this month bills count
             $thisMonthBillsCount = $this->calculateThisMonthBillsCount();
@@ -564,7 +640,7 @@ class BillingController extends Controller
             // Get overdue invoices (invoices with due amounts) - paginated
             $overdueInvoices = Invoice::with('customer')
                 ->whereIn('status', ['unpaid', 'partial'])
-                ->where('next_due', '>', 0)
+                ->whereRaw('total_amount > COALESCE(received_amount, 0)')
                 ->orderBy('issue_date', 'asc')
                 ->paginate(20);
 
@@ -788,51 +864,14 @@ private function getCustomersForMonth($month)
 {
     $monthDate = Carbon::createFromFormat('Y-m', $month);
     
+    // For rolling invoice system, show customers in ALL months after their assignment
+    // This is because the same invoice carries forward month-to-month
     return DB::table('customers as c')
         ->join('customer_to_products as cp', 'c.c_id', '=', 'cp.c_id')
         ->where('c.is_active', 1)
         ->where('cp.status', 'active')
         ->where('cp.is_active', 1)
-        ->where(function($query) use ($monthDate) {
-            // Condition 1: Assigned in this month
-            $query->where(function($q) use ($monthDate) {
-                $q->whereYear('cp.assign_date', $monthDate->year)
-                  ->whereMonth('cp.assign_date', $monthDate->month);
-            })
-            // Condition 2: Due in this month (based on billing cycle)
-            ->orWhere(function($q) use ($monthDate) {
-                $q->where('cp.assign_date', '<=', $monthDate->endOfMonth())
-                  ->whereRaw('
-                      PERIOD_DIFF(
-                          DATE_FORMAT(?, "%Y%m"),
-                          DATE_FORMAT(cp.assign_date, "%Y%m")
-                      ) % cp.billing_cycle_months = 0
-                  ', [$monthDate->format('Y-m-01')])
-                  ->whereRaw('
-                      PERIOD_DIFF(
-                          DATE_FORMAT(?, "%Y%m"),
-                          DATE_FORMAT(cp.assign_date, "%Y%m")
-                      ) >= 0
-                  ', [$monthDate->format('Y-m-01')])
-                  ->whereRaw('DATE_FORMAT(cp.assign_date, "%Y-%m") != ?', [$monthDate->format('Y-m')]);
-            })
-            // Condition 3: Months after due month (carry forward for unpaid invoices)
-            ->orWhere(function($q) use ($monthDate) {
-                // Customers with unpaid invoices should appear in all months after their due month
-                // until the current month
-                $q->whereExists(function($existsQuery) use ($monthDate) {
-                    $existsQuery->select(DB::raw(1))
-                        ->from('invoices as i')
-                        ->join('customer_to_products as cp2', 'i.cp_id', '=', 'cp2.cp_id')
-                        ->whereColumn('cp2.c_id', 'c.c_id')
-                        ->whereIn('i.status', ['unpaid', 'partial', 'confirmed'])
-                        ->where('i.next_due', '>', 0)
-                        ->where('i.issue_date', '<=', $monthDate->endOfMonth())
-                        ->where('cp2.assign_date', '<=', $monthDate->endOfMonth());
-                })
-                ->where('cp.assign_date', '<=', $monthDate->endOfMonth());
-            });
-        })
+        ->where('cp.assign_date', '<=', $monthDate->endOfMonth()) // Show if assigned before or in this month
         ->distinct('c.c_id')
         ->select('c.c_id', 'c.name', 'c.customer_id')
         ->get()
@@ -846,44 +885,59 @@ private function getCustomersForMonth($month)
  * Calculate amounts for customers in a specific month - ONLY CARRY FORWARD
  */
 /**
- * Calculate amounts for customers in a specific month - NO CARRY FORWARD
+ * Calculate amounts for customers in a specific month - CALCULATE HISTORICAL AMOUNTS
+ * Shows what the amounts SHOULD BE for each specific month based on billing logic
  */
 private function calculateAmountsForCustomers($customers, $month)
 {
-    $monthDate = Carbon::createFromFormat('Y-m', $month);
+    $monthDate = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+    
+    // Get all customer IDs
+    $customerIds = array_column($customers, 'c_id');
+    
+    if (empty($customerIds)) {
+        return [
+            'total_amount' => 0,
+            'received_amount' => 0,
+            'due_amount' => 0
+        ];
+    }
+    
     $totalAmount = 0;
     $receivedAmount = 0;
     $dueAmount = 0;
     
-    foreach ($customers as $customer) {
-        $customerId = $customer->c_id;
+    // For each customer, calculate what their amount should be for this specific month
+    foreach ($customerIds as $customerId) {
+        // Get customer product details
+        $customerProduct = DB::table('customer_to_products as cp')
+            ->join('customers as c', 'cp.c_id', '=', 'c.c_id')
+            ->where('cp.c_id', $customerId)
+            ->where('cp.status', 'active')
+            ->where('cp.is_active', 1)
+            ->select('cp.assign_date', 'cp.billing_cycle_months', 'cp.cp_id')
+            ->first();
         
-        // Get customer's active products
-        $customerProducts = Customerproduct::where('c_id', $customerId)
-            ->where('status', 'active')
-            ->where('is_active', 1)
-            ->with('product')
-            ->get();
-        
-        foreach ($customerProducts as $cp) {
-            $assignDate = Carbon::parse($cp->assign_date);
-            $billingCycle = $cp->billing_cycle_months ?? 1;
-            $monthlyPrice = $cp->product->monthly_price ?? 0;
+        if ($customerProduct) {
+            // Get the subtotal amount from the invoice (use the original subtotal from database)
+            $invoice = Invoice::where('cp_id', $customerProduct->cp_id)->first();
+            $subtotalAmount = $invoice ? $invoice->subtotal : 0; // Use actual subtotal from database
             
-            // Check if this customer should pay in this month
-            if ($this->shouldPayInMonth($assignDate, $billingCycle, $monthDate)) {
-                // Calculate current month's installment amount ONLY
-                $installmentAmount = $this->calculateInstallmentAmount($assignDate, $billingCycle, $monthlyPrice, $monthDate);
-                
-                // Get payments made in THIS MONTH for this product
-                $paymentsThisMonth = $this->getPaymentsForProductMonth($cp->cp_id, $month);
-                
-                // Calculate remaining due after payments (NO CARRY FORWARD)
-                $remainingDue = max(0, $installmentAmount - $paymentsThisMonth);
-                
-                $totalAmount += $installmentAmount;
-                $receivedAmount += $paymentsThisMonth;
-                $dueAmount += $remainingDue;
+            // Calculate what the amounts should be for this specific month using the new method
+            $monthlyAmounts = $this->calculateMonthlyAmountsWithUserLogic(
+                $customerProduct->assign_date,
+                $customerProduct->billing_cycle_months,
+                $subtotalAmount,
+                $month
+            );
+            
+            // Get actual payments for this customer in this month
+            $payments = $this->getPaymentsForCustomerMonth($customerId, $month);
+            
+            if ($monthlyAmounts['total_amount'] > 0) {
+                $totalAmount += $monthlyAmounts['total_amount'];
+                $receivedAmount += $payments;
+                $dueAmount += max(0, $monthlyAmounts['total_amount'] - $payments);
             }
         }
     }
@@ -894,12 +948,76 @@ private function calculateAmountsForCustomers($customers, $month)
         'due_amount' => max(0, $dueAmount)
     ];
 }
+
+/**
+ * Calculate what the rolling invoice amounts should be for a specific month
+ * Based on the proper rolling invoice logic with carry-forward
+ */
+private function calculateMonthlyAmounts($assignDate, $billingCycle, $subtotalAmount, $targetMonth) {
+    $assignMonth = Carbon::parse($assignDate)->startOfMonth();
+    $targetMonthDate = Carbon::createFromFormat('Y-m', $targetMonth)->startOfMonth();
+    
+    // Calculate months since assignment
+    $monthsSinceAssign = $assignMonth->diffInMonths($targetMonthDate);
+    
+    if ($monthsSinceAssign < 0) {
+        // Target month is before assignment
+        return [
+            'subtotal' => 0,
+            'previous_due' => 0,
+            'total_amount' => 0,
+            'cycle_number' => 0,
+            'cycle_position' => 0
+        ];
+    }
+    
+    // Determine if this is a billing cycle month
+    $isBillingCycleMonth = ($monthsSinceAssign % $billingCycle) == 0;
+    $cycleNumber = floor($monthsSinceAssign / $billingCycle) + 1;
+    $cyclePosition = $monthsSinceAssign % $billingCycle;
+    
+    if ($monthsSinceAssign == 0) {
+        // Initial month
+        return [
+            'subtotal' => $subtotalAmount,
+            'previous_due' => 0,
+            'total_amount' => $subtotalAmount,
+            'cycle_number' => 1,
+            'cycle_position' => 0
+        ];
+    } else if ($isBillingCycleMonth) {
+        // New billing cycle month - add new subtotal + carry forward previous total
+        $completedCycles = floor($monthsSinceAssign / $billingCycle);
+        $previousDue = $completedCycles * $subtotalAmount;
+        $totalAmount = $subtotalAmount + $previousDue;
+        
+        return [
+            'subtotal' => $subtotalAmount,
+            'previous_due' => $previousDue,
+            'total_amount' => $totalAmount,
+            'cycle_number' => $cycleNumber,
+            'cycle_position' => 0
+        ];
+    } else {
+        // Carry forward month - subtotal = 0, previous_due = total_amount
+        $completedCycles = floor($monthsSinceAssign / $billingCycle);
+        $totalAmount = ($completedCycles + 1) * $subtotalAmount;
+        
+        return [
+            'subtotal' => 0,
+            'previous_due' => $totalAmount,
+            'total_amount' => $totalAmount,
+            'cycle_number' => $cycleNumber,
+            'cycle_position' => $cyclePosition
+        ];
+    }
+}
 /**
  * Calculate installment amount for a specific period
  */
 private function calculateInstallmentAmount($assignDate, $billingCycle, $monthlyPrice, $monthDate)
 {
-    // ONLY in assigned month we charge the first installment
+    // Check if this is the assigned month
     $isAssignedMonth = ($assignDate->year == $monthDate->year && $assignDate->month == $monthDate->month);
     
     if ($isAssignedMonth) {
@@ -912,7 +1030,15 @@ private function calculateInstallmentAmount($assignDate, $billingCycle, $monthly
         return $monthlyPrice * $billingCycle;
     }
     
-    // For all other months (due months, after due months) - NO NEW INSTALLMENT
+    // For due months (billing cycle months), charge the full cycle amount
+    // Calculate if this is a due month based on billing cycle
+    $monthsDiff = $assignDate->diffInMonths($monthDate);
+    if ($monthsDiff >= 0 && $monthsDiff % $billingCycle == 0) {
+        // This is a due month, charge the full cycle amount
+        return $monthlyPrice * $billingCycle;
+    }
+    
+    // For all other months (carry forward months) - NO NEW INSTALLMENT
     return 0;
 }
 
@@ -946,11 +1072,9 @@ private function shouldPayInMonth($assignDate, $billingCycle, $monthDate)
         return true;
     }
     
-    // Check if this is a carry forward month (any month after a due month where payment wasn't made)
-    // This should be any month after the assign date, not just constrained periods
-    if ($monthDate->greaterThan($assignDate)) {
-        return true;
-    }
+    // For carry forward display: Only return true if there are actual unpaid invoices
+    // This is handled separately in getCustomersForMonth, so we don't need to return true here
+    // for all months after assignment
     
     return false;
 }
@@ -1211,10 +1335,11 @@ private function getMonthNotes($month, $customers, $amounts)
 
     /**
      * Get customers due in specific month
+     * Includes customers who are due for billing AND customers with carried forward dues
      */
     private function getDueCustomersForMonth(Carbon $monthDate)
     {
-        // Get all active customer products
+        // Get all active customer products assigned before or during the billing month
         $customerProducts = DB::table('customer_to_products as cp')
             ->join('customers as c', 'cp.c_id', '=', 'c.c_id')
             ->join('products as p', 'cp.p_id', '=', 'p.p_id')
@@ -1231,7 +1356,8 @@ private function getMonthNotes($month, $customers, $amounts)
                 'p.monthly_price',
                 'cp.billing_cycle_months',
                 'cp.assign_date',
-                'cp.due_date'
+                'cp.due_date',
+                'cp.cp_id'
             )
             ->get();
         
@@ -1239,39 +1365,51 @@ private function getMonthNotes($month, $customers, $amounts)
         $dueProducts = $customerProducts->filter(function($cp) use ($monthDate) {
             $assignDate = Carbon::parse($cp->assign_date);
             $billingCycle = $cp->billing_cycle_months ?? 1;
-            // Extract day from due_date, fallback to assign_date day if due_date is null
-            $dueDay = $cp->due_date ? Carbon::parse($cp->due_date)->day : $assignDate->day;
             
-            // Product must be assigned before the billing month
+            // Product must be assigned before or during the billing month
             if ($assignDate->greaterThan($monthDate->endOfMonth())) {
                 return false;
             }
             
-            // Calculate the first due date (next occurrence of due_day after assign_date)
-            $firstDueDate = Carbon::parse($assignDate);
-            
-            // If assign date's day is before or equal to due day in same month, first due is this month
-            if ($assignDate->day <= $dueDay) {
-                $firstDueDate->day($dueDay);
-            } else {
-                // Otherwise, first due is next month
-                $firstDueDate->addMonth()->day($dueDay);
-            }
-            
-            // Product must have had its first due date before or during the billing month
-            if ($firstDueDate->greaterThan($monthDate->endOfMonth())) {
-                return false;
-            }
-            
-            // Calculate months difference from first due date to billing month
-            $monthsDiff = $firstDueDate->diffInMonths($monthDate);
+            // Calculate months difference from assign_date to billing month
+            $monthsDiff = $assignDate->diffInMonths($monthDate);
             
             // Check if this month is a billing month for this product
             // Product is due if: months difference is divisible by billing cycle
             return ($monthsDiff % $billingCycle) === 0;
         });
         
-        return $dueProducts;
+        // Get customer IDs with carried forward dues (unpaid/partial invoices from previous months)
+        $customersWithCarriedForwardDues = Invoice::whereIn('status', ['unpaid', 'partial', 'confirmed'])
+            ->where('issue_date', '<', $monthDate->startOfMonth())
+            ->where('next_due', '>', 0)
+            ->pluck('cp_id')
+            ->unique();
+            
+        // Get customer products for customers with carried forward dues
+        $carriedForwardCustomerProducts = DB::table('customer_to_products as cp')
+            ->join('customers as c', 'cp.c_id', '=', 'c.c_id')
+            ->join('products as p', 'cp.p_id', '=', 'p.p_id')
+            ->where('cp.status', 'active')
+            ->where('cp.is_active', 1)
+            ->where('c.is_active', 1)
+            ->whereIn('cp.cp_id', $customersWithCarriedForwardDues)
+            ->select(
+                'c.c_id',
+                'c.name',
+                'c.customer_id',
+                'p.monthly_price',
+                'cp.billing_cycle_months',
+                'cp.assign_date',
+                'cp.due_date',
+                'cp.cp_id'
+            )
+            ->get();
+        
+        // Merge both collections and remove duplicates
+        $allDueCustomers = $dueProducts->merge($carriedForwardCustomerProducts)->unique('cp_id');
+        
+        return $allDueCustomers;
     }
 
     /**
@@ -1390,16 +1528,35 @@ private function calculateCurrentMonthStats()
      */
     private function createCustomerInvoice($customer, Carbon $monthDate)
     {
-        // Calculate product amount only (no service charge or VAT)
-        $productAmount = $customer->monthly_price;
+        // Get customer product details
+        $customerProduct = DB::table('customer_to_products')
+            ->where('cp_id', $customer->cp_id)
+            ->first();
+            
+        // Calculate months difference from assign_date
+        $assignDate = Carbon::parse($customerProduct->assign_date);
+        $monthsDiff = $assignDate->diffInMonths($monthDate);
         
-        // Get previous due amount from unpaid invoices for this customer product
+        // Check if this is a billing month (months difference % billing_cycle == 0)
+        $isBillingMonth = ($monthsDiff % $customerProduct->billing_cycle_months) == 0;
+        
+        // Calculate subtotal based on whether it's a billing month or carry-forward month
+        if ($isBillingMonth) {
+            // Billing month: subtotal = monthly_price * billing_cycle
+            $subtotal = $customer->monthly_price * $customerProduct->billing_cycle_months;
+        } else {
+            // Carry-forward month: subtotal = 0
+            $subtotal = 0;
+        }
+        
+        // Get previous due amount from all unpaid/partial/confirmed invoices
         $previousDue = Invoice::where('cp_id', $customer->cp_id)
-            ->where('status', '!=', 'paid')
+            ->whereIn('status', ['unpaid', 'partial', 'confirmed'])
             ->where('next_due', '>', 0)
             ->sum('next_due');
         
-        $totalAmount = $productAmount + $previousDue;
+        // Calculate total amount
+        $totalAmount = $subtotal + $previousDue;
 
         $invoice = Invoice::create([
             'invoice_number' => $this->generateInvoiceNumber(),
@@ -1409,7 +1566,7 @@ private function calculateCurrentMonthStats()
             'service_charge' => 0.00,
             'vat_percentage' => 0.00,
             'vat_amount' => 0.00,
-            'subtotal' => $productAmount,
+            'subtotal' => $subtotal,
             'total_amount' => $totalAmount,
             'received_amount' => 0,
             'next_due' => $totalAmount,
@@ -1692,6 +1849,15 @@ private function calculateCurrentMonthStats()
                 ->findOrFail($invoiceId);
 
             $customer = $invoice->customerProduct ? $invoice->customerProduct->customer : null;
+            
+            // Get current month from invoice issue date
+            $invoiceMonth = \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m');
+            
+            // Filter payments by invoice month only - compare payment_date with invoice issue_date month
+            $filteredPayments = $invoice->payments->filter(function($payment) use ($invoice, $invoiceMonth) {
+                $paymentMonth = \Carbon\Carbon::parse($payment->payment_date)->format('Y-m');
+                return $paymentMonth === $invoiceMonth;
+            });
 
             return response()->json([
                 'success' => true,
@@ -1700,7 +1866,7 @@ private function calculateCurrentMonthStats()
                 'total_amount' => $invoice->total_amount,
                 'received_amount' => $invoice->received_amount ?? 0,
                 'next_due' => $invoice->next_due ?? 0,
-                'payments' => $invoice->payments->map(function($payment) {
+                'payments' => $filteredPayments->map(function($payment) {
                     return [
                         'payment_id' => $payment->payment_id,
                         'amount' => $payment->amount,
@@ -1885,6 +2051,69 @@ private function calculateCurrentMonthStats()
     }
     
     /**
+     * Calculate the correct billing amounts for a specific month
+     * Handles billing cycles longer than one month (e.g., 2, 3, 6, or 12 months)
+     *
+     * @param string $assignDate The date when the product was assigned
+     * @param int $billingCycle The billing cycle in months
+     * @param float $subtotal The subtotal amount for the product
+     * @param string $targetMonth The target month in Y-m format
+     * @return array The calculated amounts with subtotal, previous_due, and total_amount
+     */
+    private function calculateMonthlyAmountsWithUserLogic($assignDate, $billingCycle, $subtotal, $targetMonth)
+    {
+        $assignMonth = Carbon::parse($assignDate)->startOfMonth();
+        $targetMonthDate = Carbon::createFromFormat('Y-m', $targetMonth)->startOfMonth();
+        
+        // Calculate months since assignment
+        $monthsSinceAssign = $assignMonth->diffInMonths($targetMonthDate);
+        
+        // If target month is before assignment, no charges apply
+        if ($monthsSinceAssign < 0) {
+            return [
+                'subtotal' => 0,
+                'previous_due' => 0,
+                'total_amount' => 0,
+                'cycle_number' => 0,
+                'cycle_position' => 0
+            ];
+        }
+        
+        // Determine cycle information
+        $cycleNumber = floor($monthsSinceAssign / $billingCycle) + 1;
+        $cyclePosition = $monthsSinceAssign % $billingCycle;
+        
+        // If it's the first month of the billing cycle (cyclePosition == 0)
+        if ($cyclePosition == 0) {
+            // This is a new billing cycle, add the new subtotal
+            // Calculate previous due as the sum of all previous completed cycles
+            $completedCycles = $cycleNumber - 1;
+            $previousDue = $completedCycles * $subtotal;
+            
+            return [
+                'subtotal' => $subtotal,
+                'previous_due' => $previousDue,
+                'total_amount' => $subtotal + $previousDue,
+                'cycle_number' => $cycleNumber,
+                'cycle_position' => $cyclePosition
+            ];
+        } else {
+            // This is a carry-forward month within the billing cycle
+            // Subtotal should be 0, and previous_due should be the total_amount from the previous month
+            // Calculate total amount as the sum of all previous completed cycles plus current cycle
+            $totalAmount = $cycleNumber * $subtotal;
+            
+            return [
+                'subtotal' => 0,
+                'previous_due' => $totalAmount,
+                'total_amount' => $totalAmount,
+                'cycle_number' => $cycleNumber,
+                'cycle_position' => $cyclePosition
+            ];
+        }
+    }
+
+    /**
      * Confirm user payment and carry forward remaining due
      * This marks the customer's billing for this month as confirmed
      * and carries forward any remaining due to the next billing cycle
@@ -1921,6 +2150,98 @@ private function calculateCurrentMonthStats()
                 'success' => false,
                 'message' => 'Failed to confirm payment: ' . $e->getMessage()
             ], 500);
+        }
+    }
+    
+    /**
+     * Carry forward remaining due amount to the next billing month
+     * 
+     * @param Invoice $invoice The current invoice
+     * @param float $remainingDue The remaining due amount to carry forward
+     * @return Invoice|null The newly created or updated next month invoice
+     */
+    private function carryForwardDueToNextMonth($invoice, $remainingDue)
+    {
+        // Only proceed if there's a remaining due amount
+        if ($remainingDue <= 0) {
+            return null;
+        }
+        
+        // Get customer product details
+        $customerProduct = $invoice->customerProduct;
+        if (!$customerProduct) {
+            Log::warning('Cannot carry forward due: No customer product found', [
+                'invoice_id' => $invoice->invoice_id
+            ]);
+            return null;
+        }
+        
+        // Get current month and calculate next billing month
+        $currentMonth = Carbon::parse($invoice->issue_date);
+        $nextMonth = $currentMonth->copy()->addMonth();
+        
+        // Check if there's already an invoice for the next month
+        $nextMonthInvoice = Invoice::where('cp_id', $customerProduct->cp_id)
+            ->whereYear('issue_date', $nextMonth->year)
+            ->whereMonth('issue_date', $nextMonth->month)
+            ->first();
+            
+        if ($nextMonthInvoice) {
+            // Update existing next month invoice with carried forward amount
+            // For carry-forward months, we set previous_due to the carried amount, not add to existing
+            $newPreviousDue = $remainingDue;
+            $newTotalAmount = $nextMonthInvoice->subtotal + $newPreviousDue;
+            $newNextDue = max(0, $newTotalAmount - $nextMonthInvoice->received_amount);
+            
+            // Update status based on new amounts
+            $newStatus = 'unpaid';
+            if ($nextMonthInvoice->received_amount >= $newTotalAmount) {
+                $newStatus = 'paid';
+            } elseif ($nextMonthInvoice->received_amount > 0) {
+                $newStatus = 'partial';
+            }
+            
+            $nextMonthInvoice->update([
+                'previous_due' => $newPreviousDue,
+                'total_amount' => $newTotalAmount,
+                'next_due' => $newNextDue,
+                'status' => $newStatus,
+                'notes' => ($nextMonthInvoice->notes ?? '') . "\n[" . now()->format('Y-m-d H:i:s') . "] Carried forward ৳" . number_format($remainingDue, 2) . " from previous invoice #" . $invoice->invoice_number
+            ]);
+            
+            Log::info('Updated existing next month invoice with carried forward amount', [
+                'original_invoice_id' => $invoice->invoice_id,
+                'next_invoice_id' => $nextMonthInvoice->invoice_id,
+                'amount_carried_forward' => $remainingDue
+            ]);
+            
+            return $nextMonthInvoice;
+        } else {
+            // Create a new invoice for the next month with the carried forward amount
+            $nextMonthInvoice = Invoice::create([
+                'invoice_number' => $this->generateInvoiceNumber(),
+                'cp_id' => $customerProduct->cp_id,
+                'issue_date' => $nextMonth->format('Y-m-d'),
+                'previous_due' => $remainingDue,
+                'service_charge' => 0.00,
+                'vat_percentage' => 0.00,
+                'vat_amount' => 0.00,
+                'subtotal' => 0.00, // No new charges for carry-forward month
+                'total_amount' => $remainingDue,
+                'received_amount' => 0.00,
+                'next_due' => $remainingDue,
+                'status' => 'unpaid',
+                'notes' => 'Auto-generated for carry-forward of ৳' . number_format($remainingDue, 2) . " from previous invoice #" . $invoice->invoice_number . "\n[" . now()->format('Y-m-d H:i:s') . "] Carried forward from previous invoice",
+                'created_by' => Auth::id() ?? 1
+            ]);
+            
+            Log::info('Created new invoice for next month with carried forward amount', [
+                'original_invoice_id' => $invoice->invoice_id,
+                'new_invoice_id' => $nextMonthInvoice->invoice_id,
+                'amount_carried_forward' => $remainingDue
+            ]);
+            
+            return $nextMonthInvoice;
         }
     }
 }

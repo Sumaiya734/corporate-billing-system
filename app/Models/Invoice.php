@@ -37,6 +37,8 @@ class Invoice extends Model
     protected $casts = [
         'issue_date' => 'date',
         'previous_due' => 'decimal:2',
+        'service_charge' => 'decimal:2',
+        'vat_amount' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'received_amount' => 'decimal:2',
@@ -421,5 +423,120 @@ class Invoice extends Model
                 ]);
             }
         });
+    }
+     public static function generateRollingInvoiceNumber($customerId, $productId, $cycleNumber)
+    {
+        return sprintf('RINV-%04d-%03d-C%02d', 
+            $customerId, 
+            $productId, 
+            $cycleNumber
+        );
+    }
+    
+    /**
+     * Get or create rolling invoice for a customer product
+     */
+    public static function getOrCreateRollingInvoice($cpId, $monthDate)
+    {
+        // First, check if there's an active rolling invoice
+        $invoice = self::where('cp_id', $cpId)
+            ->where('is_active_rolling', true)
+            ->first();
+        
+        if (!$invoice) {
+            // Start a new rolling invoice
+            return self::createNewRollingInvoice($cpId, $monthDate);
+        }
+        
+        // Update existing rolling invoice
+        return self::updateRollingInvoice($invoice, $monthDate);
+    }
+    
+    /**
+     * Create new rolling invoice (start of new cycle)
+     */
+    private static function createNewRollingInvoice($cpId, $monthDate)
+    {
+        $customerProduct = CustomerProduct::find($cpId);
+        if (!$customerProduct) return null;
+        
+        $cycleNumber = RollingBillingHelper::getCycleNumber($cpId, $monthDate);
+        $cyclePosition = RollingBillingHelper::getCyclePosition($cpId, $monthDate);
+        $subtotal = RollingBillingHelper::calculateSubtotal($cpId, $monthDate);
+        
+        // Get previous unpaid amount
+        $previousDue = self::getPreviousDueAmount($cpId);
+        
+        // Create invoice number
+        $invoiceNumber = self::generateRollingInvoiceNumber(
+            $customerProduct->c_id,
+            $customerProduct->p_id,
+            $cycleNumber
+        );
+        
+        $invoice = self::create([
+            'invoice_number' => $invoiceNumber,
+            'cp_id' => $cpId,
+            'issue_date' => $monthDate->format('Y-m-d'),
+            'previous_due' => $previousDue,
+            'subtotal' => $subtotal,
+            'total_amount' => $subtotal + $previousDue,
+            'received_amount' => 0,
+            'next_due' => $subtotal + $previousDue,
+            'status' => 'unpaid',
+            'is_active_rolling' => true,
+            'billing_cycle_number' => $cycleNumber,
+            'cycle_position' => $cyclePosition,
+            'cycle_start_date' => $monthDate->format('Y-m-d'),
+            'notes' => "Cycle {$cycleNumber}, Month " . ($cyclePosition + 1) . " of {$customerProduct->billing_cycle_months}-month cycle"
+        ]);
+        
+        return $invoice;
+    }
+    
+    /**
+     * Update existing rolling invoice
+     */
+    private static function updateRollingInvoice($invoice, $monthDate)
+    {
+        $cpId = $invoice->cp_id;
+        $customerProduct = CustomerProduct::find($cpId);
+        
+        if (!$customerProduct) return $invoice;
+        
+        $billingCycle = $customerProduct->billing_cycle_months;
+        $cyclePosition = RollingBillingHelper::getCyclePosition($cpId, $monthDate);
+        $subtotal = RollingBillingHelper::calculateSubtotal($cpId, $monthDate);
+        
+        // Update invoice for current month
+        $invoice->update([
+            'issue_date' => $monthDate->format('Y-m-d'),
+            'previous_due' => $invoice->total_amount, // Previous total becomes previous due
+            'subtotal' => $subtotal,
+            'total_amount' => $invoice->total_amount + $subtotal,
+            'next_due' => $invoice->total_amount + $subtotal - $invoice->received_amount,
+            'cycle_position' => $cyclePosition,
+            'notes' => $invoice->notes . "\n" . date('Y-m-d') . ": Month " . ($cyclePosition + 1) . " of {$billingCycle}-month cycle"
+        ]);
+        
+        // Check if cycle has ended
+        if ($cyclePosition == $billingCycle - 1) {
+            $invoice->is_active_rolling = false;
+            $invoice->save();
+        }
+        
+        return $invoice->fresh();
+    }
+    
+    /**
+     * Get previous due amount from ALL unpaid invoices
+     * (excluding the active rolling one)
+     */
+    private static function getPreviousDueAmount($cpId)
+    {
+        return self::where('cp_id', $cpId)
+            ->where('is_active_rolling', false)
+            ->where('status', '!=', 'paid')
+            ->sum('next_due');
     }
 }

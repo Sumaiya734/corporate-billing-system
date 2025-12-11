@@ -123,8 +123,12 @@
                         <div class="flex-grow-1">
                             <div class="text-xs font-weight-bold text-uppercase mb-1">Pending Payments</div>
                             @php
-                                // Calculate pending amount from actual invoice data
-                                $pendingAmount = $invoices->sum('next_due');
+                                // Calculate pending amount properly: sum of (total_amount - received_amount) for each invoice
+                                $pendingAmount = $invoices->sum(function($invoice) {
+                                    $total = $invoice->total_amount ?? 0;
+                                    $received = $invoice->received_amount ?? 0;
+                                    return max(0, $total - $received);
+                                });
                             @endphp
                             <div class="h5 mb-0">৳ {{ number_format($pendingAmount, 0) }}</div>
                         </div>
@@ -175,6 +179,12 @@
                 </span>
                 <span class="ms-2">
                     <span class="badge bg-warning text-dark me-2">Yellow Row</span> Customer due but no invoice
+                </span>
+                <span class="ms-2">
+                    <span class="badge bg-primary me-2">Billing Month</span> New billing cycle month
+                </span>
+                <span class="ms-2">
+                    <span class="badge bg-secondary me-2">Carry-Forward</span> Carry-forward month
                 </span>
             </div>
             <div class="col-md-4 text-end">
@@ -281,6 +291,61 @@
                                                         <span class="badge bg-light text-dark">{{ $customer->customer_id ?? 'N/A' }}</span>
                                                     </div>
                                                 </div>
+                                                
+                                                {{-- Billing Cycle Progress Bar and Tooltip --}}
+                                                @if($customerProduct)
+                                                    @php
+                                                        $assignDate = \Carbon\Carbon::parse($customerProduct->assign_date);
+                                                        $billingCycleMonths = $customerProduct->billing_cycle_months ?? 1;
+                                                        $currentDate = \Carbon\Carbon::parse($month . '-01');
+                                                        
+                                                        // Calculate months since assignment
+                                                        $monthsSinceAssign = $assignDate->diffInMonths($currentDate);
+                                                        
+                                                        // Calculate current cycle position
+                                                        $cyclePosition = $monthsSinceAssign % $billingCycleMonths;
+                                                        
+                                                        // Calculate next billing date
+                                                        $cyclesCompleted = floor($monthsSinceAssign / $billingCycleMonths);
+                                                        $nextBillingDate = $assignDate->copy()->addMonths(($cyclesCompleted + 1) * $billingCycleMonths);
+                                                        
+                                                        // Determine progress percentage
+                                                        $progressPercent = ($cyclePosition / $billingCycleMonths) * 100;
+                                                        
+                                                        // Determine color class based on billing cycle
+                                                        $colorClass = '';
+                                                        switch($billingCycleMonths) {
+                                                            case 1: $colorClass = 'bg-success'; break;
+                                                            case 2: $colorClass = 'bg-info'; break;
+                                                            case 3: $colorClass = 'bg-warning'; break;
+                                                            case 6: $colorClass = 'bg-purple'; break;
+                                                            case 12: $colorClass = 'bg-danger'; break;
+                                                            default: $colorClass = 'bg-primary'; break;
+                                                        }
+                                                    @endphp
+                                                    
+                                                    {{-- Tooltip with billing cycle details --}}
+                                                    <div class="mt-2" data-bs-toggle="tooltip" data-bs-html="true" 
+                                                         title="<strong>Billing Cycle Details:</strong><br>
+                                                                Assign Date: {{ $assignDate->format('Y-m-d') }}<br>
+                                                                Billing Cycle: {{ $billingCycleMonths }} months<br>
+                                                                Next Billing Date: {{ $nextBillingDate->format('Y-m-d') }}<br>
+                                                                Cycle Progress: {{ $cyclePosition }}/{{ $billingCycleMonths }} months">
+                                                        
+                                                        {{-- Progress bar --}}
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-grow-1">
+                                                                <div class="progress" style="height: 10px;">
+                                                                    <?php echo '<div class="progress-bar ' . $colorClass . '" role="progressbar" style="width: ' . $progressPercent . '%" aria-valuenow="' . $progressPercent . '" aria-valuemin="0" aria-valuemax="100"></div>'; ?>
+                                                                </div>
+                                                                <div class="d-flex justify-content-between small text-muted mt-1">
+                                                                    <span>{{ $cyclePosition }}/{{ $billingCycleMonths }} months</span>
+                                                                    <span>Next: {{ $nextBillingDate->format('M Y') }}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </td>
 
@@ -294,17 +359,22 @@
                                                 $customPrice = $customerProduct->custom_price ?? null;
                                                 $standardPrice = $monthlyPrice * $billingCycle;
                                                 $isCustomPrice = $customPrice && abs($customPrice - $standardPrice) > 0.01;
+                                                // Determine if this is a billing month or carry-forward month
+                                                $isBillingMonth = ($invoice->subtotal ?? 0) > 0;
+                                                $isCarryForwardMonth = ($invoice->subtotal ?? 0) == 0 && ($invoice->previous_due ?? 0) > 0;
                                             @endphp
                                             
                                             @if($isCustomPrice)
                                                 <span class="badge bg-warning text-dark">Custom</span>
                                                 @if($billingCycle > 1)
-                                                    <span class="badge bg-info ms-1">({{ $billingCycle }} months cycle)</span>
+                                                    <span class="badge bg-info ms-1">{{ $billingCycle }} months cycle</span>
                                                 @endif
                                             @else
                                                 ৳ {{ number_format($monthlyPrice, 2) }}/month
                                                 @if($billingCycle > 1)
-                                                    <span class="badge bg-info ms-1">({{ $billingCycle }} months cycle)</span>
+                                                    <span class="badge bg-info ms-1">{{ $billingCycle }} months cycle</span>
+                                                @elseif($billingCycle == 1)
+                                                    <span class="badge bg-info ms-1">Monthly</span>
                                                 @endif
                                             @endif
                                         </div>
@@ -313,6 +383,14 @@
                                                 <i class="fas fa-calendar-check me-1"></i>
                                                 <strong>Due: {{ $actualDueDate->format('M j, Y') }}</strong>
                                             </small>
+                                        </div>
+                                        <!-- Billing Month / Carry-Forward Badges -->
+                                        <div class="mt-1">
+                                            @if($isBillingMonth)
+                                                <span class="badge bg-primary">Billing Month</span>
+                                            @elseif($isCarryForwardMonth)
+                                                <span class="badge bg-secondary">Carry-Forward</span>
+                                            @endif
                                         </div>
                                     </td>
 
@@ -338,6 +416,7 @@
                                             @endif
                                         </div>
                                     </td>
+                                    
 
                                     {{-- Previous Due (from database) --}}
                                     <td>
@@ -381,40 +460,46 @@
                                         </div>
                                     </td>
 
-                                    {{-- Next Due (from database) --}}
+                                    {{-- Next Due (calculated properly) --}}
                                     <td>
                                         <div class="next-due">
                                             @php
-                                                $nextDue = $invoice->next_due ?? 0;
                                                 $totalAmount = $invoice->total_amount ?? 0;
                                                 $receivedAmount = $invoice->received_amount ?? 0;
+                                                
+                                                // Calculate next due properly: Total - Received = Due
+                                                $calculatedNextDue = max(0, $totalAmount - $receivedAmount);
+                                                
+                                                // Use database value if available, otherwise use calculated
+                                                $nextDue = isset($invoice->next_due) ? $invoice->next_due : $calculatedNextDue;
+                                                
+                                                // Ensure consistency - if there's a mismatch, use calculated value
+                                                if (abs($nextDue - $calculatedNextDue) > 0.01) {
+                                                    $nextDue = $calculatedNextDue;
+                                                }
 
-                                                // Check if fully paid or advance payment
-                                                $isFullyPaid = ($receivedAmount >= $totalAmount && $totalAmount > 0) ||
-                                                               ($nextDue <= 0.00 && $invoice->status === 'paid') ||
-                                                               ($nextDue <= 0.00 && $receivedAmount > 0);
-
+                                                // Check payment status
                                                 $isAdvancePayment = $receivedAmount > $totalAmount && $totalAmount > 0;
                                                 $advanceAmount = $isAdvancePayment ? ($receivedAmount - $totalAmount) : 0;
+                                                $isFullyPaid = $nextDue <= 0.01 && $receivedAmount > 0;
+                                                $isPaid = $nextDue <= 0.01;
                                             @endphp
                                             @if($isAdvancePayment)
                                                 <span class="badge bg-success">
                                                     <i class="fas fa-check-double me-1"></i>Advance Paid
                                                 </span>
                                                 <br><small class="text-success">+৳ {{ number_format($advanceAmount, 0) }} credit</small>
-                                            @elseif($isFullyPaid)
+                                            @elseif($isPaid)
                                                 <span class="badge bg-success">
                                                     <i class="fas fa-check-circle me-1"></i>Paid
                                                 </span>
-                                                <br><small class="text-muted">Fully paid</small>
-                                            @elseif($nextDue > 0)
+                                                <br><small class="text-muted">{{ $receivedAmount > 0 ? 'Fully paid' : 'No due' }}</small>
+                                            @else
                                                 <strong class="text-danger">৳ {{ number_format($nextDue, 0) }}</strong>
                                                 <br><small class="text-muted">Outstanding</small>
-                                            @else
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check-circle me-1"></i>Paid
-                                                </span>
-                                                <br><small class="text-muted">No due</small>
+                                                @if($receivedAmount > 0)
+                                                    <br><small class="text-info">Partial: ৳{{ number_format($receivedAmount, 0) }} paid</small>
+                                                @endif
                                             @endif
                                         </div>
                                     </td>
@@ -422,6 +507,11 @@
                                     {{-- Status (from database) --}}
                                     <td class="align-middle">
                                         {!! $invoice->status_badge ?? '<span class="badge bg-secondary">Unknown</span>' !!}
+                                        @if($invoice->status === 'confirmed')
+                                            <div class="mt-1">
+                                                <span class="badge bg-info">Due Carried Forward</span>
+                                            </div>
+                                        @endif
                                     </td>
 
                                    {{-- Actions --}}
@@ -634,7 +724,12 @@
                                                                 // Calculate amounts from actual invoice data
                                                                 $totalBillingAmount = $invoices->sum('total_amount');
                                                                 $paidAmount = $invoices->sum('received_amount');
-                                                                $pendingAmount = $invoices->sum('next_due');
+                                                                // Calculate pending amount properly: sum of (total_amount - received_amount) for each invoice
+                                                                $pendingAmount = $invoices->sum(function($invoice) {
+                                                                    $total = $invoice->total_amount ?? 0;
+                                                                    $received = $invoice->received_amount ?? 0;
+                                                                    return max(0, $total - $received);
+                                                                });
                                                             @endphp
                                                             <div class="mt-1">
                                                                 Total Billing (৳{{ number_format($totalBillingAmount, 0) }})
@@ -820,8 +915,12 @@
                                                                     <div>
                                                                         <small class="d-block opacity-75">Outstanding Due (To be carried forward)</small>
                                                                         @php
-                                                                            // Calculate pending amount from actual invoice data
-                                                                            $pendingAmount = $invoices->sum('next_due');
+                                                                            // Calculate pending amount properly: sum of (total_amount - received_amount) for each invoice
+                                                                            $pendingAmount = $invoices->sum(function($invoice) {
+                                                                                $total = $invoice->total_amount ?? 0;
+                                                                                $received = $invoice->received_amount ?? 0;
+                                                                                return max(0, $total - $received);
+                                                                            });
                                                                         @endphp
                                                                         <h3 class="mb-0">৳ {{ number_format($pendingAmount, 0) }}</h3>
                                                                     </div>
@@ -873,8 +972,12 @@
                                                     <div class="card-body">
                                                         <h6 class="mb-3"><i class="fas fa-info-circle me-2"></i>What happens when you close this month?</h6>
                                                         @php
-                                                            // Calculate pending amount from actual invoice data
-                                                            $pendingAmount = $invoices->sum('next_due');
+                                                            // Calculate pending amount properly: sum of (total_amount - received_amount) for each invoice
+                                                            $pendingAmount = $invoices->sum(function($invoice) {
+                                                                $total = $invoice->total_amount ?? 0;
+                                                                $received = $invoice->received_amount ?? 0;
+                                                                return max(0, $total - $received);
+                                                            });
                                                         @endphp
                                                         <ul class="mb-3">
                                                             <li>All outstanding dues (৳{{ number_format($pendingAmount, 0) }}) will be carried forward to next month's invoices</li>
@@ -975,6 +1078,17 @@
         --info: #118ab2;
         --dark: #2b2d42;
         --light: #f8f9fa;
+        /* Billing cycle colors */
+        --cycle-1: #28a745; /* Green */
+        --cycle-2: #17a2b8; /* Blue */
+        --cycle-3: #fd7e14; /* Orange */
+        --cycle-6: #6f42c1; /* Purple */
+        --cycle-12: #dc3545; /* Red */
+    }
+
+    /* Custom color classes */
+    .bg-purple {
+        background-color: var(--cycle-6) !important;
     }
 
     body {
@@ -1283,7 +1397,12 @@ window.viewInvoice = function(invoiceId) {
 };
 
 window.printInvoice = function() {
-    const printContent = document.getElementById('viewInvoiceContent').innerHTML;
+    const viewInvoiceContent = document.getElementById('viewInvoiceContent');
+    if (!viewInvoiceContent) {
+        alert('Invoice content not found');
+        return;
+    }
+    const printContent = viewInvoiceContent.innerHTML;
 
     // Create a new window with proper styling
     const printWindow = window.open('', '_blank', 'width=800,height=600');
@@ -1368,7 +1487,7 @@ window.searchTable = function() {
         const customerCell = row.cells[1]; // Customer Info column
 
         if (!invoiceCell || !customerCell) {
-            row.style.display = 'none';
+            if (row) row.style.display = 'none';
             return;
         }
 
@@ -1393,10 +1512,12 @@ window.searchTable = function() {
         }
 
         // Show/hide based on search
-        if (filter === '' || searchableText.includes(filter)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
+        if (row) {
+            if (filter === '' || searchableText.includes(filter)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
         }
     });
 
@@ -1515,6 +1636,10 @@ window.closeMonth = function() {
 
     // Show loading state
     const confirmBtn = document.getElementById('confirmCloseMonthBtn');
+    if (!confirmBtn) {
+        console.error('Close month button not found');
+        return;
+    }
     const originalBtnHtml = confirmBtn.innerHTML;
     confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Closing Month...';
     confirmBtn.disabled = true;
@@ -1565,14 +1690,22 @@ window.closeMonth = function() {
                 console.warn('Notify scheduling failed', e);
             }
 
-            // Close modal (if open) and reload this page after toast + notify
+            // Close modal (if open) and redirect to next month after toast + notify
             try {
                 const modalEl = document.getElementById('closeMonthModal');
                 const modalInst = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
                 if (modalInst) modalInst.hide();
             } catch (ignore) {}
 
-            setTimeout(() => location.reload(), 2600);
+            // Calculate next month and redirect to it
+            const currentDate = new Date(month + "-01");
+            const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+            const nextMonthString = nextMonth.getFullYear() + "-" + String(nextMonth.getMonth() + 1).padStart(2, '0');
+            
+            // Redirect to next month after a short delay
+            setTimeout(() => {
+                window.location.href = "{{ url('admin/billing/monthly-bills') }}/" + nextMonthString;
+            }, 2600);
         } else {
             throw new Error(data.message || 'Failed to close month');
         }
@@ -1611,11 +1744,14 @@ window.showToast = function(msg, type = 'info', details = null) {
                 <div style="font-weight: 600; margin-bottom: 4px;">${msg}</div>
                 ${detailsHtml}
             </div>
-            <button type="button" class="btn-close btn-close-white ms-3" onclick="document.getElementById('${toastId}').remove()" style="font-size: 0.8rem;"></button>
+            <button type="button" class="btn-close btn-close-white ms-3" onclick="const toast = document.getElementById('${toastId}'); if (toast) toast.remove();" style="font-size: 0.8rem;"></button>
         </div>
     `;
 
-    document.getElementById('toastContainer').appendChild(toastElement);
+    const toastContainer = document.getElementById('toastContainer');
+    if (toastContainer) {
+        toastContainer.appendChild(toastElement);
+    }
 
     // Auto remove after 6 seconds
     setTimeout(() => {
@@ -1695,7 +1831,7 @@ window.executeConfirmUserPayment = function() {
             const details = `
                 <div><strong>Customer:</strong> ${customerName}</div>
                 <div><strong>Product:</strong> ${productName}</div>
-                <div><strong>Carried Forward:</strong> ৳${parseFloat(nextDue).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                <div><strong>Carried Forward:</strong> ৳${(parseFloat(nextDue) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                 <div class="mt-1"><small><i class="fas fa-info-circle me-1"></i>Due amount will be added to next payment</small></div>
             `;
             showToast('Payment Confirmed Successfully!', 'success', details);
@@ -1703,13 +1839,20 @@ window.executeConfirmUserPayment = function() {
             // Small delay to ensure modal is fully closed before updating UI
             setTimeout(() => {
                 // Update UI dynamically WITHOUT page refresh
+                const safeNextDue = parseFloat(nextDue) || 0;
                 console.log('Calling updateUIAfterConfirmation with:', {
                     invoiceId,
                     cpId,
                     customerName,
-                    nextDue: parseFloat(nextDue)
+                    nextDue: safeNextDue
                 });
-                updateUIAfterConfirmation(invoiceId, cpId, customerName, parseFloat(nextDue));
+                
+                try {
+                    updateUIAfterConfirmation(invoiceId, cpId, customerName, safeNextDue);
+                } catch (uiError) {
+                    console.error('Error updating UI after confirmation:', uiError);
+                    showToast('Payment confirmed successfully! Please refresh the page to see updated display.', 'warning');
+                }
             }, 300);
 
         } else {
@@ -1812,8 +1955,11 @@ function updateUIAfterConfirmation(invoiceId, cpId, customerName, nextDue) {
                 const nextDueCell = row.querySelector('.next-due');
                 if (nextDueCell) {
                     console.log('Updating next due cell:', nextDueCell);
+                    // Safely format the nextDue amount
+                    const safeNextDue = parseFloat(nextDue) || 0;
+                    const formattedAmount = safeNextDue.toLocaleString('en-BD', {minimumFractionDigits: 2});
                     nextDueCell.innerHTML = `
-                        <strong class="text-warning">৳ ${parseFloat(nextDue).toLocaleString('en-BD', {minimumFractionDigits: 2})}</strong>
+                        <strong class="text-warning">৳ ${formattedAmount}</strong>
                         <br><small class="text-warning"><i class="fas fa-forward me-1"></i>Carried Forward</small>
                     `;
                     // Force reflow
@@ -1845,7 +1991,7 @@ function updateUIAfterConfirmation(invoiceId, cpId, customerName, nextDue) {
 
             // Force a repaint/reflow of the entire table
             const table = document.getElementById('monthlyBillsTable');
-            if (table) {
+            if (table && table.style) {
                 table.style.visibility = 'hidden';
                 // Force reflow
                 table.offsetHeight;
@@ -1907,9 +2053,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
 
                 // Update modal content
-                document.getElementById('confirm_customer_name').textContent = customerName;
-                document.getElementById('confirm_product_name').textContent = productName;
-                document.getElementById('confirm_next_due').textContent = `৳ ${parseFloat(nextDue).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                const confirmCustomerName = document.getElementById('confirm_customer_name');
+                const confirmProductName = document.getElementById('confirm_product_name');
+                const confirmNextDue = document.getElementById('confirm_next_due');
+                
+                if (confirmCustomerName) confirmCustomerName.textContent = customerName;
+                if (confirmProductName) confirmProductName.textContent = productName;
+                if (confirmNextDue) confirmNextDue.textContent = `৳ ${(parseFloat(nextDue) || 0).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             }
         });
 
@@ -1939,7 +2089,7 @@ window.filterTableByStatus = function() {
 
     tableRows.forEach(row => {
         // Always show special rows (warning and secondary)
-        if (row.classList.contains('table-warning') || row.classList.contains('table-secondary')) {
+        if (row && row.classList && (row.classList.contains('table-warning') || row.classList.contains('table-secondary'))) {
             row.style.display = '';
             return;
         }
@@ -1993,13 +2143,32 @@ window.filterTableByStatus = function() {
         }
 
         // Apply visibility
-        if (matchesSearch && matchesStatus) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
+        if (row && row.style) {
+            if (matchesSearch && matchesStatus) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
         }
     });
 };
+
+// Global error handler for uncaught errors
+window.addEventListener('error', function(e) {
+    console.error('Uncaught error:', e.error);
+    // Prevent the error from breaking the page
+    return true;
+});
+
+// Safe DOM operation helper
+function safeDOM(operation) {
+    try {
+        return operation();
+    } catch (error) {
+        console.error('DOM operation failed:', error);
+        return null;
+    }
+}
 
 // DOM Ready Event Listener
 document.addEventListener('DOMContentLoaded', function () {
@@ -2052,10 +2221,10 @@ document.addEventListener('DOMContentLoaded', function () {
         $('#payment_customer_name_display').text(customerName);
         $('#payment_customer_email_display').text(customerEmail);
         $('#payment_customer_phone_display').text(customerPhone);
-        $('#payment_subtotal_display').text(`৳ ${subtotal.toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
-        $('#payment_previous_due_display').text(`৳ ${previousDue.toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
-        $('#payment_total_amount_display').text(`৳ ${totalAmount.toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
-        $('#payment_due_amount_display').text(`৳ ${dueAmount.toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+        $('#payment_subtotal_display').text(`৳ ${(subtotal || 0).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+        $('#payment_previous_due_display').text(`৳ ${(previousDue || 0).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+        $('#payment_total_amount_display').text(`৳ ${(totalAmount || 0).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+        $('#payment_due_amount_display').text(`৳ ${(dueAmount || 0).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
 
         // Update status badge
         const $statusBadge = $('#payment_status_display');
@@ -2102,25 +2271,139 @@ document.addEventListener('DOMContentLoaded', function () {
         const paid = parseFloat(this.value) || 0;
         const dueText = $('#payment_due_amount_display').text();
         const due = parseFloat(dueText.replace(/[^\d.]/g, '')) || 0;
-
-        // Calculate and update next due
-        const nextDue = Math.max(0, due - paid);
+        
+        // Get total amount and current received amount for proper calculation
+        const totalText = $('#payment_total_amount_display').text();
+        const totalAmount = parseFloat(totalText.replace(/[^\d.]/g, '')) || 0;
+        
+        // Calculate new received amount (existing + new payment)
+        const currentReceivedText = $('#payment_received_amount_display').text() || '৳ 0';
+        const currentReceived = parseFloat(currentReceivedText.replace(/[^\d.]/g, '')) || 0;
+        const newTotalReceived = currentReceived + paid;
+        
+        // Calculate next due: Total - New Total Received
+        const nextDue = Math.max(0, totalAmount - newTotalReceived);
         $('#next_due').val(nextDue.toFixed(2));
 
-        // Validate amount
-        if (paid > (due + 0.01)) {
+        // Validate amount - allow advance payments but warn if excessive
+        if (paid > (due + 100)) { // Allow some advance but not excessive
             $(this).addClass('is-invalid');
-            $('#payment_amount_error').show();
+            $('#payment_amount_error').text(`Amount seems too high. Due: ৳${due.toFixed(2)}`).show();
+        } else if (paid < 0.01 && paid > 0) {
+            $(this).addClass('is-invalid');
+            $('#payment_amount_error').text('Minimum payment is ৳0.01').show();
         } else {
             $(this).removeClass('is-invalid');
             $('#payment_amount_error').hide();
         }
+        
+        // Show advance payment warning if applicable
+        if (newTotalReceived > totalAmount && totalAmount > 0) {
+            const advance = newTotalReceived - totalAmount;
+            $('#payment_amount_error').text(`Note: This will create ৳${advance.toFixed(2)} advance credit`).removeClass('text-danger').addClass('text-info').show();
+        }
     });
+    
+    // Function to update invoice UI dynamically after payment
+    function updateInvoiceUI(invoiceId, newDue, newReceived, newStatus) {
+        // Find the row corresponding to this invoice
+        const $row = $(`tr[data-invoice-id="${invoiceId}"]`);
+        
+        if ($row.length) {
+            // Safely parse and validate input parameters
+            const safeNewDue = parseFloat(newDue) || 0;
+            const safeNewReceived = parseFloat(newReceived) || 0;
+            
+            // Get total amount from the table to calculate properly
+            const totalAmountText = $row.find('.total-amount strong').text();
+            const totalAmount = parseFloat(totalAmountText.replace(/[^\d.]/g, '')) || 0;
+            const receivedAmount = safeNewReceived;
+            
+            // Calculate next due properly: Total - Received = Due
+            const calculatedDue = Math.max(0, totalAmount - receivedAmount);
+            
+            // Use calculated value if server value seems incorrect
+            const finalDue = (Math.abs(safeNewDue - calculatedDue) > 0.01) ? calculatedDue : safeNewDue;
+            
+            // Helper function to safely format numbers
+            function safeFormatNumber(num) {
+                const safeNum = parseFloat(num) || 0;
+                return safeNum.toLocaleString('en-BD', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+            }
+            
+            // Update received amount display
+            $row.find('.received-amount strong').text(`৳ ${safeFormatNumber(receivedAmount)}`);
+            
+            // Update received amount percentage if total > 0
+            if (totalAmount > 0) {
+                const percentage = ((receivedAmount / totalAmount) * 100).toFixed(1);
+                $row.find('.received-amount small').text(`${percentage}% paid`);
+            } else {
+                $row.find('.received-amount small').text(receivedAmount > 0 ? 'Payment received' : 'No payment');
+            }
+            
+            // Update status badge (only if newStatus is provided)
+            if (newStatus !== undefined && newStatus !== null) {
+                const $statusCell = $row.find('td').eq(8); // Status is 9th column (0-indexed as 8)
+                let statusClass = 'bg-secondary';
+                let statusText = 'Unknown';
+                
+                // Defensive programming: check if newStatus has toLowerCase method
+                if (newStatus && typeof newStatus === 'string') {
+                    switch(newStatus.toLowerCase()) {
+                        case 'paid':
+                            statusClass = 'bg-success';
+                            statusText = 'Paid';
+                            break;
+                        case 'partial':
+                            statusClass = 'bg-warning text-dark';
+                            statusText = 'Partial';
+                            break;
+                        case 'unpaid':
+                            statusClass = 'bg-danger';
+                            statusText = 'Unpaid';
+                            break;
+                        case 'confirmed':
+                            statusClass = 'bg-info';
+                            statusText = 'Confirmed';
+                            break;
+                    }
+                }
+                
+                $statusCell.html(`<span class="badge ${statusClass}">${statusText}</span>`);
+            }
+            
+            // Update next due amount display with proper calculation
+            const $nextDueElement = $row.find('.next-due');
+            $nextDueElement.empty();
+            
+            // Check for advance payment
+            const isAdvancePayment = receivedAmount > totalAmount && totalAmount > 0;
+            const advanceAmount = isAdvancePayment ? (receivedAmount - totalAmount) : 0;
+            
+            if (isAdvancePayment) {
+                $nextDueElement.append('<span class="badge bg-success"><i class="fas fa-check-double me-1"></i>Advance Paid</span>');
+                $nextDueElement.append(`<br><small class="text-success">+৳ ${safeFormatNumber(advanceAmount)} credit</small>`);
+            } else if (finalDue <= 0.01) {
+                $nextDueElement.append('<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Paid</span>');
+                $nextDueElement.append('<br><small class="text-muted">Fully paid</small>');
+            } else {
+                $nextDueElement.append(`<strong class="text-danger">৳ ${safeFormatNumber(finalDue)}</strong>`);
+                $nextDueElement.append('<br><small class="text-muted">Outstanding</small>');
+                if (receivedAmount > 0) {
+                    $nextDueElement.append(`<br><small class="text-info">Partial: ৳${safeFormatNumber(receivedAmount)} paid</small>`);
+                }
+            }
+        }
+    }
 
     // Payment Form Submission
     $('#addPaymentForm').on('submit', function (e) {
         e.preventDefault();
-
+        
+        // Debug: Log form submission
+        console.log('Debug: Payment form submitted');
+        
         const $form = $(this);
         const $btn = $form.find('button[type="submit"]');
         const oldHtml = $btn.html();
@@ -2128,6 +2411,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const paid = parseFloat($('#payment_amount').val()) || 0;
         const dueText = $('#payment_due_amount_display').text();
         const due = parseFloat(dueText.replace(/[^\d.]/g, '')) || 0;
+        
+        // Debug: Log payment data
+        const formData = new FormData(this);
+        const formDataObj = {};
+        for (let [key, value] of formData.entries()) {
+            formDataObj[key] = value;
+        }
+        console.log('Debug: Payment amount:', paid);
+        console.log('Debug: Form data:', formDataObj);
 
         if (paid < 0.01) {
             showToast('Amount must be at least ৳0.01!', 'danger');
@@ -2150,35 +2442,57 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(r => r.json())
         .then(json => {
+            // Debug: Log server response
+            console.log('Debug: Server response:', json);
+            
             if (json.success) {
                 const invoiceNumber = $('#payment_invoice_number_display').text();
                 const customerName = $('#payment_customer_name_display').text();
                 const paidAmount = parseFloat($('#payment_amount').val()) || 0;
+                const invoiceId = $('#payment_invoice_id').val();
 
-                // Show detailed success notification
+                // Hide modal
+                $('#addPaymentModal').modal('hide');
+                
+                // Debug: Log the data we're passing to updateInvoiceUI
+                console.log('Debug: Updating UI with:', {
+                    invoiceId: invoiceId,
+                    next_due: json.next_due,
+                    received_amount: json.received_amount,
+                    status: json.status
+                });
+                
+                // Validate data before calling updateInvoiceUI
+                if (invoiceId && (json.next_due !== undefined || json.received_amount !== undefined)) {
+                    try {
+                        // Update UI dynamically without page refresh
+                        updateInvoiceUI(invoiceId, json.next_due, json.received_amount, json.status);
+                    } catch (uiError) {
+                        console.error('Error updating UI:', uiError);
+                        // Show a fallback message and suggest refresh
+                        showToast('Payment saved successfully! Please refresh the page to see updated amounts.', 'warning');
+                    }
+                } else {
+                    console.warn('Invalid data for UI update, skipping UI update');
+                    showToast('Payment saved successfully! Please refresh the page to see updated amounts.', 'warning');
+                }
+
+                // Show success notification
                 const details = `
                     <div><strong>Invoice:</strong> ${invoiceNumber}</div>
                     <div><strong>Customer:</strong> ${customerName}</div>
-                    <div><strong>Amount Paid:</strong> ৳${paidAmount.toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                    <div class="mt-1"><small><i class="fas fa-sync me-1"></i>Refreshing page...</small></div>
+                    <div><strong>Amount Paid:</strong> ৳${(paidAmount || 0).toLocaleString('en-BD', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                 `;
 
                 showToast('Payment Recorded Successfully!', 'success', details);
-
-                // Hide modal - close button click will trigger Bootstrap's hide
-                $modal.find('.btn-close').trigger('click');
-
-                // Show loading overlay
-                document.body.insertAdjacentHTML('beforeend', '<div class="loading-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;"><div class="spinner-border text-light" style="width:3rem;height:3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>');
-
-                // Reload page to show updated status
-                setTimeout(() => location.reload(), 1500);
             } else {
                 showToast(json.message || 'Error saving payment.', 'danger');
             }
         })
         .catch(err => {
-            console.error(err);
+            // Debug: Log detailed error
+            console.error('Debug: Payment error details:', err);
+            console.error('Debug: Full error object:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
             showToast('Network error. Try again.', 'danger');
         })
         .finally(() => {
@@ -2285,6 +2599,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const invoiceId = this.getAttribute('data-invoice-id');
             viewInvoice(invoiceId);
         });
+    });
+
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
     });
 
 });

@@ -117,7 +117,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="address" class="form-label required">Residential Address</label>
+                                <label for="address" class="form-label required"> Address</label>
                                 <textarea class="form-control @error('address') is-invalid @enderror" 
                                           id="address" name="address" rows="3" required 
                                           placeholder="Enter residential address">{{ old('address') }}</textarea>

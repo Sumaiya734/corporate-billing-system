@@ -142,9 +142,19 @@
                             </div>
 
                             <!-- Notes -->
-                            <div class="mb-0">
+                            <div class="mb-3">
                                 <label class="form-label fw-semibold">Payment Notes</label>
                                 <textarea name="notes" class="form-control" rows="2" placeholder="Add any additional notes about this payment..."></textarea>
+                            </div>
+                            
+                            <!-- Carry Forward Checkbox -->
+                            <div class="mb-0">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="carryForwardCheckbox" name="carry_forward" checked>
+                                    <label class="form-check-label" for="carryForwardCheckbox">
+                                        Carry forward remaining due to next month
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
