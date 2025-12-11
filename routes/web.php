@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\PaymentDetailsController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\Admin\CustomerToProductController;
+use App\Http\Controllers\Admin\BillingReportController;
 
 // Customer search route for product assignment (outside auth group for AJAX access)
 Route::get('/admin/customers/suggestions', [CustomerProductController::class, 'getCustomerSuggestions'])->name('admin.customers.suggestions');
@@ -200,8 +201,14 @@ Route::prefix('products')->name('products.')->group(function () {
         Route::get('/', [PaymentDetailsController::class, 'index'])->name('index');
         Route::get('/export', [PaymentDetailsController::class, 'export'])->name('payment-details.export');
     });
+  
 });
-
+ // Billing Reports Routes
+Route::prefix('billing')->name('admin.billing.')->group(function () {
+    // Billing Reports
+    Route::get('/reports', [BillingReportController::class, 'index'])->name('reports');
+    Route::get('/reports/export', [BillingReportController::class, 'export'])->name('export-reports');
+});
 // Customer Protected Routes
 Route::prefix('customer')->middleware(['auth:customer'])->group(function () {
     Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('customer.dashboard');

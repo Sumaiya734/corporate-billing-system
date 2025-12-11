@@ -29,15 +29,20 @@
         <!-- Billing & Invoices -->
         <div class="dropdown">
             <a class="nav-link dropdown-toggle {{ request()->routeIs('admin.billing.*') ? 'active' : '' }}" href="#" data-bs-toggle="collapse" data-bs-target="#billingMenu" aria-expanded="{{ request()->routeIs('admin.billing.*') ? 'true' : 'false' }}">
-                <i class="fas fa-file-invoice-dollar me-2"></i>Billings
+                <i class="fas fa-file-invoice-dollar me-2"></i>Billing & Invoices
             </a>
             <div class="collapse submenu {{ request()->routeIs('admin.billing.*') ? 'show' : '' }}" id="billingMenu">
                 <a class="dropdown-item {{ request()->routeIs('admin.billing.billing-invoices') ? 'active' : '' }}" href="{{ route('admin.billing.billing-invoices') }}">
                     <i class="fas fa-file-invoice-dollar me-2"></i>All Invoices
                 </a>
-                <a class="dropdown-item {{ request()->routeIs('admin.billing.monthly-bills') ? 'active' : '' }}" href="{{ route('admin.billing.monthly-bills', ['month' => date('Y-m')]) }}">
-                    <i class="fas fa-calendar me-2"></i>Previous Month Bills
-                </a>
+                <a class="dropdown-item {{ request()->routeIs('admin.billing.monthly-bills') ? 'active' : '' }}" 
+           href="{{ route('admin.billing.monthly-bills', ['month' => date('Y-m')]) }}">
+            <i class="fas fa-calendar me-2"></i>Monthly Bills
+        </a>
+                <a class="dropdown-item {{ request()->routeIs('admin.billing.reports') ? 'active' : '' }}" 
+           href="{{ route('admin.billing.reports') }}">
+            <i class="fas fa-chart-line me-2"></i>Billing Reports
+        </a>
                 
             </div>
         </div>

@@ -1098,18 +1098,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!checkbox || !dateInput) return;
 
+        // Store the original date value for reference
+        let originalDateValue = '';
+
         checkbox.addEventListener('change', function () {
             if (this.checked) {
                 dateInput.removeAttribute('readonly');
                 dateInput.classList.add('border-warning');
                 dateInput.focus();
+                
+                // Store the current date value
+                originalDateValue = dateInput.value;
+                
+                // Add event listener to restrict changes to day only
+                dateInput.addEventListener('input', restrictDateChange);
+                dateInput.addEventListener('change', restrictDateChange);
             } else {
                 dateInput.setAttribute('readonly', true);
                 dateInput.classList.remove('border-warning');
+                // Remove event listeners
+                dateInput.removeEventListener('input', restrictDateChange);
+                dateInput.removeEventListener('change', restrictDateChange);
                 // Reset to calculated due date
                 calculateAndSetDueDate(idx);
             }
         });
+
+        // Function to restrict date changes to day only
+        function restrictDateChange(e) {
+            if (!originalDateValue) return;
+            
+            const currentDate = e.target.value;
+            if (!currentDate) return;
+            
+            // Parse dates
+            const originalParts = originalDateValue.split('-');
+            const currentParts = currentDate.split('-');
+            
+            if (originalParts.length !== 3 || currentParts.length !== 3) return;
+            
+            // Keep year and month from original, only allow day to change
+            const restrictedDate = `${originalParts[0]}-${originalParts[1]}-${currentParts[2]}`;
+            e.target.value = restrictedDate;
+        }
     }
 
     function calculateAndSetDueDate(idx) {
