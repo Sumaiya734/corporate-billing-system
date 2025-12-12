@@ -29,22 +29,26 @@ class Invoice extends Model
         'closed_at',
         'closed_by',
         'notes',
-        'created_by'
+        'created_by',
+        'is_active_rolling',
+        'billing_cycle_number',
+        'cycle_position',
+        'cycle_start_date'
     ];
 
     protected $casts = [
         'issue_date' => 'date',
         'previous_due' => 'decimal:2',
-        'service_charge' => 'decimal:2',
-        'vat_amount' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'received_amount' => 'decimal:2',
         'next_due' => 'decimal:2',
         'is_closed' => 'boolean',
+        'is_active_rolling' => 'boolean',
         'closed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'cycle_start_date' => 'date'
     ];
 
     protected $appends = [
@@ -56,32 +60,59 @@ class Invoice extends Model
         'formatted_due_amount',
         'days_overdue',
         'payment_progress',
+        'is_fully_paid',
+        'is_advance_payment',
+        'advance_amount',
+        'is_confirmed'
     ];
 
     // Invoice status constants
     const STATUS_UNPAID = 'unpaid';
     const STATUS_PAID = 'paid';
     const STATUS_PARTIAL = 'partial';
+    const STATUS_CONFIRMED = 'confirmed'; // ✅ User confirmed but due carried forward
     const STATUS_CANCELLED = 'cancelled';
+    const STATUS_CONVERTED = 'converted';
+
+    // Status options for dropdowns
+    public static $statusOptions = [
+        self::STATUS_UNPAID => 'Unpaid',
+        self::STATUS_PARTIAL => 'Partial',
+        self::STATUS_PAID => 'Paid',
+        self::STATUS_CONFIRMED => 'Confirmed',
+        self::STATUS_CANCELLED => 'Cancelled',
+        self::STATUS_CONVERTED => 'Converted'
+    ];
 
     // ==================== RELATIONSHIPS ====================
 
-    // FIXED: Updated customer relationship to correctly reference customer_to_products
-    public function customer(): BelongsTo
-    {
-        return $this->belongsTo(CustomerProduct::class, 'cp_id', 'cp_id')
-            ->join('customers', 'customer_to_products.c_id', '=', 'customers.c_id');
-    }
-
-    // FIXED: Added relationship to customer_to_products
     public function customerProduct(): BelongsTo
     {
         return $this->belongsTo(CustomerProduct::class, 'cp_id', 'cp_id');
     }
 
-    public function invoiceProducts(): HasMany
+    public function customer()
     {
-        return $this->hasMany(InvoiceProduct::class, 'invoice_id', 'invoice_id');
+        return $this->hasOneThrough(
+            Customer::class,
+            CustomerProduct::class,
+            'cp_id', // Foreign key on customer_to_products table
+            'c_id',  // Foreign key on customers table
+            'cp_id', // Local key on invoices table
+            'c_id'   // Local key on customer_to_products table
+        );
+    }
+
+    public function product()
+    {
+        return $this->hasOneThrough(
+            Product::class,
+            CustomerProduct::class,
+            'cp_id', // Foreign key on customer_to_products table
+            'p_id',  // Foreign key on products table
+            'cp_id', // Local key on invoices table
+            'p_id'   // Local key on customer_to_products table
+        );
     }
 
     public function payments(): HasMany
@@ -111,18 +142,28 @@ class Invoice extends Model
         return $query->where('status', self::STATUS_PARTIAL);
     }
 
+    public function scopeConfirmed(Builder $query): Builder
+    {
+        return $query->where('status', self::STATUS_CONFIRMED);
+    }
+
     public function scopeCancelled(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_CANCELLED);
     }
 
-    public function scopeOverdue(Builder $query): Builder
+    public function scopeConverted(Builder $query): Builder
     {
-        return $query->whereIn('status', [self::STATUS_UNPAID, self::STATUS_PARTIAL])
-                    ->where('total_amount', '>', DB::raw('COALESCE(received_amount, 0)'));
+        return $query->where('status', self::STATUS_CONVERTED);
     }
 
-    // FIXED: Updated scope to use cp_id
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query->whereIn('status', [self::STATUS_UNPAID, self::STATUS_PARTIAL, self::STATUS_CONFIRMED])
+                    ->where('next_due', '>', 0)
+                    ->where('issue_date', '<', now()->subDays(30));
+    }
+
     public function scopeByCustomer(Builder $query, int $customerId): Builder
     {
         return $query->whereHas('customerProduct', function ($q) use ($customerId) {
@@ -143,12 +184,12 @@ class Invoice extends Model
     public function scopeDueBetween(Builder $query, string $startDate, string $endDate): Builder
     {
         return $query->whereBetween('issue_date', [$startDate, $endDate])
-                    ->whereIn('status', [self::STATUS_UNPAID, self::STATUS_PARTIAL]);
+                    ->whereIn('status', [self::STATUS_UNPAID, self::STATUS_PARTIAL, self::STATUS_CONFIRMED]);
     }
 
     public function scopeWithDueAmount(Builder $query): Builder
     {
-        return $query->whereRaw('total_amount > COALESCE(received_amount, 0)');
+        return $query->where('next_due', '>', 0);
     }
 
     public function scopeRecent(Builder $query, int $days = 30): Builder
@@ -156,30 +197,60 @@ class Invoice extends Model
         return $query->where('issue_date', '>=', now()->subDays($days));
     }
 
+    public function scopeNotConfirmed(Builder $query): Builder
+    {
+        return $query->where('status', '!=', self::STATUS_CONFIRMED);
+    }
+
+    public function scopeClosed(Builder $query): Builder
+    {
+        return $query->where('is_closed', true);
+    }
+
+    public function scopeNotClosed(Builder $query): Builder
+    {
+        return $query->where('is_closed', false);
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->whereNotIn('status', [self::STATUS_CANCELLED, self::STATUS_CONVERTED]);
+    }
+
+    public function scopeBillingMonth(Builder $query): Builder
+    {
+        return $query->where('subtotal', '>', 0);
+    }
+
+    public function scopeCarryForward(Builder $query): Builder
+    {
+        return $query->where('subtotal', 0)->where('previous_due', '>', 0);
+    }
+
     // ==================== ACCESSORS ====================
 
     public function getDueAmountAttribute(): float
     {
-        return max(0, $this->total_amount - $this->received_amount);
+        return (float) max(0, $this->total_amount - $this->received_amount);
     }
 
     public function getIsOverdueAttribute(): bool
     {
-        return in_array($this->status, [self::STATUS_UNPAID, self::STATUS_PARTIAL]) 
-            && $this->due_amount > 0;
+        if (!in_array($this->status, [self::STATUS_UNPAID, self::STATUS_PARTIAL, self::STATUS_CONFIRMED])) {
+            return false;
+        }
+        
+        if ($this->next_due <= 0) {
+            return false;
+        }
+        
+        // Consider overdue if unpaid for more than 30 days
+        return Carbon::parse($this->issue_date)->diffInDays(now()) > 30;
     }
 
     public function getPaymentStatusAttribute(): string
     {
-        if ($this->status === self::STATUS_PAID) {
-            return 'Paid';
-        } elseif ($this->status === self::STATUS_CANCELLED) {
-            return 'Cancelled';
-        } elseif ($this->received_amount > 0) {
-            return 'Partial';
-        } else {
-            return 'Unpaid';
-        }
+        return self::$statusOptions[$this->status] ?? ucfirst($this->status);
     }
 
     public function getFormattedTotalAmountAttribute(): string
@@ -212,33 +283,112 @@ class Invoice extends Model
             return 0;
         }
 
-        return ($this->received_amount / $this->total_amount) * 100;
+        return round(($this->received_amount / $this->total_amount) * 100, 2);
     }
 
     public function getStatusBadgeAttribute(): string
     {
-        return match ($this->status) {
-            self::STATUS_PAID => '<span class="badge bg-success">Paid</span>',
-            self::STATUS_PARTIAL => '<span class="badge bg-warning">Partial</span>',
-            self::STATUS_UNPAID => $this->days_overdue > 30 
-                ? '<span class="badge bg-danger">Overdue</span>'
-                : '<span class="badge bg-info">Unpaid</span>',
-            self::STATUS_CANCELLED => '<span class="badge bg-secondary">Cancelled</span>',
-            'confirmed' => '<span class="badge bg-success"><i class="fas fa-check-double me-1"></i>Confirmed</span>',
-            default => '<span class="badge bg-secondary">' . ucfirst($this->status) . '</span>'
-        };
+        $badgeClass = 'badge ';
+        $icon = '';
+        $text = '';
+
+        switch ($this->status) {
+            case self::STATUS_PAID:
+                $badgeClass .= 'bg-success';
+                $icon = '<i class="fas fa-check-circle me-1"></i>';
+                $text = 'Paid';
+                break;
+                
+            case self::STATUS_PARTIAL:
+                $badgeClass .= 'bg-warning text-dark';
+                $icon = '<i class="fas fa-clock me-1"></i>';
+                $text = 'Partial';
+                break;
+                
+            case self::STATUS_CONFIRMED:
+                $badgeClass .= 'bg-info';
+                $icon = '<i class="fas fa-check-double me-1"></i>';
+                $text = 'Confirmed';
+                break;
+                
+            case self::STATUS_UNPAID:
+                if ($this->is_overdue) {
+                    $badgeClass .= 'bg-danger';
+                    $icon = '<i class="fas fa-exclamation-triangle me-1"></i>';
+                    $text = 'Overdue';
+                } else {
+                    $badgeClass .= 'bg-secondary';
+                    $icon = '<i class="fas fa-clock me-1"></i>';
+                    $text = 'Unpaid';
+                }
+                break;
+                
+            case self::STATUS_CANCELLED:
+                $badgeClass .= 'bg-dark';
+                $icon = '<i class="fas fa-times me-1"></i>';
+                $text = 'Cancelled';
+                break;
+                
+            case self::STATUS_CONVERTED:
+                $badgeClass .= 'bg-purple';
+                $icon = '<i class="fas fa-exchange-alt me-1"></i>';
+                $text = 'Converted';
+                break;
+                
+            default:
+                $badgeClass .= 'bg-secondary';
+                $text = ucfirst($this->status);
+        }
+
+        return '<span class="' . $badgeClass . '">' . $icon . $text . '</span>';
     }
 
     public function getCustomerNameAttribute(): string
     {
-        return $this->customer ? $this->customer->name : 'Unknown Customer';
+        return $this->customer->name ?? 'Unknown Customer';
+    }
+
+    public function getProductNameAttribute(): string
+    {
+        return $this->product->name ?? 'Unknown Product';
+    }
+
+    public function getIsFullyPaidAttribute(): bool
+    {
+        return $this->status === self::STATUS_PAID || 
+               ($this->next_due <= 0 && $this->received_amount >= $this->total_amount);
+    }
+
+    public function getIsAdvancePaymentAttribute(): bool
+    {
+        return $this->received_amount > $this->total_amount && $this->total_amount > 0;
+    }
+
+    public function getAdvanceAmountAttribute(): float
+    {
+        return $this->is_advance_payment ? ($this->received_amount - $this->total_amount) : 0;
+    }
+
+    public function getIsConfirmedAttribute(): bool
+    {
+        return $this->status === self::STATUS_CONFIRMED;
+    }
+
+    public function getIsBillingMonthAttribute(): bool
+    {
+        return $this->subtotal > 0;
+    }
+
+    public function getIsCarryForwardMonthAttribute(): bool
+    {
+        return $this->subtotal == 0 && $this->previous_due > 0;
     }
 
     // ==================== METHODS ====================
 
     public function isPaid(): bool
     {
-        return $this->status === self::STATUS_PAID;
+        return $this->status === self::STATUS_PAID || $this->is_fully_paid;
     }
 
     public function isUnpaid(): bool
@@ -251,9 +401,19 @@ class Invoice extends Model
         return $this->status === self::STATUS_PARTIAL;
     }
 
+    public function isConfirmed(): bool
+    {
+        return $this->status === self::STATUS_CONFIRMED;
+    }
+
     public function isCancelled(): bool
     {
         return $this->status === self::STATUS_CANCELLED;
+    }
+
+    public function isConverted(): bool
+    {
+        return $this->status === self::STATUS_CONVERTED;
     }
 
     public function markAsPaid(): bool
@@ -262,21 +422,35 @@ class Invoice extends Model
             'status' => self::STATUS_PAID,
             'received_amount' => $this->total_amount,
             'next_due' => 0,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+    }
+
+    public function markAsConfirmed(): bool
+    {
+        return $this->update([
+            'status' => self::STATUS_CONFIRMED,
+            'is_closed' => true,
+            'closed_at' => now(),
+            'notes' => ($this->notes ?? '') . "\n[Confirmed on: " . now()->format('Y-m-d H:i:s') . "]",
         ]);
     }
 
     public function addPayment(float $amount, string $method = 'cash', string $transactionId = null): Payment
     {
-        $payment = $this->payments()->create([
+        $payment = Payment::create([
+            'invoice_id' => $this->invoice_id,
             'c_id' => $this->customerProduct->c_id ?? null,
             'amount' => $amount,
             'payment_method' => $method,
             'payment_date' => now(),
             'transaction_id' => $transactionId,
+            'collected_by' => auth()->id(),
+            'status' => 'completed'
         ]);
 
-        $this->refresh();
-
+        // Update invoice amounts
         $newReceivedAmount = $this->received_amount + $amount;
         $newStatus = $this->calculateStatus($newReceivedAmount);
 
@@ -291,12 +465,12 @@ class Invoice extends Model
 
     public function calculateStatus($receivedAmount): string
     {
-        // Normalize incoming value to float (handles null, decimal string, etc.)
         $receivedAmount = (float) ($receivedAmount ?? 0);
+        $totalAmount = (float) $this->total_amount;
 
-        if ($receivedAmount >= (float) $this->total_amount) {
+        if ($receivedAmount >= $totalAmount) {
             return self::STATUS_PAID;
-        } elseif ($receivedAmount > 0.0) {
+        } elseif ($receivedAmount > 0) {
             return self::STATUS_PARTIAL;
         } else {
             return self::STATUS_UNPAID;
@@ -316,34 +490,6 @@ class Invoice extends Model
         ]);
     }
 
-    public function getProductNames(): string
-    {
-        return $this->invoiceProducts->map(function ($invoiceProduct) {
-            return $invoiceProduct->product->name ?? 'Unknown Product';
-        })->implode(', ');
-    }
-
-    public function getTotalProductAmount(): float
-    {
-        return $this->invoiceProducts->sum('total_product_amount');
-    }
-
-    public function recalculateTotals(): bool
-    {
-        $productTotal = $this->getTotalProductAmount();
-        $subtotal = $productTotal + $this->previous_due; // Service charge removed as per requirements
-        $vatAmount = 0; // VAT removed as per requirements
-        $totalAmount = $subtotal; // No VAT added
-
-        return $this->update([
-            'subtotal' => $subtotal,
-            'vat_amount' => $vatAmount,
-            'total_amount' => $totalAmount,
-            'next_due' => max(0, $totalAmount - $this->received_amount),
-            'status' => $this->calculateStatus($this->received_amount),
-        ]);
-    }
-
     /**
      * Recalculate payment amounts based on actual payments in database
      * This ensures next_due = total_amount - received_amount is always accurate
@@ -351,18 +497,19 @@ class Invoice extends Model
     public function recalculatePaymentAmounts(): bool
     {
         // Get actual sum of payments from database
-        $actualReceivedAmount = $this->payments()->sum('amount');
+        $actualReceivedAmount = (float) $this->payments()->sum('amount');
         
         // Calculate correct next_due
         $correctNextDue = max(0, $this->total_amount - $actualReceivedAmount);
         
         // Determine correct status
-        $correctStatus = 'unpaid';
         if ($actualReceivedAmount >= $this->total_amount) {
-            $correctStatus = 'paid';
-            $correctNextDue = 0; // Ensure it's exactly 0 when fully paid
+            $correctStatus = self::STATUS_PAID;
+            $correctNextDue = 0;
         } elseif ($actualReceivedAmount > 0) {
-            $correctStatus = 'partial';
+            $correctStatus = self::STATUS_PARTIAL;
+        } else {
+            $correctStatus = self::STATUS_UNPAID;
         }
 
         return $this->update([
@@ -372,29 +519,162 @@ class Invoice extends Model
         ]);
     }
 
+    /**
+     * Confirm this invoice and carry forward remaining amount
+     */
+    public function confirmAndCarryForward(): array
+    {
+        $dueAmount = $this->next_due;
+        
+        // Mark as confirmed
+        $this->update([
+            'status' => self::STATUS_CONFIRMED,
+            'is_closed' => true,
+            'closed_at' => now(),
+            'notes' => ($this->notes ?? '') . "\n[Confirmed: " . now()->format('Y-m-d H:i:s') . 
+                      "] Due amount of ৳" . number_format($dueAmount, 0) . " carried forward."
+        ]);
+
+        // Get customer product details
+        $customerProduct = $this->customerProduct;
+        if (!$customerProduct) {
+            throw new \Exception("Customer product not found for invoice #{$this->invoice_number}");
+        }
+
+        // Calculate next billing date based on billing cycle
+        $billingCycle = $customerProduct->billing_cycle_months ?? 1;
+        $nextMonth = Carbon::parse($this->issue_date)->addMonths($billingCycle);
+        
+        // Check if next month invoice already exists
+        $existingNextInvoice = Invoice::where('cp_id', $this->cp_id)
+            ->whereYear('issue_date', $nextMonth->year)
+            ->whereMonth('issue_date', $nextMonth->month)
+            ->first();
+
+        $nextInvoice = null;
+        
+        if ($existingNextInvoice) {
+            // Update existing invoice with carried forward amount
+            $existingNextInvoice->update([
+                'previous_due' => $existingNextInvoice->previous_due + $dueAmount,
+                'total_amount' => $existingNextInvoice->subtotal + $existingNextInvoice->previous_due + $dueAmount,
+                'next_due' => max(0, ($existingNextInvoice->subtotal + $existingNextInvoice->previous_due + $dueAmount) - $existingNextInvoice->received_amount),
+                'notes' => ($existingNextInvoice->notes ?? '') . "\nAdded ৳" . number_format($dueAmount, 0) . 
+                          " carried forward from invoice #{$this->invoice_number}"
+            ]);
+            $nextInvoice = $existingNextInvoice;
+        } else {
+            // Create new invoice for next month
+            $product = $customerProduct->product;
+            $subtotal = 0;
+            
+            // Calculate subtotal based on billing cycle
+            $assignDate = Carbon::parse($customerProduct->assign_date);
+            $monthsSinceAssign = $assignDate->diffInMonths($nextMonth);
+            $isBillingMonth = ($monthsSinceAssign % $billingCycle) === 0;
+            
+            if ($isBillingMonth) {
+                $subtotal = $product->monthly_price * $billingCycle;
+            }
+            
+            $nextInvoice = Invoice::create([
+                'cp_id' => $this->cp_id,
+                'issue_date' => $nextMonth->format('Y-m-d'),
+                'previous_due' => $dueAmount,
+                'subtotal' => $subtotal,
+                'total_amount' => $subtotal + $dueAmount,
+                'received_amount' => 0,
+                'next_due' => $subtotal + $dueAmount,
+                'status' => self::STATUS_UNPAID,
+                'notes' => "Carried forward ৳" . number_format($dueAmount, 0) . 
+                          " from confirmed invoice #{$this->invoice_number}",
+                'created_by' => auth()->id() ?? 1
+            ]);
+        }
+
+        return [
+            'success' => true,
+            'carried_forward_amount' => $dueAmount,
+            'next_invoice' => $nextInvoice,
+            'current_invoice_status' => self::STATUS_CONFIRMED,
+            'next_billing_date' => $nextMonth->format('Y-m-d')
+        ];
+    }
+
+    /**
+     * Check if this invoice can be confirmed
+     */
+    public function canBeConfirmed(): bool
+    {
+        return $this->status !== self::STATUS_CONFIRMED 
+            && !$this->is_closed 
+            && $this->next_due > 0
+            && $this->status !== self::STATUS_CANCELLED
+            && $this->status !== self::STATUS_CONVERTED
+            && $this->status !== self::STATUS_PAID;
+    }
+
+    /**
+     * Close invoice (for month close process)
+     */
+    public function closeInvoice($closedBy = null): bool
+    {
+        return $this->update([
+            'is_closed' => true,
+            'closed_at' => now(),
+            'closed_by' => $closedBy ?? auth()->id(),
+            'notes' => ($this->notes ?? '') . "\n[Month Closed: " . now()->format('Y-m-d H:i:s') . "]"
+        ]);
+    }
+
+    /**
+     * Get next billing date based on this invoice
+     */
+    public function getNextBillingDate(): Carbon
+    {
+        $customerProduct = $this->customerProduct;
+        if (!$customerProduct) {
+            return Carbon::parse($this->issue_date)->addMonth();
+        }
+        
+        $billingCycle = $customerProduct->billing_cycle_months ?? 1;
+        return Carbon::parse($this->issue_date)->addMonths($billingCycle);
+    }
+
+    /**
+     * Check if next billing cycle invoice should be created
+     */
+    public function shouldCreateNextBillingCycleInvoice(): bool
+    {
+        // If invoice is not paid, don't create next one
+        if (!$this->isPaid() && !$this->isConfirmed()) {
+            return false;
+        }
+        
+        // Check if next billing date has passed
+        $nextBillingDate = $this->getNextBillingDate();
+        $today = Carbon::today();
+        
+        return $today >= $nextBillingDate;
+    }
+
     // ==================== STATIC METHODS ====================
 
     public static function generateInvoiceNumber($issueDate = null): string
     {
-        // Use provided date or current date
-        $date = $issueDate ? \Carbon\Carbon::parse($issueDate) : \Carbon\Carbon::now();
-        
-        // Format: INV-YY-MM-XXXX (e.g., INV-25-01-0001)
-        $year = $date->format('y'); // 2-digit year
-        $month = $date->format('m'); // 2-digit month
+        $date = $issueDate ? Carbon::parse($issueDate) : Carbon::now();
+        $year = $date->format('y');
+        $month = $date->format('m');
         $prefix = 'INV-' . $year . '-' . $month . '-';
         
-        // Find the highest invoice number for this month
         $lastInvoice = self::where('invoice_number', 'like', $prefix . '%')
                           ->orderBy('invoice_number', 'desc')
                           ->first();
 
         if ($lastInvoice) {
-            // Extract the numeric part and increment
             $lastNumber = (int) substr($lastInvoice->invoice_number, strlen($prefix));
             $nextNumber = $lastNumber + 1;
         } else {
-            // Start from 1 for this month
             $nextNumber = 1;
         }
 
@@ -403,20 +683,86 @@ class Invoice extends Model
 
     public static function getTotalRevenue(): float
     {
-        return (float) self::where('status', '!=', self::STATUS_CANCELLED)
-                          ->sum('total_amount');
+        return (float) self::active()->sum('total_amount');
     }
 
     public static function getTotalCollected(): float
     {
-        return (float) self::where('status', '!=', self::STATUS_CANCELLED)
-                          ->sum('received_amount');
+        return (float) self::active()->sum('received_amount');
     }
 
     public static function getTotalDue(): float
     {
-        return (float) self::whereIn('status', [self::STATUS_UNPAID, self::STATUS_PARTIAL])
-                          ->sum(DB::raw('total_amount - COALESCE(received_amount, 0)'));
+        return (float) self::whereIn('status', [self::STATUS_UNPAID, self::STATUS_PARTIAL, self::STATUS_CONFIRMED])
+                          ->sum('next_due');
+    }
+
+    public static function getConfirmedInvoicesTotal(): float
+    {
+        return (float) self::confirmed()->sum('next_due');
+    }
+
+    /**
+     * Get invoices for a specific month
+     */
+    public static function getInvoicesForMonth($month): \Illuminate\Database\Eloquent\Collection
+    {
+        $monthDate = Carbon::createFromFormat('Y-m', $month);
+        
+        return self::with(['customerProduct.customer', 'customerProduct.product', 'payments'])
+            ->whereYear('issue_date', $monthDate->year)
+            ->whereMonth('issue_date', $monthDate->month)
+            ->where('status', '!=', self::STATUS_CONVERTED)
+            ->orderBy('issue_date', 'desc')
+            ->orderBy('invoice_id', 'desc')
+            ->get();
+    }
+
+    /**
+     * Create next billing cycle invoice for a customer product
+     */
+    public static function createNextBillingCycleInvoice($cpId, $currentInvoice): ?Invoice
+    {
+        $customerProduct = CustomerProduct::find($cpId);
+        if (!$customerProduct) {
+            return null;
+        }
+        
+        $billingCycle = $customerProduct->billing_cycle_months ?? 1;
+        $nextMonth = Carbon::parse($currentInvoice->issue_date)->addMonths($billingCycle);
+        
+        // Check if invoice already exists for next month
+        $existingInvoice = self::where('cp_id', $cpId)
+            ->whereYear('issue_date', $nextMonth->year)
+            ->whereMonth('issue_date', $nextMonth->month)
+            ->first();
+            
+        if ($existingInvoice) {
+            return $existingInvoice;
+        }
+        
+        // Calculate subtotal
+        $product = $customerProduct->product;
+        $subtotal = $product->monthly_price * $billingCycle;
+        
+        // Previous due is any unpaid amount from current invoice
+        $previousDue = $currentInvoice->status === self::STATUS_CONFIRMED ? $currentInvoice->next_due : 0;
+        
+        $invoice = self::create([
+            'cp_id' => $cpId,
+            'issue_date' => $nextMonth->format('Y-m-d'),
+            'previous_due' => $previousDue,
+            'subtotal' => $subtotal,
+            'total_amount' => $subtotal + $previousDue,
+            'received_amount' => 0,
+            'next_due' => $subtotal + $previousDue,
+            'status' => self::STATUS_UNPAID,
+            'notes' => "Next billing cycle invoice. " . 
+                      ($previousDue > 0 ? "Includes ৳" . number_format($previousDue, 0) . " carried forward." : ""),
+            'created_by' => auth()->id() ?? 1
+        ]);
+        
+        return $invoice;
     }
 
     // ==================== MODEL EVENTS ====================
@@ -438,132 +784,76 @@ class Invoice extends Model
 
             // Initialize amounts if not set
             $invoice->received_amount = $invoice->received_amount ?? 0.00;
-            // Always calculate next_due properly: max(0, total_amount - received_amount)
+            
+            // Always calculate next_due properly
             $invoice->next_due = max(0, ($invoice->total_amount ?? 0.00) - ($invoice->received_amount ?? 0.00));
+            
+            // Auto-set status if not provided
+            if (empty($invoice->status)) {
+                $invoice->status = $invoice->calculateStatus($invoice->received_amount);
+            }
+        });
+
+        static::updating(function ($invoice) {
+            // Ensure next_due is always correct
+            if ($invoice->isDirty(['total_amount', 'received_amount'])) {
+                $invoice->next_due = max(0, $invoice->total_amount - $invoice->received_amount);
+                
+                // Auto-update status if amounts changed
+                if ($invoice->isDirty('received_amount')) {
+                    $invoice->status = $invoice->calculateStatus($invoice->received_amount);
+                }
+            }
+            
+            // When invoice is marked as paid, ensure amounts are correct
+            if ($invoice->isDirty('status') && $invoice->status === self::STATUS_PAID) {
+                $invoice->received_amount = $invoice->total_amount;
+                $invoice->next_due = 0;
+                $invoice->is_closed = true;
+                $invoice->closed_at = now();
+            }
+            
+            // When invoice is confirmed, keep due amount but mark as closed
+            if ($invoice->isDirty('status') && $invoice->status === self::STATUS_CONFIRMED) {
+                $invoice->is_closed = true;
+                $invoice->closed_at = now();
+            }
         });
 
         static::created(function ($invoice) {
-            // Auto-set status based on received amount
-            if ($invoice->status === null) {
-                $invoice->update([
-                    'status' => $invoice->calculateStatus($invoice->received_amount)
-                ]);
+            \Log::info("Invoice created: #{$invoice->invoice_number} for CP ID: {$invoice->cp_id}");
+        });
+
+        static::updated(function ($invoice) {
+            // When invoice is paid or confirmed, check if next billing cycle invoice should be created
+            if ($invoice->isDirty('status') && 
+                ($invoice->status === self::STATUS_PAID || $invoice->status === self::STATUS_CONFIRMED)) {
+                
+                // Check if next billing cycle invoice should be created
+                if ($invoice->shouldCreateNextBillingCycleInvoice()) {
+                    \Log::info("Invoice #{$invoice->invoice_number} paid/confirmed. Checking next billing cycle...");
+                    
+                    // Try to create next billing cycle invoice
+                    try {
+                        $nextInvoice = self::createNextBillingCycleInvoice($invoice->cp_id, $invoice);
+                        if ($nextInvoice) {
+                            \Log::info("Created next billing cycle invoice: #{$nextInvoice->invoice_number}");
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error("Failed to create next billing cycle invoice: " . $e->getMessage());
+                    }
+                }
             }
         });
     }
-     public static function generateRollingInvoiceNumber($customerId, $productId, $cycleNumber)
+    
+    // Rolling invoice methods (if needed)
+    public static function generateRollingInvoiceNumber($customerId, $productId, $cycleNumber)
     {
         return sprintf('RINV-%04d-%03d-C%02d', 
             $customerId, 
             $productId, 
             $cycleNumber
         );
-    }
-    
-    /**
-     * Get or create rolling invoice for a customer product
-     */
-    public static function getOrCreateRollingInvoice($cpId, $monthDate)
-    {
-        // First, check if there's an active rolling invoice
-        $invoice = self::where('cp_id', $cpId)
-            ->where('is_active_rolling', true)
-            ->first();
-        
-        if (!$invoice) {
-            // Start a new rolling invoice
-            return self::createNewRollingInvoice($cpId, $monthDate);
-        }
-        
-        // Update existing rolling invoice
-        return self::updateRollingInvoice($invoice, $monthDate);
-    }
-    
-    /**
-     * Create new rolling invoice (start of new cycle)
-     */
-    private static function createNewRollingInvoice($cpId, $monthDate)
-    {
-        $customerProduct = CustomerProduct::find($cpId);
-        if (!$customerProduct) return null;
-        
-        $cycleNumber = RollingBillingHelper::getCycleNumber($cpId, $monthDate);
-        $cyclePosition = RollingBillingHelper::getCyclePosition($cpId, $monthDate);
-        $subtotal = RollingBillingHelper::calculateSubtotal($cpId, $monthDate);
-        
-        // Get previous unpaid amount
-        $previousDue = self::getPreviousDueAmount($cpId);
-        
-        // Create invoice number
-        $invoiceNumber = self::generateRollingInvoiceNumber(
-            $customerProduct->c_id,
-            $customerProduct->p_id,
-            $cycleNumber
-        );
-        
-        $invoice = self::create([
-            'invoice_number' => $invoiceNumber,
-            'cp_id' => $cpId,
-            'issue_date' => $monthDate->format('Y-m-d'),
-            'previous_due' => $previousDue,
-            'subtotal' => $subtotal,
-            'total_amount' => $subtotal + $previousDue,
-            'received_amount' => 0,
-            'next_due' => $subtotal + $previousDue,
-            'status' => 'unpaid',
-            'is_active_rolling' => true,
-            'billing_cycle_number' => $cycleNumber,
-            'cycle_position' => $cyclePosition,
-            'cycle_start_date' => $monthDate->format('Y-m-d'),
-            'notes' => "Cycle {$cycleNumber}, Month " . ($cyclePosition + 1) . " of " . ($customerProduct->billing_cycle_months ?? 1) . "-month cycle"
-        ]);
-        
-        return $invoice;
-    }
-    
-    /**
-     * Update existing rolling invoice
-     */
-    private static function updateRollingInvoice($invoice, $monthDate)
-    {
-        $cpId = $invoice->cp_id;
-        $customerProduct = CustomerProduct::find($cpId);
-        
-        if (!$customerProduct) return $invoice;
-        
-        $billingCycle = $customerProduct->billing_cycle_months ?? 1;
-        $cyclePosition = RollingBillingHelper::getCyclePosition($cpId, $monthDate);
-        $subtotal = RollingBillingHelper::calculateSubtotal($cpId, $monthDate);
-        
-        // Update invoice for current month
-        $invoice->update([
-            'issue_date' => $monthDate->format('Y-m-d'),
-            'previous_due' => $invoice->total_amount, // Previous total becomes previous due
-            'subtotal' => $subtotal,
-            'total_amount' => $invoice->total_amount + $subtotal,
-            'next_due' => $invoice->total_amount + $subtotal - $invoice->received_amount,
-            'cycle_position' => $cyclePosition,
-            'notes' => $invoice->notes . "\n" . date('Y-m-d') . ": Month " . ($cyclePosition + 1) . " of {$billingCycle}-month cycle"
-        ]);
-        
-        // Check if cycle has ended
-        if ($cyclePosition == $billingCycle - 1) {
-            $invoice->is_active_rolling = false;
-            $invoice->save();
-        }
-        
-        return $invoice->fresh();
-    }
-    
-    /**
-     * Get previous due amount from ALL unpaid invoices
-     * (excluding the active rolling one)
-     */
-    private static function getPreviousDueAmount($cpId)
-    {
-        return self::where('cp_id', $cpId)
-            ->where('is_active_rolling', false)
-            ->where('status', '!=', 'paid')
-            ->sum('next_due');
     }
 }

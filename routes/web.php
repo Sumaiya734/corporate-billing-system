@@ -18,10 +18,34 @@ use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\Admin\CustomerToProductController;
 use App\Http\Controllers\Admin\BillingReportController;
 
-// Customer search route for product assignment (outside auth group for AJAX access)
+// ==================== PUBLIC ROUTES ====================
+
+// Welcome/Home routes
+Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
+Route::get('/home', [WelcomeController::class, 'index'])->name('home');
+
+// General login redirect
+Route::get('/login', function () {
+    return redirect()->route('admin.login');
+})->name('login');
+
+// Authentication routes (outside auth middleware)
+Route::middleware('web')->group(function () {
+    // Customer Authentication
+    Route::get('/customer/login', [CustomerController::class, 'showLoginForm'])->name('customer.login');
+    Route::post('/customer/login', [CustomerController::class, 'login'])->name('customer.login.submit');
+    Route::post('/customer/logout', [CustomerController::class, 'logout'])->name('customer.logout');
+
+    // Admin Authentication
+    Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('admin.login');
+    Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login.submit');
+    Route::post('/admin/logout', [AuthController::class, 'logout'])->name('admin.logout');
+});
+
+// Customer search route for product assignment (public for AJAX)
 Route::get('/admin/customers/suggestions', [CustomerProductController::class, 'getCustomerSuggestions'])->name('admin.customers.suggestions');
 
-// Route to serve customer profile images
+// Storage access for profile images
 Route::get('/storage/{path}', function ($path) {
     // Security check to ensure only customer profile images are served
     if (!str_starts_with($path, 'customers/profiles/') && 
@@ -38,83 +62,80 @@ Route::get('/storage/{path}', function ($path) {
     return response()->file(Storage::disk('public')->path($path));
 })->where('path', '.*')->name('storage.serve');
 
-Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
-Route::get('/home', [WelcomeController::class, 'index'])->name('home');
-// Add a general login route that redirects to admin login
-Route::get('/login', function () {
-    return redirect()->route('admin.login');
-})->name('login');
+// ==================== ADMIN PROTECTED ROUTES ====================
 
-Route::middleware('web')->group(function () {
-    // Customer Authentication Routes
-    Route::get('/customer/login', [CustomerController::class, 'showLoginForm'])->name('customer.login');
-    Route::post('/customer/login', [CustomerController::class, 'login'])->name('customer.login.submit');
-    Route::post('/customer/logout', [CustomerController::class, 'logout'])->name('customer.logout');
-
-    // Admin Authentication Routes
-    Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('admin.login');
-    Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login.submit');
-    Route::post('/admin/logout', [AuthController::class, 'logout'])->name('admin.logout');
-});
-
-// Admin Protected Routes - SINGLE CLEAN GROUP
 Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(function () {
-    // Dashboard
+    
+    // ==================== DASHBOARD ROUTES ====================
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [DashboardController::class, 'refreshData'])->name('dashboard.refresh');
     
-    // Product Management Routes
-Route::prefix('products')->name('products.')->group(function () {
-    Route::get('/', [ProductController::class, 'index'])->name('index');
-    Route::get('/create', [ProductController::class, 'create'])->name('create');
-    Route::get('/types', [ProductController::class, 'productTypes'])->name('types');
+    // ==================== PRODUCT MANAGEMENT ROUTES ====================
+    Route::prefix('products')->name('products.')->group(function () {
+        Route::get('/', [ProductController::class, 'index'])->name('index');
+        Route::get('/create', [ProductController::class, 'create'])->name('create');
+        Route::get('/types', [ProductController::class, 'productTypes'])->name('types');
+        
+        // Test/debug routes
+        Route::get('/test', function () {
+            return view('admin.products.test2');
+        })->name('test2');
+        Route::get('/debug/{id}', function ($id) {
+            $product = \App\Models\Product::where('p_id', $id)->first();
+            return response()->json([
+                'found' => $product ? true : false,
+                'product' => $product,
+                'all_products' => \App\Models\Product::select('p_id', 'name')->get()
+            ]);
+        })->name('debug');
+        
+        // CRUD operations
+        Route::post('/', [ProductController::class, 'store'])->name('store');
+        Route::post('/add-type', [ProductController::class, 'addProductType'])->name('add-type');
+        Route::delete('/delete-type/{id}', [ProductController::class, 'deleteProductType'])->name('delete-type');
+        Route::post('/delete-type/{id}', [ProductController::class, 'deleteProductType'])->name('delete-type.post'); // For modal submissions
+        
+        // Specific edit route
+        Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
+        Route::post('/{id}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggle-status');
+        
+        // Show/Update/Delete routes
+        Route::get('/{id}', [ProductController::class, 'show'])->name('show');
+        Route::put('/{id}', [ProductController::class, 'update'])->name('update');
+        Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
+    });
     
-    Route::get('/test', function () {
-        return view('admin.products.test2');
-    })->name('admin.products.test2');
-    Route::get('/debug/{id}', function ($id) {
-        $product = \App\Models\Product::where('p_id', $id)->first();
-        return response()->json([
-            'found' => $product ? true : false,
-            'product' => $product,
-            'all_products' => \App\Models\Product::select('p_id', 'name')->get()
+    // ==================== CUSTOMER MANAGEMENT ROUTES ====================
+    Route::prefix('customers')->name('customers.')->group(function () {
+        // Special routes first
+        Route::get('/next-id', [CustomerController::class, 'getNextCustomerId'])->name('next-id');
+        Route::get('/export', [CustomerController::class, 'export'])->name('export');
+        Route::patch('/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('toggle-status');
+        Route::get('/{customer}/billing-history', [CustomerController::class, 'billingHistory'])->name('billing-history');
+        Route::get('/{customer}/profile', [CustomerController::class, 'profile'])->name('profile');
+        
+        // Customer AJAX store for product assignment
+        Route::post('/store-ajax', [CustomerController::class, 'storeAjax'])->name('store-ajax');
+        
+        // Resource routes (must come last)
+        Route::resource('/', CustomerController::class)->parameters([
+            '' => 'customer'
+        ])->names([
+            'index' => 'index',
+            'create' => 'create',
+            'store' => 'store',
+            'show' => 'show',
+            'edit' => 'edit',
+            'update' => 'update',
+            'destroy' => 'destroy'
         ]);
-    })->name('debug');
+    });
     
-    // POST/PUT/DELETE routes
-    Route::post('/', [ProductController::class, 'store'])->name('store');
-    Route::post('/add-type', [ProductController::class, 'addProductType'])->name('add-type');
-    Route::delete('/delete-type/{id}', [ProductController::class, 'deleteProductType'])->name('delete-type');
-    Route::post('/delete-type/{id}', [ProductController::class, 'deleteProductType'])->name('delete-type.post');   // <-- REQUIRED for your modal
-    
-    // IMPORTANT: Specific routes with {id} MUST come BEFORE generic {id} routes
-    Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
-    Route::post('/{id}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggle-status');
-    
-    // Generic {id} routes MUST be last
-    Route::get('/{id}', [ProductController::class, 'show'])->name('show');
-    Route::put('/{id}', [ProductController::class, 'update'])->name('update');
-    Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
-});
-
-    // Customer Management
-    Route::get('/customers/next-id', [CustomerController::class, 'getNextCustomerId'])->name('customers.next-id');
-    Route::get('/customers/suggestions', [CustomerProductController::class, 'getCustomerSuggestions'])->name('customers.suggestions');
-    Route::resource('customers', CustomerController::class)->parameters([
-        'customers' => 'customer'
-    ]);
-    Route::patch('/customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');
-    Route::get('/customers/{customer}/billing-history', [CustomerController::class, 'billingHistory'])->name('customers.billing-history');
-    Route::get('/customers/{customer}/profile', [CustomerController::class, 'profile'])->name('customers.profile');
-    
-    // Add export route
-    Route::get('/customers/export', [CustomerController::class, 'export'])->name('customers.export');
-
-    // Customer Products Management
+    // ==================== CUSTOMER PRODUCTS MANAGEMENT ROUTES ====================
     Route::prefix('customer-to-products')->name('customer-to-products.')->group(function () {
         Route::get('/', [CustomerProductController::class, 'index'])->name('index');
-        Route::get('/check-existing', [CustomerProductController::class, 'checkExistingProduct'])->name('check-existing');
         Route::get('/assign', [CustomerProductController::class, 'assign'])->name('assign');
+        Route::get('/check-existing', [CustomerProductController::class, 'checkExistingProduct'])->name('check-existing');
         Route::post('/preview-invoice-numbers', [CustomerProductController::class, 'previewInvoiceNumbers'])->name('preview-invoice-numbers');
         Route::post('/store', [CustomerProductController::class, 'store'])->name('store');
         Route::get('/{id}/edit', [CustomerProductController::class, 'edit'])->name('edit');
@@ -124,26 +145,24 @@ Route::prefix('products')->name('products.')->group(function () {
         Route::post('/{id}/toggle-status', [CustomerProductController::class, 'toggleStatus'])->name('toggle-status');
     });
     
-    // Customer AJAX store
-    Route::post('/customers/store-ajax', [CustomerProductController::class, 'storeCustomer'])->name('customers.store-ajax');
-
-    // Billing Routes
+    // ==================== BILLING MANAGEMENT ROUTES ====================
     Route::prefix('billing')->name('billing.')->group(function () {
-        // Main billing pages
+        // ===== Main Billing Pages =====
         Route::get('/', [BillingController::class, 'billingInvoices'])->name('index');
         Route::get('/billing-invoices', [BillingController::class, 'billingInvoices'])->name('billing-invoices');
         Route::get('/all-invoices', [BillingController::class, 'allInvoices'])->name('all-invoices');
         
-        // Monthly billing
+        // ===== Monthly Billing =====
         Route::get('/monthly-bills/{month}', [MonthlyBillController::class, 'monthlyBills'])->name('monthly-bills');
         Route::post('/monthly-bills/{month}', [MonthlyBillController::class, 'handleMonthlyBills'])->name('monthly-bills.handle');
         Route::post('/generate-monthly-bills', [MonthlyBillController::class, 'generateMonthlyBills'])->name('generate-monthly-bills');
         Route::post('/generate-monthly-bills-all', [MonthlyBillController::class, 'generateMonthlyBillsForAll'])->name('generate-monthly-bills-all');
+        Route::post('/generate-all-invoices', [MonthlyBillController::class, 'generateAllInvoices'])->name('generate-all-invoices');
         Route::post('/close-month', [MonthlyBillController::class, 'closeMonth'])->name('close-month');
         Route::get('/invoice/{invoiceId}/data', [MonthlyBillController::class, 'getInvoiceData'])->name('invoice.data');
         Route::get('/monthly-details/{month}', [BillingController::class, 'monthlyDetails'])->name('monthly-details');
         
-        // Payment Routes
+        // ===== Payment Management =====
         Route::post('/record-payment/{invoiceId}', [MonthlyBillController::class, 'recordPayment'])->name('record-payment');
         Route::post('/confirm-user-payment', [MonthlyBillController::class, 'confirmUserPayment'])->name('confirm-user-payment');
         Route::get('/invoices/{invoiceId}/payments', [PaymentController::class, 'getInvoicePayments'])->name('invoice-payments');
@@ -152,69 +171,65 @@ Route::prefix('products')->name('products.')->group(function () {
         Route::get('/payment/{paymentId}/edit', [BillingController::class, 'editPayment'])->name('payment.edit');
         Route::put('/payment/{paymentId}', [BillingController::class, 'updatePayment'])->name('payment.update');
         
-        // Monthly billing summary
-        Route::get('/month-details/{month}', [BillingController::class, 'monthDetails'])->name('month-details');
-        
-        // Invoice generation
+        // ===== Invoice Generation =====
         Route::post('/generate-month-invoices', [BillingController::class, 'generateMonthInvoices'])->name('generate-month-invoices');
         Route::post('/generate-from-invoices', [BillingController::class, 'generateFromInvoices'])->name('generate-from-invoices');
-        Route::post('/generate-all-invoices', [MonthlyBillController::class, 'generateAllInvoices'])->name('generate-all-invoices');
-        
-        // Individual invoice management
         Route::get('/generate-bill/{customerId}', [BillingController::class, 'generateBill'])->name('generate-bill');
         Route::post('/process-bill/{customerId}', [BillingController::class, 'processBillGeneration'])->name('process-bill');
+        
+        // ===== Individual Invoice Views =====
         Route::get('/view-bill/{id}', [BillingController::class, 'viewBill'])->name('view-bill');
         Route::get('/edit-bill/{id}', [BillingController::class, 'editBill'])->name('edit-bill');
         Route::get('/view-invoice/{invoiceId}', [BillingController::class, 'viewInvoice'])->name('view-invoice');
         
-        // Invoice details for modal
+        // ===== Invoice Details and Modals =====
         Route::get('/invoice/{invoiceId}/details', [BillingController::class, 'getInvoiceDetails'])->name('invoice-details');
         Route::get('/invoice/{invoiceId}/html', [BillingController::class, 'getInvoiceHtml'])->name('invoice-html');
         
-        // Monthly billing summary management
+        // ===== Monthly Billing Summary =====
+        Route::get('/month-details/{month}', [BillingController::class, 'monthDetails'])->name('month-details');
         Route::post('/store-monthly', [BillingController::class, 'storeMonthly'])->name('store-monthly');
         Route::get('/edit-monthly/{id}', [BillingController::class, 'editMonthly'])->name('edit-monthly');
         Route::put('/update-monthly/{id}', [BillingController::class, 'updateMonthly'])->name('update-monthly');
         Route::delete('/delete-monthly/{id}', [BillingController::class, 'deleteMonthly'])->name('delete-monthly');
         Route::post('/toggle-lock/{id}', [BillingController::class, 'toggleLock'])->name('toggle-lock');
         
-        // Customer billing details
+        // ===== Customer Billing Details =====
         Route::get('/customer-billing/{c_id}', [BillingController::class, 'customerBillingDetails'])->name('customer-billing');
         
-        // Additional invoice routes
+        // ===== Invoice CRUD Operations =====
         Route::post('/create-invoice', [BillingController::class, 'createInvoice'])->name('create-invoice');
         Route::put('/update-invoice/{invoiceId}', [BillingController::class, 'updateInvoice'])->name('update-invoice');
         Route::delete('/delete-invoice/{invoiceId}', [BillingController::class, 'deleteInvoice'])->name('delete-invoice');
         Route::get('/get-invoice-data/{invoiceId}', [BillingController::class, 'getInvoiceData'])->name('get-invoice-data');
+        
+        // ===== Billing Reports =====
+        Route::get('/reports', [BillingReportController::class, 'index'])->name('reports');
+        Route::get('/reports/export', [BillingReportController::class, 'export'])->name('export-reports');
     });
-
-    // Reports Routes - MOVED INSIDE ADMIN GROUP
+    
+    // ==================== REPORTS ROUTES ====================
     Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('/revenue', [ReportController::class, 'revenueReport'])->name('revenue');
         Route::get('/financial-analytics', [ReportController::class, 'financialAnalytics'])->name('financial-analytics');
         Route::get('/customer-statistics', [ReportController::class, 'customerStatistics'])->name('customer-statistics');
         Route::get('/collection-reports', [ReportController::class, 'collectionReports'])->name('collection-reports');
-        Route::get('/', [ReportController::class, 'index'])->name('index');
     });
-
-     Route::prefix('payment-details')->name('payment-details.')->group(function () {
+    
+    // ==================== PAYMENT DETAILS ROUTES ====================
+    Route::prefix('payment-details')->name('payment-details.')->group(function () {
         Route::get('/', [PaymentDetailsController::class, 'index'])->name('index');
-        Route::get('/export', [PaymentDetailsController::class, 'export'])->name('payment-details.export');
+        Route::get('/export', [PaymentDetailsController::class, 'export'])->name('export');
     });
-  
 });
- // Billing Reports Routes
-Route::prefix('billing')->name('admin.billing.')->group(function () {
-    // Billing Reports
-    Route::get('/reports', [BillingReportController::class, 'index'])->name('reports');
-    Route::get('/reports/export', [BillingReportController::class, 'export'])->name('export-reports');
-});
-// Customer Protected Routes
+
+// ==================== CUSTOMER PROTECTED ROUTES ====================
 Route::prefix('customer')->middleware(['auth:customer'])->group(function () {
     Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('customer.dashboard');
 });
 
-// Debug routes
+// ==================== DEBUG/DEVELOPMENT ROUTES ====================
 Route::get('/debug/setup', function () {
     echo "<h3>Debug Setup</h3>";
     
@@ -244,7 +259,6 @@ Route::get('/debug/auth', function () {
     }
 });
 
-// Test route
 Route::get('/test', function () {
     return "Test route is working!";
 });
@@ -274,7 +288,6 @@ Route::get('/debug/customers', function () {
     }
 });
 
-// Debug route to check specific customer
 Route::get('/debug/check-customer/{id}', function ($id) {
     $customer = \App\Models\Customer::with('user')->find($id);
     
@@ -301,6 +314,7 @@ Route::get('/debug/routes', function () {
         'admin.billing.monthly-bills',
         'admin.billing.generate-monthly-bills',
         'admin.billing.record-payment',
+        'admin.billing.confirm-user-payment',
         'admin.billing.generate-from-invoices',
         'admin.billing.generate-bill',
         'admin.billing.view-bill',
@@ -317,8 +331,6 @@ Route::get('/debug/routes', function () {
         echo "<strong>{$name}:</strong> {$url}<br>";
     }
 });
-
-
 
 Route::get('/debug/customer-to-products-routes', function() {
     echo "<h3>Customer Products Routes:</h3>";
@@ -337,7 +349,6 @@ Route::get('/debug/customer-to-products-routes', function() {
     }
 });
 
-// Debug route to check payment routes
 Route::get('/debug/payment-routes', function() {
     echo "<h3>Payment Routes Debug:</h3>";
     
@@ -349,6 +360,13 @@ Route::get('/debug/payment-routes', function() {
     }
     
     try {
+        $url = route('admin.billing.confirm-user-payment');
+        echo "✅ admin.billing.confirm-user-payment: " . $url . "<br>";
+    } catch (Exception $e) {
+        echo "❌ admin.billing.confirm-user-payment: " . $e->getMessage() . "<br>";
+    }
+    
+    try {
         $url = route('admin.billing.invoice-payments', ['invoiceId' => 1]);
         echo "✅ admin.billing.invoice-payments: " . $url . "<br>";
     } catch (Exception $e) {
@@ -356,7 +374,6 @@ Route::get('/debug/payment-routes', function() {
     }
 });
 
-// Debug route to check reports routes
 Route::get('/debug/reports-routes', function() {
     echo "<h3>Reports Routes Debug:</h3>";
     
@@ -365,7 +382,9 @@ Route::get('/debug/reports-routes', function() {
         'admin.reports.revenue',
         'admin.reports.financial-analytics',
         'admin.reports.customer-statistics',
-        'admin.reports.collection-reports'
+        'admin.reports.collection-reports',
+        'admin.billing.reports',
+        'admin.billing.export-reports'
     ];
 
     foreach ($reportRoutes as $route) {
@@ -376,4 +395,48 @@ Route::get('/debug/reports-routes', function() {
             echo "❌ {$route}: " . $e->getMessage() . "<br>";
         }
     }
+});
+
+Route::get('/debug/customer-routes', function() {
+    echo "<h3>Customer Routes Debug:</h3>";
+    
+    $customerRoutes = [
+        'admin.customers.index',
+        'admin.customers.create',
+        'admin.customers.store',
+        'admin.customers.show',
+        'admin.customers.edit',
+        'admin.customers.update',
+        'admin.customers.destroy',
+        'admin.customers.next-id',
+        'admin.customers.export',
+        'admin.customers.toggle-status',
+        'admin.customers.billing-history',
+        'admin.customers.profile',
+        'admin.customers.store-ajax'
+    ];
+
+    foreach ($customerRoutes as $route) {
+        try {
+            if ($route === 'admin.customers.show' || $route === 'admin.customers.edit' || 
+                $route === 'admin.customers.update' || $route === 'admin.customers.destroy' ||
+                $route === 'admin.customers.toggle-status' || $route === 'admin.customers.billing-history' ||
+                $route === 'admin.customers.profile') {
+                $url = route($route, ['customer' => 1]);
+            } else {
+                $url = route($route);
+            }
+            echo "✅ {$route}: " . $url . "<br>";
+        } catch (Exception $e) {
+            echo "❌ {$route}: " . $e->getMessage() . "<br>";
+        }
+    }
+});
+
+// ==================== FALLBACK ROUTE ====================
+Route::fallback(function () {
+    if (request()->is('admin/*')) {
+        return redirect()->route('admin.dashboard');
+    }
+    return redirect()->route('welcome');
 });
