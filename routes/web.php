@@ -17,6 +17,8 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\Admin\CustomerToProductController;
 use App\Http\Controllers\Admin\BillingReportController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\AdminSettingsController;
 
 // ==================== PUBLIC ROUTES ====================
 
@@ -221,6 +223,18 @@ Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(funct
     Route::prefix('payment-details')->name('payment-details.')->group(function () {
         Route::get('/', [PaymentDetailsController::class, 'index'])->name('index');
         Route::get('/export', [PaymentDetailsController::class, 'export'])->name('export');
+    });
+    
+    // ==================== SETTINGS ROUTES ====================
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/', [SettingsController::class, 'index'])->name('index');
+        Route::post('/update', [SettingsController::class, 'update'])->name('update');
+    });
+    
+    // ==================== ADMIN SETTINGS ROUTES ====================
+    Route::prefix('admin-settings')->name('admin-settings.')->group(function () {
+        Route::get('/', [AdminSettingsController::class, 'index'])->name('index');
+        Route::put('/update', [AdminSettingsController::class, 'update'])->name('update');
     });
 });
 

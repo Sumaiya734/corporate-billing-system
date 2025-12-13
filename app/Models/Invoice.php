@@ -8,8 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use App\Helpers\RollingBillingHelper;
-
 class Invoice extends Model
 {
     protected $primaryKey = 'invoice_id';
@@ -446,7 +447,7 @@ class Invoice extends Model
             'payment_method' => $method,
             'payment_date' => now(),
             'transaction_id' => $transactionId,
-            'collected_by' => auth()->id(),
+            'collected_by' => Auth::id(),
             'status' => 'completed'
         ]);
 
@@ -588,7 +589,7 @@ class Invoice extends Model
                 'status' => self::STATUS_UNPAID,
                 'notes' => "Carried forward ৳" . number_format($dueAmount, 0) . 
                           " from confirmed invoice #{$this->invoice_number}",
-                'created_by' => auth()->id() ?? 1
+                'created_by' => Auth::id() ?? 1
             ]);
         }
 
@@ -622,7 +623,7 @@ class Invoice extends Model
         return $this->update([
             'is_closed' => true,
             'closed_at' => now(),
-            'closed_by' => $closedBy ?? auth()->id(),
+            'closed_by' => $closedBy ?? Auth::id(),
             'notes' => ($this->notes ?? '') . "\n[Month Closed: " . now()->format('Y-m-d H:i:s') . "]"
         ]);
     }
@@ -729,7 +730,15 @@ class Invoice extends Model
         }
         
         $billingCycle = $customerProduct->billing_cycle_months ?? 1;
-        $nextMonth = Carbon::parse($currentInvoice->issue_date)->addMonths($billingCycle);
+        $assignDate = Carbon::parse($customerProduct->assign_date);
+        $currentInvoiceDate = Carbon::parse($currentInvoice->issue_date);
+        
+        // Calculate the correct next billing cycle date based on the original assignment date
+        // This ensures that payments in the middle of a cycle don't reset the billing cycle
+        $monthsSinceAssign = $assignDate->diffInMonths($currentInvoiceDate);
+        $currentCycle = floor($monthsSinceAssign / $billingCycle);
+        $nextCycleMonths = ($currentCycle + 1) * $billingCycle;
+        $nextMonth = $assignDate->copy()->addMonths($nextCycleMonths);
         
         // Check if invoice already exists for next month
         $existingInvoice = self::where('cp_id', $cpId)
@@ -759,12 +768,11 @@ class Invoice extends Model
             'status' => self::STATUS_UNPAID,
             'notes' => "Next billing cycle invoice. " . 
                       ($previousDue > 0 ? "Includes ৳" . number_format($previousDue, 0) . " carried forward." : ""),
-            'created_by' => auth()->id() ?? 1
+            'created_by' => Auth::id() ?? 1
         ]);
         
         return $invoice;
     }
-
     // ==================== MODEL EVENTS ====================
 
     protected static function boot()
@@ -821,7 +829,7 @@ class Invoice extends Model
         });
 
         static::created(function ($invoice) {
-            \Log::info("Invoice created: #{$invoice->invoice_number} for CP ID: {$invoice->cp_id}");
+            Log::info("Invoice created: #{$invoice->invoice_number} for CP ID: {$invoice->cp_id}");
         });
 
         static::updated(function ($invoice) {
@@ -831,16 +839,16 @@ class Invoice extends Model
                 
                 // Check if next billing cycle invoice should be created
                 if ($invoice->shouldCreateNextBillingCycleInvoice()) {
-                    \Log::info("Invoice #{$invoice->invoice_number} paid/confirmed. Checking next billing cycle...");
+                    Log::info("Invoice #{$invoice->invoice_number} paid/confirmed. Checking next billing cycle...");
                     
                     // Try to create next billing cycle invoice
                     try {
                         $nextInvoice = self::createNextBillingCycleInvoice($invoice->cp_id, $invoice);
                         if ($nextInvoice) {
-                            \Log::info("Created next billing cycle invoice: #{$nextInvoice->invoice_number}");
+                            Log::info("Created next billing cycle invoice: #{$nextInvoice->invoice_number}");
                         }
                     } catch (\Exception $e) {
-                        \Log::error("Failed to create next billing cycle invoice: " . $e->getMessage());
+                        Log::error("Failed to create next billing cycle invoice: " . $e->getMessage());
                     }
                 }
             }

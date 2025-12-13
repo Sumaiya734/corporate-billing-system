@@ -108,13 +108,13 @@
                 <i class="fas fa-cog me-2"></i>Settings
             </a>
             <div class="collapse submenu" id="settingsMenu">
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item {{ request()->routeIs('admin.admin-settings.index') ? 'active' : '' }}" href="{{ route('admin.admin-settings.index') }}">
                     <i class="fas fa-user-cog me-2"></i>Admin Settings
                 </a>
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item {{ request()->routeIs('admin.settings.index') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">
                     <i class="fas fa-credit-card me-2"></i>Payment Settings
                 </a>
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item {{ request()->routeIs('admin.settings.index') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">
                     <i class="fas fa-shield-alt me-2"></i>System Settings
                 </a>
             </div>
