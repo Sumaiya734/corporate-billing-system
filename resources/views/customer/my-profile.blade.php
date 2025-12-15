@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Dashboard - NetBill BD</title>
+    <title>My Profile - Corporate Billing</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
@@ -30,6 +30,7 @@
             -webkit-font-smoothing:antialiased;
             padding-top: 56px; /* Height of fixed navbar */
         }
+
         /* NAVBAR */
         .navbar-brand { font-weight:700; color:var(--primary); display:flex; gap:.6rem; align-items:center; }
         .navbar { 
@@ -42,6 +43,7 @@
             right: 0;
             z-index: 1050;
         }
+
         /* TOP AREA */
         .page-header {
             background: #fff;
@@ -82,7 +84,8 @@
                 width: 80%;
                 z-index: 1100;
                 top: 56px;
-            }            .sidebar.show {
+            }
+            .sidebar.show {
                 left: 0;
             }
             .main-content {
@@ -189,6 +192,46 @@
             @media (min-width: 992px) {
                 .admin-layout-row { flex-wrap: nowrap; }
             }
+            
+        /* Form Styles */
+        .form-section {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .form-section h4 {
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            color: var(--secondary);
+        }
+        
+        .product-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .product-card .product-name {
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        .product-card .product-type {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        
+        .product-card .product-price {
+            font-weight: 700;
+            color: var(--primary);
+        }
     </style>
 
 </head>
@@ -242,7 +285,7 @@
                 
                 <nav class="nav flex-column p-2">
                     <!-- Dashboard -->
-                    <a class="nav-link active" href="{{ route('customer.dashboard') }}">
+                    <a class="nav-link" href="{{ route('customer.dashboard') }}">
                         <i class="fas fa-home me-2"></i>Dashboard
                     </a>
 
@@ -251,7 +294,7 @@
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="fas fa-file-invoice me-2"></i>My Bills & Payments
                         </a>
-                        <!-- <div class="dropdown-menu">
+                        <div class="dropdown-menu">
                             <a class="dropdown-item" href="#">
                                 <i class="fas fa-credit-card me-2"></i>Current Bill
                             </a>
@@ -261,7 +304,7 @@
                             <a class="dropdown-item" href="#">
                                 <i class="fas fa-archive me-2"></i>Invoice Archive
                             </a>
-                        </div> -->
+                        </div>
                     </div>
 
                     <!-- My Services -->
@@ -269,7 +312,7 @@
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="fas fa-wifi me-2"></i>My Services
                         </a>
-                        <!-- <div class="dropdown-menu">
+                        <div class="dropdown-menu">
                             <a class="dropdown-item" href="#">
                                 <i class="fas fa-rocket me-2"></i>Current products
                             </a>
@@ -279,16 +322,16 @@
                             <a class="dropdown-item" href="#">
                                 <i class="fas fa-plus me-2"></i>Add Special products
                             </a>
-                        </div> -->
+                        </div>
                     </div>
 
                     <!-- My Profile -->
                     <div class="dropdown">
-                        <a class="nav-link dropdown-toggle" href="{{ route('customer.profile') }}" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" data-bs-toggle="dropdown">
                             <i class="fas fa-user me-2"></i>My Profile
                         </a>
-                        <!-- <div class="dropdown-menu">
-                            <a class="dropdown-item" href="#">
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item active" href="#">
                                 <i class="fas fa-edit me-2"></i>Personal Information
                             </a>
                             <a class="dropdown-item" href="#">
@@ -297,7 +340,7 @@
                             <a class="dropdown-item" href="#">
                                 <i class="fas fa-bell me-2"></i>Notification Settings
                             </a>
-                        </div> -->
+                        </div>
                     </div>
 
                     <!-- Support Center -->
@@ -305,7 +348,7 @@
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="fas fa-life-ring me-2"></i>Support Center
                         </a>
-                        <!-- <div class="dropdown-menu">
+                        <div class="dropdown-menu">
                             <a class="dropdown-item" href="#">
                                 <i class="fas fa-ticket-alt me-2"></i>Raise a Ticket
                             </a>
@@ -315,7 +358,7 @@
                             <a class="dropdown-item" href="#">
                                 <i class="fas fa-question-circle me-2"></i>Help & FAQ
                             </a>
-                        </div> -->
+                        </div>
                     </div>
 
                     <!-- Contact Us -->
@@ -328,221 +371,167 @@
             <!-- Main Content -->
             <main class="col main-content">
                 <div class="p-4">
-                    <!-- Welcome Card -->
-                    <div class="card welcome-card mb-4">
-                        <div class="card-body">
-                            <div class="row align-items-center">
-                                <div class="col-md-8">
-                                    <h3 class="card-title mb-2">
-                                        <i class="fas fa-hand-wave me-2"></i>Welcome back, {{ $customer->name }}!
-                                    </h3>
-                                    <p class="card-text mb-0 opacity-90">
-                                        Here's your account overview and quick access to your services.
-                                    </p>
-                                </div>
-                                <div class="col-md-4 text-end">
-                                    <div class="display-4 opacity-75">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                </div>
-                            </div>
+                    <!-- Page Header -->
+                    <div class="page-header mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="mb-0">
+                                <i class="fas fa-user-circle me-2"></i>My Profile
+                            </h3>
                         </div>
                     </div>
+                    
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            {{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+                    
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
 
-                    <!-- Statistics Cards -->
-                    <div class="row g-4 mb-4">
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card border-left-primary">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">Current Bill</h6>
-                                            <h3 class="text-primary">৳0.00</h3>
-                                            <small class="text-muted">Due in 15 days</small>
-                                        </div>
-                                        <div class="text-primary">
-                                            <i class="fas fa-file-invoice fa-2x"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card border-left-success">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">Active products</h6>
-                                            <h3 class="text-success">1</h3>
-                                            <small class="text-muted">Services active</small>
-                                        </div>
-                                        <div class="text-success">
-                                            <i class="fas fa-wifi fa-2x"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card border-left-warning">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">Support Tickets</h6>
-                                            <h3 class="text-warning">0</h3>
-                                            <small class="text-muted">Open requests</small>
-                                        </div>
-                                        <div class="text-warning">
-                                            <i class="fas fa-ticket-alt fa-2x"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card border-left-info">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">Member Since</h6>
-                                            <h3 class="text-info">{{ $customer->created_at->format('M Y') }}</h3>
-                                            <small class="text-muted">Loyal customer</small>
-                                        </div>
-                                        <div class="text-info">
-                                            <i class="fas fa-calendar-alt fa-2x"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row g-4">
-                        <!-- Account Information -->
+                    <div class="row">
+                        <!-- Personal Information Section -->
                         <div class="col-lg-6">
-                            <div class="card">
-                                <div class="card-header bg-white">
-                                    <h5 class="card-title mb-0">
-                                        <i class="fas fa-user-circle me-2 text-primary"></i>Account Information
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <strong><i class="fas fa-id-card me-2 text-muted"></i>Customer ID</strong>
-                                            <p class="mb-0">{{ $customer->customer_id }}</p>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <strong><i class="fas fa-user me-2 text-muted"></i>Full Name</strong>
-                                            <p class="mb-0">{{ $customer->name }}</p>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <strong><i class="fas fa-envelope me-2 text-muted"></i>Email Address</strong>
-                                            <p class="mb-0">{{ $customer->email }}</p>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <strong><i class="fas fa-phone me-2 text-muted"></i>Phone Number</strong>
-                                            <p class="mb-0">{{ $customer->phone }}</p>
-                                        </div>
-                                        <div class="col-12">
-                                            <strong><i class="fas fa-map-marker-alt me-2 text-muted"></i>Address</strong>
-                                            <p class="mb-0">{{ $customer->address }}</p>
-                                        </div>
+                            <div class="form-section">
+                                <h4><i class="fas fa-user me-2"></i>Personal Information</h4>
+                                <form method="POST" action="#">
+                                    @csrf
+                                    <div class="mb-3">
+                                        <label for="name" class="form-label">Full Name</label>
+                                        <input type="text" class="form-control" id="name" name="name" value="{{ $customer->name }}" required>
                                     </div>
-                                </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label">Email Address</label>
+                                        <input type="email" class="form-control" id="email" name="email" value="{{ $customer->email }}" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="phone" class="form-label">Phone Number</label>
+                                        <input type="text" class="form-control" id="phone" name="phone" value="{{ $customer->phone }}" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="address" class="form-label">Address</label>
+                                        <textarea class="form-control" id="address" name="address" rows="3" required>{{ $customer->address }}</textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="connection_address" class="form-label">Connection Address</label>
+                                        <textarea class="form-control" id="connection_address" name="connection_address" rows="2">{{ $customer->connection_address }}</textarea>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-1"></i>Save Changes
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <!-- Change Password Section -->
+                            <div class="form-section">
+                                <h4><i class="fas fa-lock me-2"></i>Change Password</h4>
+                                <form method="POST" action="#">
+                                    @csrf
+                                    <div class="mb-3">
+                                        <label for="current_password" class="form-label">Current Password</label>
+                                        <input type="password" class="form-control" id="current_password" name="current_password" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="new_password" class="form-label">New Password</label>
+                                        <input type="password" class="form-control" id="new_password" name="new_password" required>
+                                        <div class="form-text">Password must be at least 8 characters long.</div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="new_password_confirmation" class="form-label">Confirm New Password</label>
+                                        <input type="password" class="form-control" id="new_password_confirmation" name="new_password_confirmation" required>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="fas fa-key me-1"></i>Change Password
+                                    </button>
+                                </form>
                             </div>
                         </div>
-
-                        <!-- Quick Actions -->
+                        
+                        <!-- Assigned Products Section -->
                         <div class="col-lg-6">
-                            <div class="card">
-                                <div class="card-header bg-white">
-                                    <h5 class="card-title mb-0">
-                                        <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-primary quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-credit-card fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Pay Bill</strong>
-                                                    <br>
-                                                    <small>Current invoice</small>
+                            <div class="form-section">
+                                <h4><i class="fas fa-box me-2"></i>Assigned Services</h4>
+                                
+                                @if($customer->customerproducts->count() > 0)
+                                    @foreach($customer->customerproducts as $customerProduct)
+                                        @if($customerProduct->product)
+                                            <div class="product-card">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <div class="product-name">{{ $customerProduct->product->name }}</div>
+                                                        <div class="product-type">
+                                                            <span class="badge bg-{{ $customerProduct->product->isRegular() ? 'primary' : 'success' }}">
+                                                                {{ ucfirst($customerProduct->product->product_type) }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <div class="product-price">৳{{ number_format($customerProduct->product->monthly_price, 2) }}</div>
+                                                        <div class="small text-muted">per month</div>
+                                                    </div>
                                                 </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-success quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-history fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Payment History</strong>
-                                                    <br>
-                                                    <small>View past bills</small>
+                                                
+                                                <hr class="my-2">
+                                                
+                                                <div class="row small">
+                                                    <div class="col-6">
+                                                        <strong>Assigned Date:</strong><br>
+                                                        {{ $customerProduct->assign_date ? \Carbon\Carbon::parse($customerProduct->assign_date)->format('M d, Y') : 'N/A' }}
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <strong>Status:</strong><br>
+                                                        {!! $customerProduct->status_badge !!}
+                                                    </div>
                                                 </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-info quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-wifi fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>My Services</strong>
-                                                    <br>
-                                                    <small>Manage products</small>
+                                            </div>
+                                        @endif
+                                    @endforeach
+                                @else
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-box-open fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted">No services assigned yet.</p>
+                                    </div>
+                                @endif
+                            </div>
+                            
+                            <!-- Account Statistics -->
+                            <div class="form-section">
+                                <h4><i class="fas fa-chart-bar me-2"></i>Account Statistics</h4>
+                                <div class="row text-center">
+                                    <div class="col-6 mb-3">
+                                        <div class="stat-card">
+                                            <div class="card-body">
+                                                <div class="stat-icon text-primary mb-2">
+                                                    <i class="fas fa-box"></i>
                                                 </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-warning quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-user-edit fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Update Profile</strong>
-                                                    <br>
-                                                    <small>Edit information</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-danger quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-ticket-alt fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Get Support</strong>
-                                                    <br>
-                                                    <small>Raise a ticket</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-secondary quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-download fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Download Invoice</strong>
-                                                    <br>
-                                                    <small>Latest bill PDF</small>
-                                                </div>
-                                            </a>
+                                                <div class="stat-value">{{ $customer->customerproducts->count() }}</div>
+                                                <div class="stat-title">Active Services</div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Recent Activity -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header bg-white">
-                                    <h5 class="card-title mb-0">
-                                        <i class="fas fa-clock me-2 text-info"></i>Recent Activity
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-3x mb-3 opacity-50"></i>
-                                        <p>No recent activity to display</p>
-                                        <small>Your recent bills, payments, and service changes will appear here.</small>
+                                    <div class="col-6 mb-3">
+                                        <div class="stat-card">
+                                            <div class="card-body">
+                                                <div class="stat-icon text-success mb-2">
+                                                    <i class="fas fa-file-invoice"></i>
+                                                </div>
+                                                <div class="stat-value">{{ $customer->invoices->count() }}</div>
+                                                <div class="stat-title">Total Invoices</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -591,7 +580,8 @@
                     sidebar.classList.remove('show');
                     overlay.classList.remove('show');
                 }
-            });            
+            });
+            
             // Disable click dropdown behavior (use hover instead)
             document.querySelectorAll('.sidebar .dropdown-toggle').forEach(toggle => {
                 toggle.addEventListener('click', e => e.preventDefault());

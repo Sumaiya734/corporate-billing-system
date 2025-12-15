@@ -41,6 +41,24 @@ class CustomerController extends Controller
 
         return view('customer.dashboard', compact('customer', 'invoices', 'payments', 'totalDue'));
     }
+    
+    // ========== CUSTOMER PROFILE ==========
+    
+    public function profile()
+    {
+        // Get authenticated customer with relationships
+        $user = Auth::user();
+        $customer = CustomerModel::with(['user', 'customerproducts.product'])->where('user_id', $user->id)->first();
+        
+        if (!$customer) {
+            Auth::logout();
+            return redirect()->route('customer.login')->withErrors([
+                'email' => 'Customer profile not found.',
+            ]);
+        }
+
+        return view('customer.my-profile', compact('customer'));
+    }
 
     // ========== ADMIN CUSTOMER MANAGEMENT METHODS ==========
     

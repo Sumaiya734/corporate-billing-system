@@ -245,8 +245,8 @@ Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(funct
 // ==================== CUSTOMER PROTECTED ROUTES ====================
 Route::prefix('customer')->middleware(['auth:web'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Customer\CustomerController::class, 'dashboard'])->name('customer.dashboard');
+    Route::get('/profile', [\App\Http\Controllers\Customer\CustomerController::class, 'profile'])->name('customer.profile');
 });
-
 // ==================== DEBUG/DEVELOPMENT ROUTES ====================
 Route::get('/debug/setup', function () {
     echo "<h3>Debug Setup</h3>";
