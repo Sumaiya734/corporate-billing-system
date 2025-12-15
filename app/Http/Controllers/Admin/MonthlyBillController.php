@@ -181,17 +181,10 @@ class MonthlyBillController extends Controller
         
         // Calculate amounts
         $previousDue = $previousInvoice ? $previousInvoice->next_due : 0;
-        $subtotal = 0;
         
         // Add new charges only in billing months AND only if custom price is set
-        if ($isBillingMonth) {
-            // ONLY use custom_price - no calculated price or fallback logic
-            if ($customerProduct->is_custom_price && $customerProduct->custom_price !== null && $customerProduct->custom_price > 0) {
-                $subtotal = $customerProduct->custom_price;
-            }
-            // If no custom price is set, subtotal remains 0 (no billing)
-        }
-        
+        // Calculate subtotal using the CustomerProduct method
+        $subtotal = $customerProduct->getSubtotalForMonth($monthDate);        
         $totalAmount = $subtotal + $previousDue;
         
         // Generate invoice number

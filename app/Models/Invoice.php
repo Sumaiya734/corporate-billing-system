@@ -607,20 +607,9 @@ class Invoice extends Model
         } else {
             // Create new invoice for next month
             $product = $customerProduct->product;
-            $subtotal = 0;
             
-            // Calculate subtotal based on billing cycle
-            $assignDate = Carbon::parse($customerProduct->assign_date);
-            $monthsSinceAssign = $assignDate->diffInMonths($nextMonth);
-            $isBillingMonth = ($monthsSinceAssign % $billingCycle) === 0;
-            
-            if ($isBillingMonth) {
-                // Always use custom price if available and is_custom_price is true
-                if ($customerProduct->is_custom_price && $customerProduct->custom_price !== null && $customerProduct->custom_price > 0) {
-                    $subtotal = $customerProduct->custom_price;
-                }
-                // If no custom price is set, subtotal remains 0 (no fallback to calculated price)
-            }
+            // Calculate subtotal using the CustomerProduct method
+            $subtotal = $customerProduct->getSubtotalForMonth($nextMonth);
             
             $nextInvoice = Invoice::create([
                 'cp_id' => $this->cp_id,
@@ -804,9 +793,8 @@ class Invoice extends Model
             return $existingInvoice;
         }
         
-        // Calculate subtotal
-        $product = $customerProduct->product;
-        $subtotal = $product->monthly_price * $billingCycle;
+        // Calculate subtotal using the CustomerProduct method
+        $subtotal = $customerProduct->getSubtotalForMonth($nextMonth);
         
         // Previous due is any unpaid amount from current invoice
         $previousDue = $currentInvoice->status === self::STATUS_CONFIRMED ? $currentInvoice->next_due : 0;
@@ -946,19 +934,8 @@ class Invoice extends Model
         $monthsSinceAssign = $assignDate->diffInMonths($monthDate);
         $isBillingMonth = ($monthsSinceAssign % $customerProduct->billing_cycle_months) === 0;
         
-        // Calculate subtotal
-        $subtotal = 0;
-        if ($isBillingMonth) {
-            // ONLY use custom_price - no calculated price fallback
-
-            if ($customerProduct->is_custom_price && $customerProduct->custom_price !== null && $customerProduct->custom_price > 0) {
-
-                $subtotal = $customerProduct->custom_price;
-
-            }
-
-            // If no custom price is set, don't bill anything (subtotal remains 0)
-        }
+        // Calculate subtotal using the CustomerProduct method
+        $subtotal = $customerProduct->getSubtotalForMonth($monthDate);
         
         // Get previous due amount
         $previousDue = self::where('cp_id', $cpId)
