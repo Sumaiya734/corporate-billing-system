@@ -45,10 +45,10 @@
 
 <!-- Statistics Cards -->
 <div class="row mb-4">
-    <div class="col-xl-3 col-md-6">
-        <div class="card bg-primary text-white mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start flex-grow-1">
                     <div>
                         <div class="text-xs font-weight-bold text-uppercase mb-1">Total Active Customers</div>
                         <div class="h5 mb-0">{{ $totalActiveCustomers ?? 0 }}</div>
@@ -60,10 +60,10 @@
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card bg-success text-white mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start flex-grow-1">
                     <div>
                         <div class="text-xs font-weight-bold text-uppercase mb-1">This Month Revenue</div>
                         <div class="h5 mb-0">৳ {{ number_format($currentMonthRevenue ?? 0, 0) }}</div>
@@ -75,10 +75,10 @@
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card bg-warning text-white mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card bg-warning text-white h-100">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start flex-grow-1">
                     <div>
                         <div class="text-xs font-weight-bold text-uppercase mb-1">Pending Payments</div>
                         <div class="h5 mb-0">৳ {{ number_format($totalPendingAmount ?? 0, 0) }}</div>
@@ -90,10 +90,10 @@
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card bg-info text-white mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start flex-grow-1">
                     <div>
                         <div class="text-xs font-weight-bold text-uppercase mb-1">Total Invoices</div>
                         <div class="h5 mb-0">{{ $totalInvoicesCount ?? 0 }}</div>
@@ -304,31 +304,7 @@
                     @endif
                     @endforeach
                 </tbody>
-                <tfoot class="table-light">
-                    <tr class="fw-bold">
-                        <td colspan="2" class="text-end">TOTALS:</td>
-                        <td class="text-dark">
-                            ৳ {{ number_format($monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('total_amount'), 0) }}
-                        </td>
-                        <td class="text-success">
-                            ৳ {{ number_format($monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('received_amount'), 0) }}
-                        </td>
-                        <td class="text-danger">
-                            ৳ {{ number_format($monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('due_amount'), 0) }}
-                        </td>
-                        <td>
-                            @php
-                                $totalCollected = $monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('received_amount');
-                                $totalBilled = $monthlySummary->where('is_future_month', false)->where('total_customers', '>', 0)->sum('total_amount');
-                                $collectionRate = $totalBilled > 0 ? ($totalCollected / $totalBilled) * 100 : 0;
-                            @endphp
-                            <span class="badge bg-{{ $collectionRate >= 80 ? 'success' : ($collectionRate >= 50 ? 'warning' : 'danger') }}">
-                                {{ number_format($collectionRate, 1) }}% Collected
-                            </span>
-                        </td>
-                        <td colspan="2"></td>
-                    </tr>
-                </tfoot>
+                
             </table>
         </div>
     </div>
@@ -353,39 +329,39 @@
 
 <!-- Quick Stats Row -->
 <div class="row mt-4">
-    <div class="col-md-3">
-        <div class="card border-left-primary border-left-3">
-            <div class="card-body">
+    <div class="col-md-3 mb-4">
+        <div class="card border-left-primary border-left-3 h-100">
+            <div class="card-body d-flex flex-column">
                 <div class="text-muted small text-uppercase">Total Invoiced</div>
                 <div class="h4 mb-0">৳ {{ number_format($totalInvoiceAmount ?? 0, 0) }}</div>
-                <small class="text-muted">{{ number_format($totalInvoicesCount ?? 0) }} invoices</small>
+                <small class="text-muted mt-auto">{{ number_format($totalInvoicesCount ?? 0) }} invoices</small>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card border-left-success border-left-3">
-            <div class="card-body">
+    <div class="col-md-3 mb-4">
+        <div class="card border-left-success border-left-3 h-100">
+            <div class="card-body d-flex flex-column">
                 <div class="text-muted small text-uppercase">Total Collected</div>
                 <div class="h4 mb-0">৳ {{ number_format($totalReceivedAmount ?? 0, 0) }}</div>
-                <small class="text-muted">{{ number_format($totalPaymentsCount ?? 0) }} payments</small>
+                <small class="text-muted mt-auto">{{ number_format($totalPaymentsCount ?? 0) }} payments</small>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card border-left-info border-left-3">
-            <div class="card-body">
+    <div class="col-md-3 mb-4">
+        <div class="card border-left-info border-left-3 h-100">
+            <div class="card-body d-flex flex-column">
                 <div class="text-muted small text-uppercase">Collection Rate</div>
                 <div class="h4 mb-0">{{ number_format($collectionRate ?? 0, 1) }}%</div>
-                <small class="text-muted">of total invoiced amount</small>
+                <small class="text-muted mt-auto">of total invoiced amount</small>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card border-left-danger border-left-3">
-            <div class="card-body">
+    <div class="col-md-3 mb-4">
+        <div class="card border-left-danger border-left-3 h-100">
+            <div class="card-body d-flex flex-column">
                 <div class="text-muted small text-uppercase">Outstanding</div>
                 <div class="h4 mb-0">৳ {{ number_format($totalPendingAmount ?? 0, 0) }}</div>
-                <small class="text-muted">across all months</small>
+                <small class="text-muted mt-auto">across all months</small>
             </div>
         </div>
     </div>
@@ -699,6 +675,16 @@
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         margin-bottom: 24px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card.h-100 {
+        height: 100%;
+    }
+
+    .card-body.d-flex.flex-column {
+        flex: 1 1 auto;
     }
 
     .card:hover {

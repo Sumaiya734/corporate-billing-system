@@ -116,7 +116,7 @@ class BillingController extends Controller
             ]);
 
             // Attach products to invoice
-            $this->attachproductsToInvoice($invoice, $request->regular_products, $request->special_products);
+            $this->attachproductsToInvoice($invoice, $request->regular_products, $request->specialproducts);
 
             return redirect()->route('admin.billing.view-bill', $invoice->invoice_id)
                 ->with('success', 'Bill generated successfully for ' . $customer->name);
@@ -1145,8 +1145,8 @@ class BillingController extends Controller
             // Calculate this month's charge based on billing cycle
             $subtotal = $this->calculateMonthlyCharge($customerProduct, $monthDate);
             
-            // Get ALL previous unpaid dues (including partial payments)
-            $previousDue = $this->getAllPreviousDue($customer->cp_id, $monthDate);
+            // Get ONLY LAST MONTH'S remaining due, not all previous dues
+            $previousDue = $this->getLastMonthDue($customer->cp_id, $monthDate);
             
             // Calculate total amount
             $totalAmount = $subtotal + $previousDue;
@@ -1226,17 +1226,24 @@ class BillingController extends Controller
     }
     
     /**
-     * Get ALL previous unpaid dues (not just last month)
+     * Get LAST MONTH'S due only (FIXED VERSION)
      */
-    private function getAllPreviousDue($cpId, Carbon $currentMonth)
+    private function getLastMonthDue($cpId, Carbon $currentMonth)
     {
-        $previousDue = Invoice::where('cp_id', $cpId)
-            ->where('issue_date', '<', $currentMonth->startOfMonth())
+        $previousMonth = $currentMonth->copy()->subMonth();
+        
+        $lastMonthInvoice = Invoice::where('cp_id', $cpId)
+            ->whereYear('issue_date', $previousMonth->year)
+            ->whereMonth('issue_date', $previousMonth->month)
             ->whereIn('status', ['unpaid', 'partial'])
             ->where('next_due', '>', 0)
-            ->sum('next_due');
+            ->first();
         
-        return $previousDue;
+        if ($lastMonthInvoice) {
+            return $lastMonthInvoice->next_due;
+        }
+        
+        return 0;
     }
     
     /**
@@ -1291,7 +1298,8 @@ class BillingController extends Controller
         }
         
         if ($previousDue > 0) {
-            $notes[] = "Previous Due Carried Forward: ৳" . number_format($previousDue, 2);
+            $previousMonth = $monthDate->copy()->subMonth()->format('F Y');
+            $notes[] = "Previous Due from {$previousMonth}: ৳" . number_format($previousDue, 2);
         }
         
         return implode(' | ', $notes);
@@ -1845,7 +1853,52 @@ class BillingController extends Controller
     }
     
     /**
-     * Carry forward remaining due amount to the next billing month
+     * NEW METHOD: Close Month and Carry Forward Due
+     */
+    public function closeMonth(Request $request)
+    {
+        try {
+            $request->validate([
+                'month' => 'required|date_format:Y-m'
+            ]);
+            
+            $month = $request->month;
+            $monthDate = Carbon::createFromFormat('Y-m', $month);
+            
+            // Get all invoices for this month
+            $invoices = Invoice::with('customerProduct')
+                ->whereYear('issue_date', $monthDate->year)
+                ->whereMonth('issue_date', $monthDate->month)
+                ->get();
+            
+            $carriedForwardCount = 0;
+            
+            foreach ($invoices as $invoice) {
+                // Check if invoice has remaining due
+                if ($invoice->next_due > 0 && in_array($invoice->status, ['unpaid', 'partial'])) {
+                    // Carry forward to next month
+                    $this->carryForwardDueToNextMonth($invoice, $invoice->next_due);
+                    $carriedForwardCount++;
+                }
+            }
+            
+            // Mark month as closed (you might want to create a separate table for this)
+            // For now, we'll just update the invoices
+            Invoice::whereYear('issue_date', $monthDate->year)
+                ->whereMonth('issue_date', $monthDate->month)
+                ->update(['is_month_closed' => 1]);
+            
+            return redirect()->route('admin.billing.monthly-bills', ['month' => $month])
+                ->with('success', "Month closed successfully. $carriedForwardCount due(s) carried forward to next month.");
+                
+        } catch (\Exception $e) {
+            Log::error('Close month error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to close month: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Carry forward remaining due amount to the next billing month (IMPROVED VERSION)
      */
     private function carryForwardDueToNextMonth($invoice, $remainingDue)
     {
@@ -1874,36 +1927,56 @@ class BillingController extends Controller
             ->first();
             
         if ($nextMonthInvoice) {
-            // Update existing next month invoice with carried forward amount
-            $newPreviousDue = $remainingDue;
-            $newTotalAmount = $nextMonthInvoice->subtotal + $newPreviousDue;
-            $newNextDue = max(0, $newTotalAmount - $nextMonthInvoice->received_amount);
-            
-            // Update status based on new amounts
-            $newStatus = 'unpaid';
-            if ($nextMonthInvoice->received_amount >= $newTotalAmount) {
-                $newStatus = 'paid';
-            } elseif ($nextMonthInvoice->received_amount > 0) {
-                $newStatus = 'partial';
+            // FIX: Check if due is already included in previous_due to avoid double counting
+            if ($nextMonthInvoice->previous_due >= $remainingDue) {
+                // Already included, no need to add again
+                Log::info('Due already carried forward', [
+                    'invoice_id' => $invoice->invoice_id,
+                    'next_invoice_id' => $nextMonthInvoice->invoice_id,
+                    'existing_previous_due' => $nextMonthInvoice->previous_due,
+                    'remaining_due' => $remainingDue
+                ]);
+                return $nextMonthInvoice;
             }
             
-            $nextMonthInvoice->update([
-                'previous_due' => $newPreviousDue,
-                'total_amount' => $newTotalAmount,
-                'next_due' => $newNextDue,
-                'status' => $newStatus,
-                'notes' => ($nextMonthInvoice->notes ?? '') . "\n[" . now()->format('Y-m-d H:i:s') . "] Carried forward ৳" . number_format($remainingDue, 2) . " from previous invoice #" . $invoice->invoice_number
-            ]);
+            // Calculate the difference that needs to be added
+            $dueToAdd = $remainingDue - $nextMonthInvoice->previous_due;
             
-            Log::info('Updated existing next month invoice with carried forward amount', [
-                'original_invoice_id' => $invoice->invoice_id,
-                'next_invoice_id' => $nextMonthInvoice->invoice_id,
-                'amount_carried_forward' => $remainingDue
-            ]);
+            if ($dueToAdd > 0) {
+                $newPreviousDue = $nextMonthInvoice->previous_due + $dueToAdd;
+                $newTotalAmount = $nextMonthInvoice->subtotal + $newPreviousDue;
+                $newNextDue = max(0, $newTotalAmount - $nextMonthInvoice->received_amount);
+                
+                // Update status based on new amounts
+                $newStatus = $nextMonthInvoice->status;
+                if ($nextMonthInvoice->received_amount >= $newTotalAmount) {
+                    $newStatus = 'paid';
+                } elseif ($nextMonthInvoice->received_amount > 0) {
+                    $newStatus = 'partial';
+                } elseif ($newNextDue > 0) {
+                    $newStatus = 'unpaid';
+                }
+                
+                $nextMonthInvoice->update([
+                    'previous_due' => $newPreviousDue,
+                    'total_amount' => $newTotalAmount,
+                    'next_due' => $newNextDue,
+                    'status' => $newStatus,
+                    'notes' => ($nextMonthInvoice->notes ?? '') . "\n[" . now()->format('Y-m-d H:i:s') . "] Added ৳" . number_format($dueToAdd, 2) . " carried forward from invoice #" . $invoice->invoice_number
+                ]);
+                
+                Log::info('Updated existing next month invoice with additional carried forward amount', [
+                    'original_invoice_id' => $invoice->invoice_id,
+                    'next_invoice_id' => $nextMonthInvoice->invoice_id,
+                    'amount_added' => $dueToAdd,
+                    'total_previous_due_now' => $newPreviousDue
+                ]);
+            }
             
             return $nextMonthInvoice;
         } else {
-            // Create a new invoice for the next month with the carried forward amount
+            // Create a new invoice for the next month with ONLY the carried forward amount
+            // No new charges will be added here - they will be added when generating invoices for next month
             $nextMonthInvoice = Invoice::create([
                 'invoice_number' => $this->generateInvoiceNumber(),
                 'cp_id' => $customerProduct->cp_id,
@@ -1917,11 +1990,11 @@ class BillingController extends Controller
                 'received_amount' => 0.00,
                 'next_due' => $remainingDue,
                 'status' => 'unpaid',
-                'notes' => 'Auto-generated for carry-forward of ৳' . number_format($remainingDue, 2) . " from previous invoice #" . $invoice->invoice_number . "\n[" . now()->format('Y-m-d H:i:s') . "] Carried forward from previous invoice",
+                'notes' => 'Carry-forward only: ৳' . number_format($remainingDue, 2) . " from invoice #" . $invoice->invoice_number . "\n[" . now()->format('Y-m-d H:i:s') . "] Carried forward from previous month",
                 'created_by' => Auth::id() ?? 1
             ]);
             
-            Log::info('Created new invoice for next month with carried forward amount', [
+            Log::info('Created new carry-forward invoice for next month', [
                 'original_invoice_id' => $invoice->invoice_id,
                 'new_invoice_id' => $nextMonthInvoice->invoice_id,
                 'amount_carried_forward' => $remainingDue

@@ -184,9 +184,8 @@ class MonthlyBillController extends Controller
 
         // Add new charges only in billing months
         if ($isBillingMonth) {
-            // Get the subtotal or custom_price directly from customer product
-            // Use custom_price if available, otherwise use the standard subtotal calculation
-            if ($customerProduct->is_custom_price && $customerProduct->custom_price > 0) {
+            // ✅ FIXED: Use custom_price if available (always check custom_price > 0)
+            if ($customerProduct->custom_price > 0) {
                 $subtotal = $customerProduct->custom_price;
             } else {
                 // Get the original subtotal from the first invoice or use customer product subtotal
@@ -373,7 +372,7 @@ class MonthlyBillController extends Controller
                 'c.email',
                 'c.phone',
                 DB::raw('SUM(p.monthly_price * cp.billing_cycle_months) as total_product_amount'),
-                DB::raw('GROUP_CONCAT(CONCAT(p.p_id, ":", p.monthly_price, ":", cp.billing_cycle_months, ":", cp.cp_id)) as product_details')
+                DB::raw('GROUP_CONCAT(CONCAT(p.p_id, ":", p.monthly_price, ":", cp.billing_cycle_months, ":", cp.cp_id, ":", COALESCE(cp.custom_price, 0))) as product_details')
             )
             ->join('customer_to_products as cp', 'c.c_id', '=', 'cp.c_id')
             ->join('products as p', 'cp.p_id', '=', 'p.p_id')
@@ -392,13 +391,14 @@ class MonthlyBillController extends Controller
                     foreach ($products as $product) {
                         if (strpos($product, ':') !== false) {
                             $productParts = explode(':', $product);
-                            if (count($productParts) >= 4) {
-                                list($p_id, $price, $cycle, $cp_id) = $productParts;
+                            if (count($productParts) >= 5) {
+                                list($p_id, $price, $cycle, $cp_id, $custom_price) = $productParts;
                                 $productDetails[] = [
                                     'p_id' => $p_id,
                                     'cp_id' => $cp_id,
                                     'monthly_price' => $price,
-                                    'billing_cycle_months' => $cycle
+                                    'billing_cycle_months' => $cycle,
+                                    'custom_price' => $custom_price > 0 ? $custom_price : 0
                                 ];
                             }
                         }
@@ -477,10 +477,6 @@ class MonthlyBillController extends Controller
         }
     }
 
-
-
-
-
     /**
      * Create separate monthly invoices for each product of a customer (respecting billing cycles)
      * Returns the count of invoices created
@@ -488,45 +484,50 @@ class MonthlyBillController extends Controller
     private function createCustomerMonthlyInvoice($customer, Carbon $monthDate)
     {
         $invoicesCreated = 0;
-
-        // Create separate invoice for each product
         foreach (($customer->product_details ?? []) as $product) {
             // Check if invoice already exists for this product and month
             $existingInvoice = Invoice::where('cp_id', $product['cp_id'])
                 ->whereYear('issue_date', $monthDate->year)
                 ->whereMonth('issue_date', $monthDate->month)
                 ->first();
-
             if ($existingInvoice) {
-                continue; // Skip if invoice already exists for this product
+                continue;
             }
 
-            // Check if this customer should be billed for this product in this month based on billing cycle
+            // ✅ Load full CustomerProduct model
+            $customerProduct = CustomerProduct::with('product')->find($product['cp_id']);
+            if (!$customerProduct || !$customerProduct->product) {
+                continue;
+            }
+
+            // Check if this is a billing month for this product
             $shouldBillThisMonth = $this->shouldCustomerBeBilledForProductThisMonth(
-                $product['cp_id'],
-                $product['billing_cycle_months'],
+                $customerProduct->cp_id,
+                $customerProduct->billing_cycle_months,
                 $monthDate
             );
 
-            // Only calculate product amount if customer should be billed this month
             $productAmount = 0;
             if ($shouldBillThisMonth) {
-                $productAmount = $product['monthly_price'] * $product['billing_cycle_months'];
+                // ✅ FIXED: Always check custom_price first (since is_custom_price column doesn't exist)
+                if ($customerProduct->custom_price > 0) {
+                    $productAmount = $customerProduct->custom_price;
+                } else {
+                    $productAmount = $customerProduct->product->monthly_price * $customerProduct->billing_cycle_months;
+                }
             }
 
-            // Get previous due amount from unpaid invoices for THIS SPECIFIC PRODUCT
-            // This includes ALL unpaid amounts, not just from immediately previous months
-            $previousDue = Invoice::where('cp_id', $product['cp_id'])
+            // Get previous due from ALL unpaid invoices for this product
+            $previousDue = Invoice::where('cp_id', $customerProduct->cp_id)
                 ->where('status', '!=', 'paid')
                 ->where('next_due', '>', 0)
                 ->sum('next_due');
 
             $totalAmount = $productAmount + $previousDue;
 
-            // Always create invoice for active customers to ensure visibility in all months
-            // Even if there's no current billing or carried forward amount
+            // Create invoice
             $invoice = Invoice::create([
-                'cp_id' => $product['cp_id'],
+                'cp_id' => $customerProduct->cp_id,
                 'issue_date' => $monthDate->format('Y-m-d'),
                 'previous_due' => $previousDue,
                 'subtotal' => $productAmount,
@@ -534,17 +535,14 @@ class MonthlyBillController extends Controller
                 'received_amount' => 0,
                 'next_due' => $totalAmount,
                 'status' => 'unpaid',
-                'notes' => $this->generateBillingNotesForProduct($customer, $product, $monthDate, $previousDue),
+                'notes' => $this->generateBillingNotesForProduct($customer, $customerProduct, $monthDate, $previousDue),
                 'created_by' => \Illuminate\Support\Facades\Auth::id()
             ]);
-            // Invoice number is auto-generated by the model based on issue_date
 
             $invoicesCreated++;
-
-            Log::info("Created invoice {$invoice->invoice_number} for customer {$customer->name} - Product ID: {$product['p_id']} with amount ৳{$totalAmount}");
+            Log::info("Created invoice {$invoice->invoice_number} for customer {$customer->name} - Product: {$customerProduct->product->name} with amount à§³{$totalAmount}");
         }
-
-        return $invoicesCreated; // Return count of invoices created
+        return $invoicesCreated;
     }
 
     /**
@@ -586,47 +584,21 @@ class MonthlyBillController extends Controller
     /**
      * Generate billing notes for a specific product
      */
-    private function generateBillingNotesForProduct($customer, $product, Carbon $monthDate, $previousDue)
+    private function generateBillingNotesForProduct($customer, $customerProduct, Carbon $monthDate, $previousDue)
     {
-        $cycleText = $this->getBillingCycleText($product['billing_cycle_months']);
-        $baseNote = "Auto-generated: {$cycleText} billing for {$product['billing_cycle_months']} month(s) - Due for " . $monthDate->format('F Y');
+        $cycleText = $this->getBillingCycleText($customerProduct->billing_cycle_months);
 
+        // ✅ Always check custom_price > 0 for custom price
+        if ($customerProduct->custom_price > 0) {
+            $priceInfo = "Custom price: à§³" . number_format($customerProduct->custom_price, 2);
+        } else {
+            $priceInfo = "Standard: à§³" . number_format($customerProduct->product->monthly_price * $customerProduct->billing_cycle_months, 2);
+        }
+
+        $baseNote = "Auto-generated: {$cycleText} billing - {$priceInfo} for " . $monthDate->format('F Y');
         if ($previousDue > 0) {
-            $baseNote .= " (Includes ৳" . number_format($previousDue, 2) . " previous due)";
+            $baseNote .= " (Includes à§³" . number_format($previousDue, 2) . " previous due)";
         }
-
-        return $baseNote;
-    }
-
-    /**
-     * Generate billing notes based on billing cycles
-     */
-    private function generateBillingNotes($customer, Carbon $monthDate)
-    {
-        $notes = [];
-
-        foreach (($customer->product_details ?? []) as $product) {
-            $cycleText = $this->getBillingCycleText($product['billing_cycle_months']);
-            $notes[] = "{$cycleText} billing for {$product['billing_cycle_months']} month(s)";
-        }
-
-        $baseNote = 'Auto-generated: ' . implode(', ', $notes) . ' - Due for ' . $monthDate->format('F Y');
-
-        // Add previous due info if any
-        // FIXED: Use cp_id instead of c_id since Invoice model doesn't have c_id column
-        $previousDue = 0;
-        foreach (($customer->product_details ?? []) as $product) {
-            $productPreviousDue = Invoice::where('cp_id', $product['cp_id'])
-                ->where('status', '!=', 'paid')
-                ->where('next_due', '>', 0)
-                ->sum('next_due');
-            $previousDue += $productPreviousDue;
-        }
-
-        if ($previousDue > 0) {
-            $baseNote .= " (Includes ৳" . number_format($previousDue, 2) . " previous due)";
-        }
-
         return $baseNote;
     }
 
@@ -836,8 +808,6 @@ class MonthlyBillController extends Controller
         }
     }
 
-
-
     /**
      * Get invoice details for modal view
      */
@@ -866,7 +836,7 @@ class MonthlyBillController extends Controller
     }
 
     /**
-     * Close billing month and carry forward all outstanding dues--2
+     * Close billing month and carry forward all outstanding dues
      */
     public function closeMonth(Request $request)
     {
@@ -961,9 +931,14 @@ class MonthlyBillController extends Controller
                             $monthsSinceAssign = $assignDate->diffInMonths($nextMonth);
                             $isBillingMonth = ($monthsSinceAssign % ($customerProduct->billing_cycle_months ?? 1)) === 0;
 
+                            // ✅ FIXED: Use custom_price if available for next billing month
                             $newSubtotal = 0;
                             if ($isBillingMonth) {
-                                $newSubtotal = $product->monthly_price * ($customerProduct->billing_cycle_months ?? 1);
+                                if ($customerProduct->custom_price > 0) {
+                                    $newSubtotal = $customerProduct->custom_price;
+                                } else {
+                                    $newSubtotal = $product->monthly_price * ($customerProduct->billing_cycle_months ?? 1);
+                                }
                             }
 
                             $newTotalAmount = $newSubtotal + $dueAmount;
@@ -986,13 +961,13 @@ class MonthlyBillController extends Controller
                     $closedNote .= " Due amount of ৳" . number_format($dueAmount, 0) . " carried forward to next billing cycle.";
                     $totalCarriedForward += $dueAmount;
                     $affectedInvoices++;
-                    
+
                     // Update current invoice - keep the correct status based on payment
                     $currentStatus = 'unpaid';
                     if ($invoice->received_amount > 0) {
                         $currentStatus = ($invoice->received_amount >= $invoice->total_amount) ? 'paid' : 'partial';
                     }
-                    
+
                     $invoice->update([
                         'status' => $currentStatus, // Preserve correct status instead of forcing 'paid'
                         'notes' => ($invoice->notes ?? '') . $closedNote,
@@ -1010,7 +985,8 @@ class MonthlyBillController extends Controller
                         'closed_at' => now(),
                         'closed_by' => \Illuminate\Support\Facades\Auth::id()
                     ]);
-                }            }
+                }
+            }
 
             // Create or update billing period record
             BillingPeriod::updateOrCreate(
@@ -1158,9 +1134,6 @@ class MonthlyBillController extends Controller
     /**
      * Confirm user payment and close their month individually - FIXED VERSION
      */
-    /**
-     * Confirm user payment and close their month individually - FIXED VERSION--002
-     */
     public function confirmUserPayment(Request $request)
     {
         $request->validate([
@@ -1228,9 +1201,14 @@ class MonthlyBillController extends Controller
                         $monthsSinceAssign = $assignDate->diffInMonths($nextMonth);
                         $isBillingMonth = ($monthsSinceAssign % ($customerProduct->billing_cycle_months ?? 1)) === 0;
 
+                        // ✅ FIXED: Use custom_price if available for next billing month
                         $newSubtotal = 0;
                         if ($isBillingMonth) {
-                            $newSubtotal = $product->monthly_price * ($customerProduct->billing_cycle_months ?? 1);
+                            if ($customerProduct->custom_price > 0) {
+                                $newSubtotal = $customerProduct->custom_price;
+                            } else {
+                                $newSubtotal = $product->monthly_price * ($customerProduct->billing_cycle_months ?? 1);
+                            }
                         }
 
                         $newTotalAmount = $newSubtotal + $dueAmount;
@@ -1277,7 +1255,6 @@ class MonthlyBillController extends Controller
             ], 500);
         }
     }
-
 
     /**
      * Propagate carry-forward data to all months in the current billing cycle
@@ -1453,11 +1430,12 @@ class MonthlyBillController extends Controller
                         'product_name' => $cp->product->name,
                         'monthly_price' => $cp->product->monthly_price,
                         'billing_cycle' => $cp->billing_cycle_months,
-                        'total_amount' => $cp->product->monthly_price * $cp->billing_cycle_months
+                        'custom_price' => $cp->custom_price > 0 ? $cp->custom_price : 0, // ✅ Added custom_price
+                        'total_amount' => $cp->custom_price > 0 ? $cp->custom_price : ($cp->product->monthly_price * $cp->billing_cycle_months)
                     ];
                 }),
                 'total_monthly' => $customer->customerproducts->sum(function ($cp) {
-                    return $cp->product->monthly_price;
+                    return $cp->custom_price > 0 ? $cp->custom_price : $cp->product->monthly_price;
                 })
             ]);
         } catch (\Exception $e) {
@@ -1503,8 +1481,6 @@ class MonthlyBillController extends Controller
             return redirect()->back()->with('error', 'Failed to process request: ' . $e->getMessage());
         }
     }
-
-
 
     /**
      * Bulk update invoice status
@@ -1809,7 +1785,12 @@ class MonthlyBillController extends Controller
     private function createSingleProductInvoice($customer, $product, Carbon $monthDate)
     {
         try {
-            $productAmount = $product['monthly_price'] * $product['billing_cycle_months'];
+            // ✅ FIXED: Use custom_price if available
+            if ($product['custom_price'] > 0) {
+                $productAmount = $product['custom_price'];
+            } else {
+                $productAmount = $product['monthly_price'] * $product['billing_cycle_months'];
+            }
 
             // Get previous due amount from unpaid invoices for THIS SPECIFIC PRODUCT
             $previousDue = Invoice::where('cp_id', $product['cp_id'])
@@ -1828,7 +1809,7 @@ class MonthlyBillController extends Controller
                 'received_amount' => 0,
                 'next_due' => $totalAmount,
                 'status' => 'unpaid',
-                'notes' => $this->generateBillingNotesForProduct($customer, $product, $monthDate, $previousDue),
+                'notes' => $this->generateBillingNotesForSingleProduct($customer, $product, $monthDate, $previousDue),
                 'created_by' => \Illuminate\Support\Facades\Auth::id()
             ]);
 
@@ -1840,6 +1821,28 @@ class MonthlyBillController extends Controller
             throw $e;
         }
     }
+
+    /**
+     * Generate billing notes for single product
+     */
+    private function generateBillingNotesForSingleProduct($customer, $product, Carbon $monthDate, $previousDue)
+    {
+        $cycleText = $this->getBillingCycleText($product['billing_cycle_months']);
+
+        // ✅ Check custom_price for single product
+        if ($product['custom_price'] > 0) {
+            $priceInfo = "Custom price: à§³" . number_format($product['custom_price'], 2);
+        } else {
+            $priceInfo = "Standard: à§³" . number_format($product['monthly_price'] * $product['billing_cycle_months'], 2);
+        }
+
+        $baseNote = "Auto-generated: {$cycleText} billing - {$priceInfo} for " . $monthDate->format('F Y');
+        if ($previousDue > 0) {
+            $baseNote .= " (Includes à§³" . number_format($previousDue, 2) . " previous due)";
+        }
+        return $baseNote;
+    }
+
     private function createRollingInvoiceForProduct($customer, $product, Carbon $monthDate)
     {
         // Check if this is a billing month
@@ -1884,7 +1887,7 @@ class MonthlyBillController extends Controller
                 'c.customer_id',
                 'c.email',
                 'c.phone',
-                DB::raw('GROUP_CONCAT(CONCAT(p.p_id, ":", p.monthly_price, ":", cp.billing_cycle_months, ":", cp.cp_id)) as product_details')
+                DB::raw('GROUP_CONCAT(CONCAT(p.p_id, ":", p.monthly_price, ":", cp.billing_cycle_months, ":", cp.cp_id, ":", COALESCE(cp.custom_price, 0))) as product_details')
             )
             ->join('customer_to_products as cp', 'c.c_id', '=', 'cp.c_id')
             ->join('products as p', 'cp.p_id', '=', 'p.p_id')
@@ -1904,13 +1907,14 @@ class MonthlyBillController extends Controller
                     foreach ($products as $product) {
                         if (strpos($product, ':') !== false) {
                             $productParts = explode(':', $product);
-                            if (count($productParts) >= 4) {
-                                list($p_id, $price, $cycle, $cp_id) = $productParts;
+                            if (count($productParts) >= 5) {
+                                list($p_id, $price, $cycle, $cp_id, $custom_price) = $productParts;
                                 $productDetails[] = [
                                     'p_id' => $p_id,
                                     'cp_id' => $cp_id,
                                     'monthly_price' => $price,
-                                    'billing_cycle_months' => $cycle
+                                    'billing_cycle_months' => $cycle,
+                                    'custom_price' => $custom_price > 0 ? $custom_price : 0
                                 ];
                             }
                         }
