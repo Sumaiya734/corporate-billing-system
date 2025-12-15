@@ -25,18 +25,18 @@ class MonthlyBillController extends Controller
         try {
             $monthDate = Carbon::createFromFormat('Y-m', $month);
             $displayMonth = $monthDate->format('F Y');
-
+            
             // Check if it's a future month
             $currentMonth = Carbon::now()->format('Y-m');
             $isFutureMonth = $month > $currentMonth;
-
+            
             // Check if it's the current month
             $isCurrentMonth = $month === $currentMonth;
 
             // Check if this month can be accessed (previous month must be closed)
             $canAccessMonth = BillingPeriod::canAccessMonth($month);
             $isMonthClosed = BillingPeriod::isMonthClosed($month);
-
+            
             // If month cannot be accessed, redirect with error
             if (!$canAccessMonth && !$isCurrentMonth) {
                 $previousMonth = $monthDate->copy()->subMonth()->format('F Y');
@@ -46,68 +46,68 @@ class MonthlyBillController extends Controller
 
             // Get invoices for this specific month (both monthly and rolling invoice system)
             $invoices = Invoice::with([
-                'payments',
-                'customerProduct.product',
+                'payments', 
+                'customerProduct.product', 
                 'customerProduct.customer'
             ])
-                ->whereYear('issue_date', $monthDate->year)
-                ->whereMonth('issue_date', $monthDate->month)
-                ->where('status', '!=', 'converted') // Exclude converted rolling invoices
-                ->orderBy('issue_date', 'desc')
-                ->orderBy('invoice_id', 'desc')
-                ->paginate(20);
-
+            ->whereYear('issue_date', $monthDate->year)
+            ->whereMonth('issue_date', $monthDate->month)
+            ->where('status', '!=', 'converted') // Exclude converted rolling invoices
+            ->orderBy('issue_date', 'desc')
+            ->orderBy('invoice_id', 'desc')
+            ->paginate(20);
+            
             // Transform rolling invoices to show correct amounts for this specific month
             $invoices = $this->transformInvoicesForMonth($invoices, $month);
 
             // Get customers who are due for billing in this month (even if no invoice exists yet)
             $dueCustomers = $this->getDueCustomersForMonth($monthDate);
-
+            
             // Get ALL active customers with products for current month auto-generation
             $allActiveCustomers = $this->getAllActiveCustomersWithProducts($monthDate);
-
+            
             // Automatically generate invoices for ALL active customers if it's the current month and some invoices are missing
             if ($isCurrentMonth && !$isFutureMonth && $allActiveCustomers->count() > $invoices->total()) {
                 // Only generate invoices if there are more active customers than existing invoices
                 $this->autoGenerateMissingInvoicesForAll($monthDate, $allActiveCustomers, $invoices);
-
+                
                 // Refresh invoices after auto-generation - get monthly invoices for this specific month
                 $invoices = Invoice::with([
-                    'payments',
-                    'customerProduct.product',
+                    'payments', 
+                    'customerProduct.product', 
                     'customerProduct.customer'
                 ])
-                    ->whereYear('issue_date', $monthDate->year)
-                    ->whereMonth('issue_date', $monthDate->month)
-                    // Include both rolling and non-rolling invoices
-                    ->where('status', '!=', 'converted') // Exclude converted rolling invoices
-                    ->orderBy('issue_date', 'desc')
-                    ->orderBy('invoice_id', 'desc')
-                    ->paginate(20);
-
+                ->whereYear('issue_date', $monthDate->year)
+                ->whereMonth('issue_date', $monthDate->month)
+                // Include both rolling and non-rolling invoices
+                ->where('status', '!=', 'converted') // Exclude converted rolling invoices
+                ->orderBy('issue_date', 'desc')
+                ->orderBy('invoice_id', 'desc')
+                ->paginate(20);
+                
                 // Refresh due customers after auto-generation
                 $dueCustomers = $this->getDueCustomersForMonth($monthDate);
             }
-
+            
             // Calculate statistics based on actual invoices
             $totalCustomersWithInvoices = $invoices->total();
-
+            
             // Calculate customers with outstanding payments (unpaid + partial)
-            $customersWithDue = $invoices->filter(function ($invoice) {
+            $customersWithDue = $invoices->filter(function($invoice) {
                 return in_array($invoice->status, ['unpaid', 'partial']) && $invoice->next_due > 0.00;
             })->count();
-
+            
             // Calculate fully paid customers
-            $fullyPaidCustomers = $invoices->filter(function ($invoice) {
+            $fullyPaidCustomers = $invoices->filter(function($invoice) {
                 return $invoice->status === 'paid' || $invoice->next_due <= 0.00;
             })->count();
-
+            
             // Update total customers to include due customers without invoices
             $totalDueCustomers = $dueCustomers->count();
-
+            
             // Total customers is customers with outstanding dues
             $totalCustomers = $customersWithDue;
-
+            
             // Calculate historical amounts for this specific month
             $monthlyAmounts = $this->calculateHistoricalAmountsForMonth($month, $invoices);
             $totalBillingAmount = $monthlyAmounts['total_amount'];
@@ -141,6 +141,7 @@ class MonthlyBillController extends Controller
                 'availableMonths' => $availableMonths,
                 'systemSettings' => $systemSettings
             ]);
+
         } catch (\Exception $e) {
             Log::error('Monthly bills error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error loading monthly bills: ' . $e->getMessage());
@@ -154,22 +155,22 @@ class MonthlyBillController extends Controller
     {
         $monthDate = Carbon::createFromFormat('Y-m', $month);
         $assignDate = Carbon::parse($customerProduct->assign_date);
-
+        
         // Check if invoice already exists for this month
         $existingInvoice = Invoice::whereYear('issue_date', $monthDate->year)
             ->whereMonth('issue_date', $monthDate->month)
             ->where('cp_id', $customerProduct->cp_id)
             ->where('is_active_rolling', 0)
             ->first();
-
+        
         if ($existingInvoice) {
             return $existingInvoice; // Already exists
         }
-
+        
         // Calculate if this is a billing month
         $monthsSinceAssign = $assignDate->diffInMonths($monthDate);
         $isBillingMonth = ($monthsSinceAssign % $customerProduct->billing_cycle_months) === 0;
-
+        
         // Get previous month's invoice to carry forward unpaid amount
         $previousMonth = $monthDate->copy()->subMonth();
         $previousInvoice = Invoice::whereYear('issue_date', $previousMonth->year)
@@ -177,15 +178,16 @@ class MonthlyBillController extends Controller
             ->where('cp_id', $customerProduct->cp_id)
             ->where('is_active_rolling', 0)
             ->first();
-
+        
         // Calculate amounts
         $previousDue = $previousInvoice ? $previousInvoice->next_due : 0;
         $subtotal = 0;
 
         // Add new charges only in billing months
         if ($isBillingMonth) {
-            // ✅ FIXED: Use custom_price if available (always check custom_price > 0)
-            if ($customerProduct->custom_price > 0) {
+            // Get the subtotal or custom_price directly from customer product
+            // Use custom_price if available, otherwise use the standard subtotal calculation
+            if ($customerProduct->is_custom_price && $customerProduct->custom_price > 0) {
                 $subtotal = $customerProduct->custom_price;
             } else {
                 // Get the original subtotal from the first invoice or use customer product subtotal
@@ -203,10 +205,10 @@ class MonthlyBillController extends Controller
         }
 
         $totalAmount = $subtotal + $previousDue;
-
+        
         // Generate invoice number
         $invoiceNumber = $this->generateMonthlyInvoiceNumber($month, $customerProduct->c_id);
-
+        
         // Create monthly invoice
         $invoice = Invoice::create([
             'invoice_number' => $invoiceNumber,
@@ -219,14 +221,14 @@ class MonthlyBillController extends Controller
             'next_due' => $totalAmount,
             'status' => 'unpaid',
             'is_active_rolling' => 0, // Monthly invoice
-            'notes' => "Monthly invoice for {$monthDate->format('F Y')} - " .
-                ($isBillingMonth ? "Billing month" : "Carry forward"),
+            'notes' => "Monthly invoice for {$monthDate->format('F Y')} - " . 
+                      ($isBillingMonth ? "Billing month" : "Carry forward"),
             'created_by' => Auth::id() ?? 1
         ]);
-
+        
         return $invoice;
     }
-
+    
     /**
      * Generate monthly invoice number
      */
@@ -235,22 +237,22 @@ class MonthlyBillController extends Controller
         $monthDate = Carbon::createFromFormat('Y-m', $month);
         $year = $monthDate->format('y');
         $monthNum = $monthDate->format('m');
-
+        
         // Format: INV-YY-MM-CID-XXX (e.g., INV-25-03-002-001)
         $prefix = "INV-{$year}-{$monthNum}-" . str_pad($customerId, 3, '0', STR_PAD_LEFT) . "-";
-
+        
         // Find the highest number for this month and customer
         $lastInvoice = Invoice::where('invoice_number', 'like', $prefix . '%')
             ->orderBy('invoice_number', 'desc')
             ->first();
-
+        
         if ($lastInvoice) {
             $lastNumber = (int) substr($lastInvoice->invoice_number, strlen($prefix));
             $nextNumber = $lastNumber + 1;
         } else {
             $nextNumber = 1;
         }
-
+        
         return $prefix . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
     }
 
@@ -262,10 +264,10 @@ class MonthlyBillController extends Controller
         try {
             // Get system settings
             $systemSettings = $this->getSystemSettings();
-
+            
             // Get existing invoice customer IDs
             $existingCustomerIds = $existingInvoices->pluck('cp_id')->toArray();
-
+            
             // Generate invoices for due customers who don't have invoices yet
             $generatedCount = 0;
             foreach ($dueCustomers as $customer) {
@@ -273,7 +275,7 @@ class MonthlyBillController extends Controller
                 if (in_array($customer->c_id, $existingCustomerIds)) {
                     continue;
                 }
-
+                
                 try {
                     // Create new invoice
                     $this->createCustomerMonthlyInvoice($customer, $monthDate);
@@ -282,10 +284,11 @@ class MonthlyBillController extends Controller
                     Log::error("Auto-generation failed for customer {$customer->c_id}: " . $e->getMessage());
                 }
             }
-
+            
             if ($generatedCount > 0) {
                 Log::info("Auto-generated {$generatedCount} invoices for {$monthDate->format('F Y')}");
             }
+            
         } catch (\Exception $e) {
             Log::error('Auto-generate missing invoices error: ' . $e->getMessage());
         }
@@ -299,17 +302,17 @@ class MonthlyBillController extends Controller
         try {
             // Get system settings
             $systemSettings = $this->getSystemSettings();
-
+            
             // Get existing invoice customer product IDs for this specific month
             $existingInvoiceCpIds = $existingInvoices
-                ->filter(function ($invoice) use ($monthDate) {
-                    return $invoice->issue_date
+                ->filter(function($invoice) use ($monthDate) {
+                    return $invoice->issue_date 
                         && \Carbon\Carbon::parse($invoice->issue_date)->year == $monthDate->year
                         && \Carbon\Carbon::parse($invoice->issue_date)->month == $monthDate->month;
                 })
                 ->pluck('cp_id')
                 ->toArray();
-
+            
             // Generate invoices for ALL active customers who don't have invoices for this month yet
             $generatedCount = 0;
             foreach ($allActiveCustomers as $customer) {
@@ -327,7 +330,7 @@ class MonthlyBillController extends Controller
                         }
                     }
                 }
-
+                
                 // Check if any of this customer's products already have invoices for this month
                 $hasInvoiceForThisMonth = false;
                 foreach ($cpIds as $cpId) {
@@ -336,12 +339,12 @@ class MonthlyBillController extends Controller
                         break;
                     }
                 }
-
+                
                 // Skip if invoice already exists for this month
                 if ($hasInvoiceForThisMonth) {
                     continue;
                 }
-
+                
                 try {
                     // Create new invoice
                     $this->createCustomerMonthlyInvoice($customer, $monthDate);
@@ -350,10 +353,11 @@ class MonthlyBillController extends Controller
                     Log::error("Auto-generation failed for customer {$customer->c_id}: " . $e->getMessage());
                 }
             }
-
+            
             if ($generatedCount > 0) {
                 Log::info("Auto-generated {$generatedCount} invoices for ALL customers in {$monthDate->format('F Y')}");
             }
+            
         } catch (\Exception $e) {
             Log::error('Auto-generate missing invoices for ALL customers error: ' . $e->getMessage());
         }
@@ -372,7 +376,7 @@ class MonthlyBillController extends Controller
                 'c.email',
                 'c.phone',
                 DB::raw('SUM(p.monthly_price * cp.billing_cycle_months) as total_product_amount'),
-                DB::raw('GROUP_CONCAT(CONCAT(p.p_id, ":", p.monthly_price, ":", cp.billing_cycle_months, ":", cp.cp_id, ":", COALESCE(cp.custom_price, 0))) as product_details')
+                DB::raw('GROUP_CONCAT(CONCAT(p.p_id, ":", p.monthly_price, ":", cp.billing_cycle_months, ":", cp.cp_id)) as product_details')
             )
             ->join('customer_to_products as cp', 'c.c_id', '=', 'cp.c_id')
             ->join('products as p', 'cp.p_id', '=', 'p.p_id')
@@ -383,7 +387,7 @@ class MonthlyBillController extends Controller
             ->groupBy('c.c_id', 'c.name', 'c.customer_id', 'c.email', 'c.phone')
             ->orderBy('c.name')
             ->get()
-            ->map(function ($customer) {
+            ->map(function($customer) {
                 // Parse product details
                 $productDetails = [];
                 if ($customer->product_details) {
@@ -391,14 +395,13 @@ class MonthlyBillController extends Controller
                     foreach ($products as $product) {
                         if (strpos($product, ':') !== false) {
                             $productParts = explode(':', $product);
-                            if (count($productParts) >= 5) {
-                                list($p_id, $price, $cycle, $cp_id, $custom_price) = $productParts;
+                            if (count($productParts) >= 4) {
+                                list($p_id, $price, $cycle, $cp_id) = $productParts;
                                 $productDetails[] = [
                                     'p_id' => $p_id,
                                     'cp_id' => $cp_id,
                                     'monthly_price' => $price,
-                                    'billing_cycle_months' => $cycle,
-                                    'custom_price' => $custom_price > 0 ? $custom_price : 0
+                                    'billing_cycle_months' => $cycle
                                 ];
                             }
                         }
@@ -442,7 +445,7 @@ class MonthlyBillController extends Controller
                 try {
                     // Create invoices (one per product) - returns count of invoices created
                     $invoicesCreated = $this->createCustomerMonthlyInvoice($customer, $monthDate);
-
+                    
                     if ($invoicesCreated > 0) {
                         $generatedCount += $invoicesCreated;
                     }
@@ -453,7 +456,7 @@ class MonthlyBillController extends Controller
             }
 
             $message = "Generated $generatedCount monthly bills for all active customers in $displayMonth";
-
+            
             if (!empty($errors)) {
                 $message .= " (with " . count($errors) . " errors)";
             }
@@ -467,15 +470,20 @@ class MonthlyBillController extends Controller
                     'warnings' => $errors
                 ]);
             }
-
+            
             return redirect()->route('admin.billing.monthly-bills', $month)
                 ->with('success', $message)
                 ->with('warnings', $errors);
+
         } catch (\Exception $e) {
             Log::error('Generate monthly bills for all error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to generate monthly bills: ' . $e->getMessage());
         }
     }
+
+
+
+
 
     /**
      * Create separate monthly invoices for each product of a customer (respecting billing cycles)
@@ -484,12 +492,15 @@ class MonthlyBillController extends Controller
     private function createCustomerMonthlyInvoice($customer, Carbon $monthDate)
     {
         $invoicesCreated = 0;
+
+        // Create separate invoice for each product
         foreach (($customer->product_details ?? []) as $product) {
             // Check if invoice already exists for this product and month
             $existingInvoice = Invoice::where('cp_id', $product['cp_id'])
                 ->whereYear('issue_date', $monthDate->year)
                 ->whereMonth('issue_date', $monthDate->month)
                 ->first();
+
             if ($existingInvoice) {
                 continue;
             }
@@ -500,32 +511,30 @@ class MonthlyBillController extends Controller
                 continue;
             }
 
-            // Check if this is a billing month for this product
+            // Check if this customer should be billed for this product in this month based on billing cycle
             $shouldBillThisMonth = $this->shouldCustomerBeBilledForProductThisMonth(
-                $customerProduct->cp_id,
-                $customerProduct->billing_cycle_months,
+                $product['cp_id'],
+                $product['billing_cycle_months'],
                 $monthDate
             );
 
+            // Only calculate product amount if customer should be billed this month
             $productAmount = 0;
             if ($shouldBillThisMonth) {
-                // ✅ FIXED: Always check custom_price first (since is_custom_price column doesn't exist)
-                if ($customerProduct->custom_price > 0) {
-                    $productAmount = $customerProduct->custom_price;
-                } else {
-                    $productAmount = $customerProduct->product->monthly_price * $customerProduct->billing_cycle_months;
-                }
+                $productAmount = $product['monthly_price'] * $product['billing_cycle_months'];
             }
 
-            // Get previous due from ALL unpaid invoices for this product
-            $previousDue = Invoice::where('cp_id', $customerProduct->cp_id)
+            // Get previous due amount from unpaid invoices for THIS SPECIFIC PRODUCT
+            // This includes ALL unpaid amounts, not just from immediately previous months
+            $previousDue = Invoice::where('cp_id', $product['cp_id'])
                 ->where('status', '!=', 'paid')
                 ->where('next_due', '>', 0)
                 ->sum('next_due');
-
+            
             $totalAmount = $productAmount + $previousDue;
 
-            // Create invoice
+            // Always create invoice for active customers to ensure visibility in all months
+            // Even if there's no current billing or carried forward amount
             $invoice = Invoice::create([
                 'cp_id' => $customerProduct->cp_id,
                 'issue_date' => $monthDate->format('Y-m-d'),
@@ -538,13 +547,16 @@ class MonthlyBillController extends Controller
                 'notes' => $this->generateBillingNotesForProduct($customer, $customerProduct, $monthDate, $previousDue),
                 'created_by' => \Illuminate\Support\Facades\Auth::id()
             ]);
+            // Invoice number is auto-generated by the model based on issue_date
 
             $invoicesCreated++;
-            Log::info("Created invoice {$invoice->invoice_number} for customer {$customer->name} - Product: {$customerProduct->product->name} with amount à§³{$totalAmount}");
-        }
-        return $invoicesCreated;
-    }
 
+            Log::info("Created invoice {$invoice->invoice_number} for customer {$customer->name} - Product ID: {$product['p_id']} with amount ৳{$totalAmount}");
+        }
+
+        return $invoicesCreated; // Return count of invoices created
+    }
+    
     /**
      * Check if a customer should be billed for a specific product in the given month based on billing cycle
      */
@@ -554,23 +566,23 @@ class MonthlyBillController extends Controller
         $customerProduct = DB::table('customer_to_products')
             ->where('cp_id', $cpId)
             ->first();
-
+            
         if (!$customerProduct) {
             return false;
         }
-
+        
         $assignDate = Carbon::parse($customerProduct->assign_date);
-
+        
         // Check if assigned in this month (advance payment)
         if ($assignDate->year == $monthDate->year && $assignDate->month == $monthDate->month) {
             return true;
         }
-
+        
         // For customers with billing cycles > 1, calculate if this is their billing month
         if ($billingCycleMonths > 1) {
             // Calculate months difference from assign date to billing month
             $monthsDiff = $assignDate->diffInMonths($monthDate);
-
+            
             // Customer is due if the months difference is divisible by billing cycle
             // Also ensure we're not in a month before their start date
             return $monthsDiff >= 0 && $monthsDiff % $billingCycleMonths === 0;
@@ -580,25 +592,51 @@ class MonthlyBillController extends Controller
             return $assignDate->lessThanOrEqualTo($monthDate->endOfMonth());
         }
     }
-
+    
     /**
      * Generate billing notes for a specific product
      */
     private function generateBillingNotesForProduct($customer, $customerProduct, Carbon $monthDate, $previousDue)
     {
-        $cycleText = $this->getBillingCycleText($customerProduct->billing_cycle_months);
+        $cycleText = $this->getBillingCycleText($product['billing_cycle_months']);
+        $baseNote = "Auto-generated: {$cycleText} billing for {$product['billing_cycle_months']} month(s) - Due for " . $monthDate->format('F Y');
 
-        // ✅ Always check custom_price > 0 for custom price
-        if ($customerProduct->custom_price > 0) {
-            $priceInfo = "Custom price: à§³" . number_format($customerProduct->custom_price, 2);
-        } else {
-            $priceInfo = "Standard: à§³" . number_format($customerProduct->product->monthly_price * $customerProduct->billing_cycle_months, 2);
+        if ($previousDue > 0) {
+            $baseNote .= " (Includes ৳" . number_format($previousDue, 2) . " previous due)";
         }
 
-        $baseNote = "Auto-generated: {$cycleText} billing - {$priceInfo} for " . $monthDate->format('F Y');
+        return $baseNote;
+    }
+
+    /**
+     * Generate billing notes based on billing cycles
+     */
+    private function generateBillingNotes($customer, Carbon $monthDate)
+    {
+        $notes = [];
+
+        foreach (($customer->product_details ?? []) as $product) {
+            $cycleText = $this->getBillingCycleText($product['billing_cycle_months']);
+            $notes[] = "{$cycleText} billing for {$product['billing_cycle_months']} month(s)";
+        }
+
+        $baseNote = 'Auto-generated: ' . implode(', ', $notes) . ' - Due for ' . $monthDate->format('F Y');
+
+        // Add previous due info if any
+        // FIXED: Use cp_id instead of c_id since Invoice model doesn't have c_id column
+        $previousDue = 0;
+        foreach (($customer->product_details ?? []) as $product) {
+            $productPreviousDue = Invoice::where('cp_id', $product['cp_id'])
+                ->where('status', '!=', 'paid')
+                ->where('next_due', '>', 0)
+                ->sum('next_due');
+            $previousDue += $productPreviousDue;
+        }
+
         if ($previousDue > 0) {
             $baseNote .= " (Includes à§³" . number_format($previousDue, 2) . " previous due)";
         }
+
         return $baseNote;
     }
 
@@ -607,7 +645,7 @@ class MonthlyBillController extends Controller
      */
     private function getBillingCycleText($months)
     {
-        return match ($months) {
+        return match($months) {
             1 => 'Monthly',
             3 => 'Quarterly',
             6 => 'Semi-Annual',
@@ -631,13 +669,13 @@ class MonthlyBillController extends Controller
     private function getAvailableBillingMonths()
     {
         $months = collect();
-
+        
         // Get the earliest customer product assignment date using DB query
         $earliestAssignment = DB::table('customer_to_products')
             ->whereNotNull('assign_date')
             ->orderBy('assign_date')
             ->first();
-
+            
         if (!$earliestAssignment) {
             // If no assignments, use current month
             $months->push(Carbon::now()->format('Y-m'));
@@ -646,7 +684,7 @@ class MonthlyBillController extends Controller
 
         $startDate = Carbon::parse($earliestAssignment->assign_date)->startOfMonth();
         $currentDate = Carbon::now()->startOfMonth();
-
+        
         // Add all months from earliest assignment to current month
         while ($startDate <= $currentDate) {
             $months->push($startDate->format('Y-m'));
@@ -665,13 +703,13 @@ class MonthlyBillController extends Controller
         $totalAmount = 0;
         $receivedAmount = 0;
         $dueAmount = 0;
-
+        
         // For each invoice, calculate what the amount should be for this specific month
         foreach ($invoices as $invoice) {
             if ($invoice->customerProduct) {
                 // Get the actual subtotal amount from the invoice
                 $subtotalAmount = $invoice->subtotal ?? 0;
-
+                
                 // Calculate what the amounts should be for this specific month
                 $monthlyAmounts = $this->calculateMonthlyAmounts(
                     $invoice->customerProduct->assign_date,
@@ -679,7 +717,7 @@ class MonthlyBillController extends Controller
                     $subtotalAmount,
                     $month
                 );
-
+                
                 if ($monthlyAmounts['total_amount'] > 0) {
                     $totalAmount += $monthlyAmounts['total_amount'];
                     $receivedAmount += 0; // Assuming no payments for now
@@ -687,7 +725,7 @@ class MonthlyBillController extends Controller
                 }
             }
         }
-
+        
         return [
             'total_amount' => $totalAmount,
             'received_amount' => $receivedAmount,
@@ -699,14 +737,13 @@ class MonthlyBillController extends Controller
      * Calculate what the rolling invoice amounts should be for a specific month
      * Based on the proper rolling invoice logic with carry-forward
      */
-    private function calculateMonthlyAmounts($assignDate, $billingCycle, $subtotalAmount, $targetMonth)
-    {
+    private function calculateMonthlyAmounts($assignDate, $billingCycle, $subtotalAmount, $targetMonth) {
         $assignMonth = Carbon::parse($assignDate)->startOfMonth();
         $targetMonthDate = Carbon::createFromFormat('Y-m', $targetMonth)->startOfMonth();
-
+        
         // Calculate months since assignment
         $monthsSinceAssign = $assignMonth->diffInMonths($targetMonthDate);
-
+        
         if ($monthsSinceAssign < 0) {
             // Target month is before assignment
             return [
@@ -717,12 +754,12 @@ class MonthlyBillController extends Controller
                 'cycle_position' => 0
             ];
         }
-
+        
         // Determine if this is a billing cycle month
         $isBillingCycleMonth = ($monthsSinceAssign % $billingCycle) == 0;
         $cycleNumber = floor($monthsSinceAssign / $billingCycle) + 1;
         $cyclePosition = $monthsSinceAssign % $billingCycle;
-
+        
         if ($monthsSinceAssign == 0) {
             // Initial month
             return [
@@ -736,9 +773,12 @@ class MonthlyBillController extends Controller
             // New billing cycle month - ALWAYS add new subtotal + carry forward previous total
             // This ensures continuous billing for ongoing products
             $completedCycles = floor($monthsSinceAssign / $billingCycle);
-            $previousDue = $completedCycles * $subtotalAmount;
+            // Previous due should be based on actual unpaid amounts, not multiplication of cycles
+            // For now, we'll set it to 0 as this method should only calculate theoretical amounts
+            // Actual previous due will be determined from existing invoices
+            $previousDue = 0;
             $totalAmount = $subtotalAmount + $previousDue;
-
+            
             return [
                 'subtotal' => $subtotalAmount,
                 'previous_due' => $previousDue,
@@ -748,12 +788,13 @@ class MonthlyBillController extends Controller
             ];
         } else {
             // Carry forward month - subtotal = 0, previous_due = total_amount
-            $completedCycles = floor($monthsSinceAssign / $billingCycle);
-            $totalAmount = ($completedCycles + 1) * $subtotalAmount;
-
+            // This should be based on actual previous invoices, not calculated theoretically
+            // For now, we'll set appropriate defaults
+            $totalAmount = $subtotalAmount; // In carry-forward months, total should match the base subtotal
+            
             return [
                 'subtotal' => 0,
-                'previous_due' => $totalAmount,
+                'previous_due' => $totalAmount, // This will be adjusted based on actual previous invoices
                 'total_amount' => $totalAmount,
                 'cycle_number' => $cycleNumber,
                 'cycle_position' => $cyclePosition
@@ -797,13 +838,13 @@ class MonthlyBillController extends Controller
 
             return [
                 'fixed_monthly_charge' => isset($settings['fixed_monthly_charge']) ? floatval($settings['fixed_monthly_charge']) : 0.00,
-
+                
             ];
         } catch (\Exception $e) {
             Log::warning('Could not fetch system settings: ' . $e->getMessage());
             return [
                 'fixed_monthly_charge' => 0.00,
-
+                
             ];
         }
     }
@@ -826,6 +867,7 @@ class MonthlyBillController extends Controller
                 'success' => true,
                 'html' => $html
             ]);
+
         } catch (\Exception $e) {
             Log::error('Get invoice details error: ' . $e->getMessage());
             return response()->json([
@@ -868,10 +910,12 @@ class MonthlyBillController extends Controller
                 ]);
             }
 
-            // Get all invoices for this month (excluding already confirmed ones)
+            // Auto-generate invoices for all customers who are due but don't have invoices yet
+            $this->autoGenerateMissingInvoicesBeforeClosing($monthDate);
+
+            // Get all invoices for this month
             $allInvoices = Invoice::whereYear('issue_date', $monthDate->year)
                 ->whereMonth('issue_date', $monthDate->month)
-                ->where('status', '!=', 'confirmed') // Skip already confirmed invoices
                 ->get();
 
             $totalInvoices = $allInvoices->count();
@@ -879,7 +923,7 @@ class MonthlyBillController extends Controller
             $receivedAmount = $allInvoices->sum('received_amount');
 
             // Get invoices with outstanding dues
-            $invoicesWithDues = $allInvoices->filter(function ($invoice) {
+            $invoicesWithDues = $allInvoices->filter(function($invoice) {
                 return $invoice->next_due > 0;
             });
 
@@ -889,10 +933,10 @@ class MonthlyBillController extends Controller
             // Mark all invoices as closed and note the carried forward amount
             foreach ($allInvoices as $invoice) {
                 $dueAmount = $invoice->next_due;
-
+                
                 // Update invoice with closure information
                 $closedNote = "\n[Month Closed: " . now()->format('Y-m-d H:i:s') . " by " . (\Illuminate\Support\Facades\Auth::user()->name ?? 'System') . "]";
-
+                
                 if ($dueAmount > 0) {
                     // Carry forward to next month
                     $nextMonth = Carbon::parse($invoice->issue_date)->addMonth();
@@ -931,14 +975,9 @@ class MonthlyBillController extends Controller
                             $monthsSinceAssign = $assignDate->diffInMonths($nextMonth);
                             $isBillingMonth = ($monthsSinceAssign % ($customerProduct->billing_cycle_months ?? 1)) === 0;
 
-                            // ✅ FIXED: Use custom_price if available for next billing month
                             $newSubtotal = 0;
                             if ($isBillingMonth) {
-                                if ($customerProduct->custom_price > 0) {
-                                    $newSubtotal = $customerProduct->custom_price;
-                                } else {
-                                    $newSubtotal = $product->monthly_price * ($customerProduct->billing_cycle_months ?? 1);
-                                }
+                                $newSubtotal = $product->monthly_price * ($customerProduct->billing_cycle_months ?? 1);
                             }
 
                             $newTotalAmount = $newSubtotal + $dueAmount;
@@ -961,13 +1000,13 @@ class MonthlyBillController extends Controller
                     $closedNote .= " Due amount of ৳" . number_format($dueAmount, 0) . " carried forward to next billing cycle.";
                     $totalCarriedForward += $dueAmount;
                     $affectedInvoices++;
-
+                    
                     // Update current invoice - keep the correct status based on payment
                     $currentStatus = 'unpaid';
                     if ($invoice->received_amount > 0) {
                         $currentStatus = ($invoice->received_amount >= $invoice->total_amount) ? 'paid' : 'partial';
                     }
-
+                    
                     $invoice->update([
                         'status' => $currentStatus, // Preserve correct status instead of forcing 'paid'
                         'notes' => ($invoice->notes ?? '') . $closedNote,
@@ -985,8 +1024,7 @@ class MonthlyBillController extends Controller
                         'closed_at' => now(),
                         'closed_by' => \Illuminate\Support\Facades\Auth::id()
                     ]);
-                }
-            }
+                }            }
 
             // Create or update billing period record
             BillingPeriod::updateOrCreate(
@@ -1017,6 +1055,7 @@ class MonthlyBillController extends Controller
                 'total_invoices' => $totalInvoices,
                 'month' => $displayMonth
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Close month error: ' . $e->getMessage());
@@ -1047,7 +1086,7 @@ class MonthlyBillController extends Controller
             $invoice = Invoice::with('customer')->findOrFail($invoiceId);
             $amount = round(floatval($request->amount)); // Round to whole number
             $dueAmount = round(floatval($invoice->next_due ?? $invoice->total_amount)); // Round to whole number
-
+            
             // Validate amount - must be between 0 and due amount
             if ($amount < 0) {
                 return response()->json([
@@ -1106,7 +1145,7 @@ class MonthlyBillController extends Controller
                 'next_due' => $newDueAmount,
                 'status' => $status
             ]);
-
+            
             // Ensure the invoice amounts are consistent with actual payments
             $invoice->recalculatePaymentAmounts();
 
@@ -1120,10 +1159,11 @@ class MonthlyBillController extends Controller
                 'new_due' => $newDueAmount,
                 'new_received' => $newReceivedAmount
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Record payment error: ' . $e->getMessage());
-
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to record payment: ' . $e->getMessage()
@@ -1150,65 +1190,94 @@ class MonthlyBillController extends Controller
 
             // Mark current invoice as confirmed (NOT paid) and carry forward the due
             $closedNote = "\n[User Confirmed: " . now()->format('Y-m-d H:i:s') . " by " . (\Illuminate\Support\Facades\Auth::user()->name ?? 'System') . "]";
-
+            
             if ($dueAmount > 0) {
                 $closedNote .= " Due amount of ৳" . number_format($dueAmount, 0) . " carried forward to next billing cycle.";
-
+                
                 // Update current invoice - mark as confirmed but keep due amount visible
                 $invoice->update([
                     'status' => 'confirmed', // ✅ New status for confirmed but not fully paid
-                    'next_due' => $dueAmount, // ✅ Carry forward amount
+                    'next_due' => max(0, $invoice->total_amount - $invoice->received_amount), // ✅ Calculate from actual values
                     'notes' => ($invoice->notes ?? '') . $closedNote,
                     'is_closed' => true,
                     'closed_at' => now(),
                     'closed_by' => \Illuminate\Support\Facades\Auth::id()
                 ]);
+                // Recalculate payment amounts to ensure consistency
+                $invoice->recalculatePaymentAmounts();
 
-                // Create or update next billing cycle's invoice with carried forward amount
-                $nextMonth = Carbon::parse($invoice->issue_date)->addMonth(); // Always next month
-
+                // Create or update next month's invoice with carried forward amount
+                $nextMonth = Carbon::parse($invoice->issue_date)->addMonth();
+                
                 $existingNextInvoice = Invoice::where('cp_id', $request->cp_id)
                     ->whereYear('issue_date', $nextMonth->year)
                     ->whereMonth('issue_date', $nextMonth->month)
                     ->first();
 
                 if ($existingNextInvoice) {
-                    // Update existing next month invoice - add carried forward amount to previous_due
-                    $newPreviousDue = $existingNextInvoice->previous_due + $dueAmount;
-                    $newTotalAmount = $existingNextInvoice->subtotal + $newPreviousDue;
-                    $newNextDue = max(0, $newTotalAmount - $existingNextInvoice->received_amount);
-
-                    $existingNextInvoice->update([
-                        'previous_due' => $newPreviousDue,
-                        'total_amount' => $newTotalAmount,
-                        'next_due' => $newNextDue,
-                        'notes' => ($existingNextInvoice->notes ?? '') . "\nAdded ৳" . number_format($dueAmount, 0) . " carried forward from invoice {$invoice->invoice_number}"
-                    ]);
+                    // Check if this carry-forward amount was already added to prevent duplication
+                    $notes = $existingNextInvoice->notes ?? '';
+                    
+                    // More robust duplication check - look for the pattern regardless of formatting
+                    $pattern = '/Added\s*৳\s*[0-9,]+\s*carried\s*forward\s*from\s*invoice\s*' . preg_quote($invoice->invoice_number, '/') . '/i';
+                    $alreadyAdded = preg_match($pattern, $notes) === 1;
+                    
+                    if (!$alreadyAdded) {
+                        // Update existing next month invoice - set previous_due to exactly the carried forward amount
+                        // Preserve the existing subtotal (including custom_price)
+                        $newPreviousDue = $dueAmount;
+                        $newTotalAmount = $existingNextInvoice->subtotal + $newPreviousDue;
+                        $newNextDue = max(0, $newTotalAmount - $existingNextInvoice->received_amount);
+                        
+                        // Update status based on the new amounts
+                        $newStatus = 'unpaid';
+                        if ($newNextDue <= 0) {
+                            $newStatus = 'paid';
+                        } elseif ($existingNextInvoice->received_amount > 0) {
+                            $newStatus = 'partial';
+                        }
+                        
+                        $existingNextInvoice->update([
+                            'previous_due' => $newPreviousDue,
+                            'total_amount' => $newTotalAmount,
+                            'next_due' => $newNextDue,
+                            'status' => $newStatus,
+                            'notes' => $notes . "\nAdded ৳" . number_format($dueAmount, 0) . " carried forward from invoice {$invoice->invoice_number}"
+                        ]);
+                        
+                        // Ensure the updated invoice is consistent
+                        $existingNextInvoice->refresh();
+                        
+                        // Validate that the updated invoice amounts are consistent
+                        if (!$existingNextInvoice->validateAmounts()) {
+                            $existingNextInvoice->fixAmounts();
+                            $existingNextInvoice->refresh();
+                        }
+                    } else {
+                        // Log that we prevented duplication
+                        Log::info('Prevented duplicate carry-forward for invoice', [
+                            'invoice_id' => $invoice->invoice_id,
+                            'next_invoice_id' => $existingNextInvoice->invoice_id,
+                            'amount' => $dueAmount
+                        ]);
+                    }
                 } else {
                     // Create new invoice for next month with carried forward amount as previous_due
-                    // Get the subtotal for next month based on billing cycle
-                    $customerProduct = DB::table('customer_to_products')
-                        ->where('cp_id', $request->cp_id)
-                        ->first();
-
+                    // For non-billing months, subtotal should be 0
+                    
+                    // Get customer product details to determine if next month is a billing month
+                    $customerProduct = CustomerProduct::find($request->cp_id);
+                        
+                    $newSubtotal = 0;
                     if ($customerProduct) {
-                        $product = DB::table('products')
-                            ->where('p_id', $customerProduct->p_id)
-                            ->first();
-
                         // Check if next month is a billing month
                         $assignDate = Carbon::parse($customerProduct->assign_date);
                         $monthsSinceAssign = $assignDate->diffInMonths($nextMonth);
                         $isBillingMonth = ($monthsSinceAssign % ($customerProduct->billing_cycle_months ?? 1)) === 0;
 
-                        // ✅ FIXED: Use custom_price if available for next billing month
                         $newSubtotal = 0;
                         if ($isBillingMonth) {
-                            if ($customerProduct->custom_price > 0) {
-                                $newSubtotal = $customerProduct->custom_price;
-                            } else {
-                                $newSubtotal = $product->monthly_price * ($customerProduct->billing_cycle_months ?? 1);
-                            }
+                            $newSubtotal = $product->monthly_price * ($customerProduct->billing_cycle_months ?? 1);
                         }
 
                         $newTotalAmount = $newSubtotal + $dueAmount;
@@ -1228,27 +1297,102 @@ class MonthlyBillController extends Controller
                     }
                 }
             } else {
-                // Fully paid, just mark as closed
+                // Fully paid, mark as closed and create invoice for next month to ensure visibility
                 $invoice->update([
                     'status' => 'paid',
                     'is_closed' => true,
                     'closed_at' => now(),
                     'closed_by' => \Illuminate\Support\Facades\Auth::id()
                 ]);
+                
+                // Create invoice for next month to ensure customer continues to appear in subsequent months
+                $nextMonth = Carbon::parse($invoice->issue_date)->addMonth();
+                $existingNextInvoice = Invoice::where('cp_id', $request->cp_id)
+                    ->whereYear('issue_date', $nextMonth->year)
+                    ->whereMonth('issue_date', $nextMonth->month)
+                    ->first();
+                
+                if (!$existingNextInvoice) {
+                    // Get customer product details
+                    $customerProduct = CustomerProduct::find($request->cp_id);
+                        
+                    if ($customerProduct) {
+                        $product = DB::table('products')
+                            ->where('p_id', $customerProduct->p_id)
+                            ->first();
+                            
+                        // Check if next month is a billing month
+                        $assignDate = Carbon::parse($customerProduct->assign_date);
+                        $monthsSinceAssign = $assignDate->diffInMonths($nextMonth);
+                        $isBillingMonth = ($monthsSinceAssign % ($customerProduct->billing_cycle_months ?? 1)) === 0;
+                        
+                        $newSubtotal = 0;
+                        if ($isBillingMonth) {
+                            // Always use custom price if available and is_custom_price is true
+                                                        if ($customerProduct->is_custom_price && $customerProduct->custom_price !== null && $customerProduct->custom_price > 0) {
+
+                                                            $newSubtotal = $customerProduct->custom_price;
+
+                                                        }
+
+                                                        // If no custom price is set, don't bill anything (newSubtotal remains 0)
+                        }
+                        
+                        // Create invoice with zero amounts for visibility
+                        Invoice::create([
+                            'cp_id' => $request->cp_id,
+                            'issue_date' => $nextMonth->format('Y-m-d'),
+                            'previous_due' => 0,
+                            'subtotal' => $newSubtotal,
+                            'total_amount' => $newSubtotal,
+                            'received_amount' => 0,
+                            'next_due' => $newSubtotal,
+                            'status' => $newSubtotal > 0 ? 'unpaid' : 'paid',
+                            'notes' => "Zero amount invoice for visibility of fully paid customer",
+                            'created_by' => \Illuminate\Support\Facades\Auth::id()
+                        ]);
+                    }
+                }
+            }
+
+            // Get information about the next month's invoice for the response
+            $nextMonthInvoice = null;
+            if ($dueAmount > 0) {
+                // Use immediate next month instead of next billing cycle month
+                $nextMonth = Carbon::parse($invoice->issue_date)->addMonth();
+                $nextMonthInvoice = Invoice::where('cp_id', $request->cp_id)
+                    ->whereYear('issue_date', $nextMonth->year)
+                    ->whereMonth('issue_date', $nextMonth->month)
+                    ->first();
             }
 
             DB::commit();
 
+            // Get the next cycle's subtotal from the invoice
+            $nextCycleSubtotal = $invoice->subtotal ?? 0;
+            
             return response()->json([
                 'success' => true,
                 'message' => 'User payment confirmed successfully!',
                 'carried_forward_amount' => $dueAmount,
+                'next_cycle_subtotal' => $nextCycleSubtotal,
                 'invoice_status' => $dueAmount > 0 ? 'confirmed' : 'paid',
+                'next_month_invoice' => $nextMonthInvoice ? [
+                    'invoice_id' => $nextMonthInvoice->invoice_id,
+                    'invoice_number' => $nextMonthInvoice->invoice_number,
+                    'issue_date' => $nextMonthInvoice->issue_date,
+                    'total_amount' => $nextMonthInvoice->total_amount,
+                    'next_due' => $nextMonthInvoice->next_due,
+                ] : null,
+                'next_month_url' => $dueAmount > 0 ? route('admin.billing.monthly-bills', [
+                    'month' => $nextMonth->format('Y-m')
+                ]) : null,
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Confirm user payment error: ' . $e->getMessage());
-
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to confirm user payment: ' . $e->getMessage()
@@ -1257,77 +1401,16 @@ class MonthlyBillController extends Controller
     }
 
     /**
-     * Propagate carry-forward data to all months in the current billing cycle
-     * Ensures that intermediate months show the correct carry-forward amounts
+     * Implement proper sequential carry-forward logic
+     * Each month carries forward its next_due to the next month's previous_due
+     * This ensures a clean sequential chain: Jan->Feb->Mar->Apr->May->Jun->Jul
      */
     private function propagateCarryForwardToCurrentCycle($invoice, $dueAmount)
     {
-        try {
-            // Get customer product details
-            $customerProduct = DB::table('customer_to_products')
-                ->where('cp_id', $invoice->cp_id)
-                ->first();
-
-            if (!$customerProduct) {
-                return;
-            }
-
-            $assignDate = Carbon::parse($customerProduct->assign_date);
-            $billingCycle = $customerProduct->billing_cycle_months ?? 1;
-            $issueDate = Carbon::parse($invoice->issue_date);
-
-            // Calculate which cycle this invoice belongs to
-            $monthsSinceAssign = $assignDate->diffInMonths($issueDate);
-            $cycleNumber = floor($monthsSinceAssign / $billingCycle);
-
-            // Calculate the start and end of this billing cycle
-            $cycleStart = $assignDate->copy()->addMonths($cycleNumber * $billingCycle);
-            $cycleEnd = $cycleStart->copy()->addMonths($billingCycle - 1);
-
-            // Update or create invoices for all months in this cycle
-            $currentMonth = $cycleStart->copy();
-            while ($currentMonth <= $cycleEnd) {
-                // Skip the current month as it's already handled
-                if ($currentMonth->format('Y-m') !== $issueDate->format('Y-m')) {
-                    $existingInvoice = Invoice::where('cp_id', $invoice->cp_id)
-                        ->whereYear('issue_date', $currentMonth->year)
-                        ->whereMonth('issue_date', $currentMonth->month)
-                        ->first();
-
-                    if ($existingInvoice) {
-                        // Update existing invoice to show carry-forward data
-                        $newPreviousDue = max(0, $existingInvoice->previous_due + $dueAmount);
-                        $newTotalAmount = $existingInvoice->subtotal + $newPreviousDue;
-                        $newNextDue = max(0, $newTotalAmount - $existingInvoice->received_amount);
-
-                        $existingInvoice->update([
-                            'previous_due' => $newPreviousDue,
-                            'total_amount' => $newTotalAmount,
-                            'next_due' => $newNextDue,
-                            'notes' => ($existingInvoice->notes ?? '') . "\nUpdated carry-forward data: Added ৳" . number_format($dueAmount, 0) . " from confirmed payment in " . $issueDate->format('F Y')
-                        ]);
-                    } else {
-                        // Create new invoice for this month with carry-forward data
-                        $newInvoice = Invoice::create([
-                            'cp_id' => $invoice->cp_id,
-                            'issue_date' => $currentMonth->format('Y-m-d'),
-                            'previous_due' => $dueAmount,
-                            'subtotal' => 0, // No new billing in intermediate months
-                            'total_amount' => $dueAmount,
-                            'received_amount' => 0,
-                            'next_due' => $dueAmount,
-                            'status' => 'unpaid',
-                            'notes' => "Carry-forward invoice created from confirmed payment in " . $issueDate->format('F Y'),
-                            'created_by' => \Illuminate\Support\Facades\Auth::id()
-                        ]);
-                    }
-                }
-
-                $currentMonth->addMonth();
-            }
-        } catch (\Exception $e) {
-            Log::error('Error propagating carry-forward data: ' . $e->getMessage());
-        }
+        // For proper sequential carry-forward, we don't need to propagate to all months in cycle
+        // Each month should naturally get its carry-forward from the previous month during invoice generation
+        // This method is kept for backward compatibility but does nothing
+        return;
     }
 
     /**
@@ -1378,7 +1461,7 @@ class MonthlyBillController extends Controller
     {
         try {
             $monthDate = Carbon::createFromFormat('Y-m', $month);
-
+            
             $invoices = Invoice::with('customer')
                 ->whereYear('issue_date', $monthDate->year)
                 ->whereMonth('issue_date', $monthDate->month)
@@ -1387,7 +1470,7 @@ class MonthlyBillController extends Controller
             return response()->json([
                 'month' => $month,
                 'invoices_count' => $invoices->count(),
-                'invoices' => $invoices->map(function ($invoice) {
+                'invoices' => $invoices->map(function($invoice) {
                     return [
                         'invoice_id' => $invoice->invoice_id,
                         'invoice_number' => $invoice->invoice_number,
@@ -1413,19 +1496,19 @@ class MonthlyBillController extends Controller
     {
         try {
             $monthDate = Carbon::createFromFormat('Y-m', $month);
-
+            
             $customer = Customer::with([
-                'customerproducts' => function ($query) use ($monthDate) {
+                'customerproducts' => function($query) use ($monthDate) {
                     $query->where('status', 'active')
-                        ->where('is_active', true)
-                        ->with('product');
+                          ->where('is_active', true)
+                          ->with('product');
                 }
             ])->findOrFail($customerId);
 
             return response()->json([
                 'success' => true,
                 'customer' => $customer->name,
-                'products' => $customer->customerproducts->map(function ($cp) {
+                'products' => $customer->customerproducts->map(function($cp) {
                     return [
                         'product_name' => $cp->product->name,
                         'monthly_price' => $cp->product->monthly_price,
@@ -1435,9 +1518,10 @@ class MonthlyBillController extends Controller
                     ];
                 }),
                 'total_monthly' => $customer->customerproducts->sum(function ($cp) {
-                    return $cp->custom_price > 0 ? $cp->custom_price : $cp->product->monthly_price;
+                    return $cp->product->monthly_price;
                 })
             ]);
+
         } catch (\Exception $e) {
             Log::error('Get customer products error: ' . $e->getMessage());
             return response()->json([
@@ -1446,7 +1530,7 @@ class MonthlyBillController extends Controller
             ], 500);
         }
     }
-
+       
     public function handleMonthlyBills(Request $request, $month)
     {
         $request->validate([
@@ -1463,19 +1547,20 @@ class MonthlyBillController extends Controller
             switch ($action) {
                 case 'bulk_update_status':
                     return $this->bulkUpdateStatus($invoiceIds, $request->status, $monthDate);
-
+                    
                 case 'regenerate_bills':
                     return $this->regenerateBills($monthDate);
-
+                    
                 case 'export_data':
                     return $this->exportMonthlyBills($monthDate);
-
+                    
                 case 'recalculate_totals':
                     return $this->recalculateTotals($monthDate);
-
+                    
                 default:
                     return redirect()->back()->with('error', 'Invalid action specified.');
             }
+
         } catch (\Exception $e) {
             Log::error('Handle monthly bills error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to process request: ' . $e->getMessage());
@@ -1489,7 +1574,7 @@ class MonthlyBillController extends Controller
     {
         try {
             $validStatuses = ['paid', 'unpaid', 'partial', 'cancelled'];
-
+            
             if (!in_array($status, $validStatuses)) {
                 return redirect()->back()->with('error', 'Invalid status specified.');
             }
@@ -1505,7 +1590,7 @@ class MonthlyBillController extends Controller
                         'next_due' => 0,
                         'status' => 'paid'
                     ]);
-                }
+                } 
                 // For unpaid status, reset payments
                 elseif ($status === 'unpaid') {
                     $invoice->update([
@@ -1518,11 +1603,12 @@ class MonthlyBillController extends Controller
                 else {
                     $invoice->update(['status' => $status]);
                 }
-
+                
                 $updatedCount++;
             }
 
             return redirect()->back()->with('success', "Updated status for {$updatedCount} invoices to {$status}");
+
         } catch (\Exception $e) {
             throw new \Exception("Bulk status update failed: " . $e->getMessage());
         }
@@ -1548,18 +1634,16 @@ class MonthlyBillController extends Controller
             $regeneratedCount = 0;
 
             foreach ($dueCustomers as $customer) {
-                $this->createCustomerMonthlyInvoice(
-                    $customer,
-                    $monthDate,
-                    $systemSettings['fixed_monthly_charge'],
-                    $systemSettings['vat_percentage']
-                );
+                $this->createCustomerMonthlyInvoice($customer, $monthDate, 
+                    $systemSettings['fixed_monthly_charge'], 
+                    $systemSettings['vat_percentage']);
                 $regeneratedCount++;
             }
 
             DB::commit();
 
             return redirect()->back()->with('success', "Regenerated {$regeneratedCount} bills for " . $monthDate->format('F Y'));
+
         } catch (\Exception $e) {
             DB::rollBack();
             throw new \Exception("Regenerate bills failed: " . $e->getMessage());
@@ -1586,6 +1670,7 @@ class MonthlyBillController extends Controller
             ]);
 
             return redirect()->back()->with('success', 'Export data prepared for ' . $monthDate->format('F Y') . ' (' . $invoices->count() . ' invoices)');
+
         } catch (\Exception $e) {
             throw new \Exception("Export failed: " . $e->getMessage());
         }
@@ -1609,7 +1694,7 @@ class MonthlyBillController extends Controller
             foreach ($invoices as $invoice) {
                 $totalReceived = $invoice->payments->sum('amount');
                 $nextDue = max(0, $invoice->total_amount - $totalReceived);
-
+                
                 // Determine status based on payments
                 if ($nextDue <= 0) {
                     $status = 'paid';
@@ -1631,6 +1716,7 @@ class MonthlyBillController extends Controller
             DB::commit();
 
             return redirect()->back()->with('success', "Recalculated totals for {$recalculatedCount} invoices");
+
         } catch (\Exception $e) {
             DB::rollBack();
             throw new \Exception("Recalculate totals failed: " . $e->getMessage());
@@ -1646,10 +1732,10 @@ class MonthlyBillController extends Controller
             'month' => 'required|date_format:Y-m',
             'force' => 'nullable|boolean'
         ]);
-
+        
         $month = $request->month;
         $force = $request->force ?? false;
-
+        
         try {
             $monthDate = Carbon::createFromFormat('Y-m', $month);
             $displayMonth = $monthDate->format('F Y');
@@ -1659,21 +1745,21 @@ class MonthlyBillController extends Controller
                 'message' => 'Invalid month format. Please use YYYY-MM format.'
             ], 400);
         }
-
+        
         // Get all active customers with active products
         $customers = $this->getAllActiveCustomersWithProducts($monthDate);
-
+        
         if ($customers->isEmpty()) {
             return response()->json([
                 'success' => false,
                 'message' => "No active customers with products found for {$displayMonth}."
             ]);
         }
-
+        
         $generatedCount = 0;
         $skippedCount = 0;
         $errors = [];
-
+        
         foreach ($customers as $customer) {
             try {
                 // Check if invoice already exists for this customer and month
@@ -1681,19 +1767,19 @@ class MonthlyBillController extends Controller
                     ->whereYear('issue_date', $monthDate->year)
                     ->whereMonth('issue_date', $monthDate->month)
                     ->first();
-
+                
                 if ($existingInvoice && !$force) {
                     $skippedCount++;
                     continue;
                 }
-
+                
                 if ($existingInvoice && $force) {
                     $existingInvoice->delete();
                 }
-
+                
                 // Create new invoice
                 $invoice = $this->createCustomerMonthlyInvoice($customer, $monthDate);
-
+                
                 if ($invoice) {
                     $generatedCount++;
                 }
@@ -1702,28 +1788,28 @@ class MonthlyBillController extends Controller
                 Log::error("Invoice generation failed for customer {$customer->c_id}: " . $e->getMessage());
             }
         }
-
+        
         $message = "Generated {$generatedCount} invoices for all customers in {$displayMonth}";
-
+        
         if ($skippedCount > 0) {
             $message .= " ({$skippedCount} customers already had invoices)";
         }
-
+        
         if (!empty($errors)) {
             $message .= " (" . count($errors) . " errors occurred)";
         }
-
+        
         $response = [
             'success' => true,
             'message' => $message,
             'generated_count' => $generatedCount,
             'skipped_count' => $skippedCount
         ];
-
+        
         if (!empty($errors)) {
             $response['errors'] = $errors;
         }
-
+        
         return response()->json($response);
     }
 
@@ -1735,7 +1821,7 @@ class MonthlyBillController extends Controller
         try {
             // Get system settings
             $systemSettings = $this->getSystemSettings();
-
+           
             // Get all active customers with products who are due for billing in this month
             $dueCustomers = $this->getDueCustomersForMonth($monthDate);
 
@@ -1774,6 +1860,7 @@ class MonthlyBillController extends Controller
             if ($generatedCount > 0) {
                 Log::info("Auto-generated {$generatedCount} invoices for {$monthDate->format('F Y')} before closing month");
             }
+
         } catch (\Exception $e) {
             Log::error('Auto-generate missing invoices before closing error: ' . $e->getMessage());
         }
@@ -1785,12 +1872,7 @@ class MonthlyBillController extends Controller
     private function createSingleProductInvoice($customer, $product, Carbon $monthDate)
     {
         try {
-            // ✅ FIXED: Use custom_price if available
-            if ($product['custom_price'] > 0) {
-                $productAmount = $product['custom_price'];
-            } else {
-                $productAmount = $product['monthly_price'] * $product['billing_cycle_months'];
-            }
+            $productAmount = $product['monthly_price'] * $product['billing_cycle_months'];
 
             // Get previous due amount from unpaid invoices for THIS SPECIFIC PRODUCT
             $previousDue = Invoice::where('cp_id', $product['cp_id'])
@@ -1821,39 +1903,17 @@ class MonthlyBillController extends Controller
             throw $e;
         }
     }
-
-    /**
-     * Generate billing notes for single product
-     */
-    private function generateBillingNotesForSingleProduct($customer, $product, Carbon $monthDate, $previousDue)
-    {
-        $cycleText = $this->getBillingCycleText($product['billing_cycle_months']);
-
-        // ✅ Check custom_price for single product
-        if ($product['custom_price'] > 0) {
-            $priceInfo = "Custom price: à§³" . number_format($product['custom_price'], 2);
-        } else {
-            $priceInfo = "Standard: à§³" . number_format($product['monthly_price'] * $product['billing_cycle_months'], 2);
-        }
-
-        $baseNote = "Auto-generated: {$cycleText} billing - {$priceInfo} for " . $monthDate->format('F Y');
-        if ($previousDue > 0) {
-            $baseNote .= " (Includes à§³" . number_format($previousDue, 2) . " previous due)";
-        }
-        return $baseNote;
-    }
-
     private function createRollingInvoiceForProduct($customer, $product, Carbon $monthDate)
     {
         // Check if this is a billing month
         $shouldBill = RollingBillingHelper::shouldBillThisMonth($product['cp_id'], $monthDate);
-
+        
         if (!$shouldBill) {
             // If not a billing month, but there's an active rolling invoice, update it
             $activeInvoice = Invoice::where('cp_id', $product['cp_id'])
                 ->where('is_active_rolling', true)
                 ->first();
-
+            
             if ($activeInvoice) {
                 // Update existing invoice date
                 $activeInvoice->update([
@@ -1863,18 +1923,18 @@ class MonthlyBillController extends Controller
             }
             return 0;
         }
-
+        
         // Get or create rolling invoice
         $invoice = Invoice::getOrCreateRollingInvoice($product['cp_id'], $monthDate);
-
+        
         if ($invoice) {
             Log::info("Rolling invoice updated: {$invoice->invoice_number} for customer {$customer->name}");
             return 1;
         }
-
+        
         return 0;
     }
-
+    
     /**
      * Get customers due for billing this month
      */
@@ -1887,7 +1947,7 @@ class MonthlyBillController extends Controller
                 'c.customer_id',
                 'c.email',
                 'c.phone',
-                DB::raw('GROUP_CONCAT(CONCAT(p.p_id, ":", p.monthly_price, ":", cp.billing_cycle_months, ":", cp.cp_id, ":", COALESCE(cp.custom_price, 0))) as product_details')
+                DB::raw('GROUP_CONCAT(CONCAT(p.p_id, ":", p.monthly_price, ":", cp.billing_cycle_months, ":", cp.cp_id)) as product_details')
             )
             ->join('customer_to_products as cp', 'c.c_id', '=', 'cp.c_id')
             ->join('products as p', 'cp.p_id', '=', 'p.p_id')
@@ -1899,7 +1959,7 @@ class MonthlyBillController extends Controller
             // This allows us to see carry forward data in all months, not just billing cycle months
             ->groupBy('c.c_id', 'c.name', 'c.customer_id', 'c.email', 'c.phone')
             ->get()
-            ->map(function ($customer) {
+            ->map(function($customer) {
                 // Parse product details
                 $productDetails = [];
                 if ($customer->product_details && is_string($customer->product_details)) {
@@ -1907,14 +1967,13 @@ class MonthlyBillController extends Controller
                     foreach ($products as $product) {
                         if (strpos($product, ':') !== false) {
                             $productParts = explode(':', $product);
-                            if (count($productParts) >= 5) {
-                                list($p_id, $price, $cycle, $cp_id, $custom_price) = $productParts;
+                            if (count($productParts) >= 4) {
+                                list($p_id, $price, $cycle, $cp_id) = $productParts;
                                 $productDetails[] = [
                                     'p_id' => $p_id,
                                     'cp_id' => $cp_id,
                                     'monthly_price' => $price,
-                                    'billing_cycle_months' => $cycle,
-                                    'custom_price' => $custom_price > 0 ? $custom_price : 0
+                                    'billing_cycle_months' => $cycle
                                 ];
                             }
                         }
@@ -1924,7 +1983,7 @@ class MonthlyBillController extends Controller
                 return $customer;
             });
     }
-
+    
     /**
      * Generate monthly bills using rolling invoice system
      */
@@ -1963,6 +2022,7 @@ class MonthlyBillController extends Controller
 
             return redirect()->route('admin.billing.monthly-bills', $month)
                 ->with('success', $message);
+
         } catch (\Exception $e) {
             Log::error('Generate rolling bills error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error generating bills: ' . $e->getMessage());

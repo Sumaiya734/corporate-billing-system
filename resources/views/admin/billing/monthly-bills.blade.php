@@ -358,7 +358,7 @@
                                 $billingCycle = $customerProduct->billing_cycle_months ?? 1;
                                 $customPrice = $customerProduct->custom_price ?? null;
                                 $standardPrice = $monthlyPrice * $billingCycle;
-                                $isCustomPrice = $customPrice && abs($customPrice - $standardPrice) > 0.01;
+                                $isCustomPrice = $customPrice && abs($customPrice - $standardPrice) > 0;
                                 // Determine if this is a billing month or carry-forward month
                                 $isBillingMonth = ($invoice->subtotal ?? 0) > 0;
                                 $isCarryForwardMonth = ($invoice->subtotal ?? 0) == 0 && ($invoice->previous_due ?? 0) > 0;
@@ -471,8 +471,8 @@
                                 // Check payment status
                                 $isAdvancePayment = $receivedAmount > $totalAmount && $totalAmount > 0;
                                 $advanceAmount = $isAdvancePayment ? ($receivedAmount - $totalAmount) : 0;
-                                $isFullyPaid = $nextDue <= 0.01 && $receivedAmount> 0;
-                                $isPaid = $nextDue <= 0.01;
+                                $isFullyPaid = $nextDue <= 0 && $receivedAmount> 0;
+                                $isPaid = $nextDue <= 0;
                                 @endphp
                                 @if($isAdvancePayment)
                                 <span class="badge bg-success">
@@ -727,7 +727,7 @@
                         </div>
                         @php
                         $calculatedPending = $totalBillingAmount - $paidAmount;
-                        $isBalanced = abs($calculatedPending - $pendingAmount) < 0.01;
+                        $isBalanced = abs($calculatedPending - $pendingAmount) < 0;
                             @endphp
                             <div class="mt-1">
                             <span class="badge {{ $isBalanced ? 'bg-success' : 'bg-danger' }}">
@@ -2287,9 +2287,9 @@
             $amountInput
                 .val('')
                 .attr({
-                    'min': '0.01',
+                    'min': '0',
                     'max': dueAmount.toFixed(2),
-                    'step': '0.01'
+                    'step': '0'
                 })
                 .prop('disabled', dueAmount <= 0)
                 .removeClass('is-invalid');
@@ -2297,7 +2297,7 @@
             if (dueAmount <= 0) {
                 $amountInput.attr('placeholder', 'Invoice already paid');
             } else {
-                $amountInput.attr('placeholder', `Enter amount (0.01 to ${dueAmount.toFixed(2)})`);
+                $amountInput.attr('placeholder', `Enter amount (0 to ${dueAmount.toFixed(2)})`);
             }
 
             $('#payment_amount_error').hide();
@@ -2326,9 +2326,9 @@
             if (paid > (due + 100)) { // Allow some advance but not excessive
                 $(this).addClass('is-invalid');
                 $('#payment_amount_error').text(`Amount seems too high. Due: ৳${due.toFixed(2)}`).show();
-            } else if (paid < 0.01 && paid > 0) {
+            } else if (paid < 0) {
                 $(this).addClass('is-invalid');
-                $('#payment_amount_error').text('Minimum payment is ৳0.01').show();
+                $('#payment_amount_error').text('Payment amount cannot be negative').show();
             } else {
                 $(this).removeClass('is-invalid');
                 $('#payment_amount_error').hide();
@@ -2360,7 +2360,7 @@
                 const calculatedDue = Math.max(0, totalAmount - receivedAmount);
 
                 // Use calculated value if server value seems incorrect
-                const finalDue = (Math.abs(safeNewDue - calculatedDue) > 0.01) ? calculatedDue : safeNewDue;
+                const finalDue = (Math.abs(safeNewDue - calculatedDue) > 0) ? calculatedDue : safeNewDue;
 
                 // Helper function to safely format numbers
                 function safeFormatNumber(num) {
@@ -2424,7 +2424,7 @@
                 if (isAdvancePayment) {
                     $nextDueElement.append('<span class="badge bg-success"><i class="fas fa-check-double me-1"></i>Advance Paid</span>');
                     $nextDueElement.append(`<br><small class="text-success">+৳ ${safeFormatNumber(advanceAmount)} credit</small>`);
-                } else if (finalDue <= 0.01) {
+                } else if (finalDue <= 0) {
                     $nextDueElement.append('<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Paid</span>');
                     $nextDueElement.append('<br><small class="text-muted">Fully paid</small>');
                 } else {
@@ -2461,11 +2461,11 @@
             console.log('Debug: Payment amount:', paid);
             console.log('Debug: Form data:', formDataObj);
 
-            if (paid < 0.01) {
-                showToast('Amount must be at least ৳0.01!', 'danger');
+            if (paid < 0) {
+                showToast('Payment amount cannot be negative!', 'danger');
                 return;
             }
-            if (paid > (due + 0.01)) {
+            if (paid > (due + 0)) {
                 showToast(`Cannot pay more than due amount (৳${due.toFixed(2)})!`, 'danger');
                 return;
             }

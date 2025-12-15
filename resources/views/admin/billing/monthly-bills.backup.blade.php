@@ -638,7 +638,7 @@
                                                             </div>
                                                             @php
                                                                 $calculatedPending = $totalBillingAmount - $paidAmount;
-                                                                $isBalanced = abs($calculatedPending - $pendingAmount) < 0.01;
+                                                                $isBalanced = abs($calculatedPending - $pendingAmount) < 0;
                                                             @endphp
                                                             <div class="mt-1">
                                                                 <span class="badge {{ $isBalanced ? 'bg-success' : 'bg-danger' }}">
@@ -2075,9 +2075,9 @@ document.addEventListener('DOMContentLoaded', function () {
         $amountInput
             .val('')
             .attr({
-                'min': '0.01',
+                'min': '0',
                 'max': dueAmount.toFixed(2),
-                'step': '0.01'
+                'step': '0'
             })
             .prop('disabled', dueAmount <= 0)
             .removeClass('is-invalid');
@@ -2085,7 +2085,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (dueAmount <= 0) {
             $amountInput.attr('placeholder', 'Invoice already paid');
         } else {
-            $amountInput.attr('placeholder', `Enter amount (0.01 to ${dueAmount.toFixed(2)})`);
+            $amountInput.attr('placeholder', `Enter amount (0 to ${dueAmount.toFixed(2)})`);
         }
 
         $('#payment_amount_error').hide();
@@ -2102,7 +2102,7 @@ document.addEventListener('DOMContentLoaded', function () {
         $('#next_due').val(nextDue.toFixed(2));
 
         // Validate amount
-        if (paid > (due + 0.01)) {
+        if (paid > (due + 0)) {
             $(this).addClass('is-invalid');
             $('#payment_amount_error').show();
         } else {
@@ -2123,11 +2123,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const dueText = $('#payment_due_amount_display').text();
         const due = parseFloat(dueText.replace(/[^\d.]/g, '')) || 0;
 
-        if (paid < 0.01) {
-            showToast('Amount must be at least ৳0.01!', 'danger');
+        if (paid < 0) {
+            showToast('Payment amount cannot be negative!', 'danger');
             return;
         }
-        if (paid > (due + 0.01)) {
+        if (paid > (due + 0)) {
             showToast(`Cannot pay more than due amount (৳${due.toFixed(2)})!`, 'danger');
             return;
         }

@@ -234,6 +234,7 @@ class CustomerProductController extends Controller
                     'c_id' => $customerId,
                     'p_id' => $productData['product_id'],
                     'custom_price' => $productData['monthly_price'], // Store total as custom price
+                    'is_custom_price' => true, // Set the flag to indicate custom price is being used
                     'assign_date' => $productData['assign_date'],
                     'billing_cycle_months' => $productData['billing_cycle_months'],
                     'due_date' => $calculatedDueDate, // Always auto-calculated
@@ -312,6 +313,7 @@ class CustomerProductController extends Controller
 
             $customerProduct->update([
                 'custom_price' => $request->total_amount, // Store total as custom price
+                'is_custom_price' => true, // Set the flag to indicate custom price is being used
                 'billing_cycle_months' => $request->billing_cycle_months,
                 'assign_date' => $request->assign_date,
                 'due_date' => $request->due_date,

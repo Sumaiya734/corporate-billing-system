@@ -548,19 +548,19 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label">Total Amount (৳) *</label>
-                                <input type="number" step="0.01" name="total_amount" class="form-control" required min="0">
+                                <input type="number" step="0" name="total_amount" class="form-control" required min="0">
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label">Received Amount (৳) *</label>
-                                <input type="number" step="0.01" name="received_amount" class="form-control" required min="0">
+                                <input type="number" step="0" name="received_amount" class="form-control" required min="0">
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label">Due Amount (৳) *</label>
-                                <input type="number" step="0.01" name="due_amount" class="form-control" required min="0">
+                                <input type="number" step="0" name="due_amount" class="form-control" required min="0">
                             </div>
                         </div>
                     </div>
@@ -969,7 +969,7 @@
                 const received = parseFloat(receivedAmount.value) || 0;
                 const due = parseFloat(dueAmount.value) || 0;
 
-                if (Math.abs((received + due) - total) > 0.01) {
+                if (Math.abs((received + due) - total) > 0) {
                     dueAmount.setCustomValidity('Received amount + Due amount must equal Total amount');
                 } else {
                     dueAmount.setCustomValidity('');
@@ -1079,7 +1079,7 @@
             
             console.log(`Month: ${month} | Customers: ${customers} | Total: ${total} | Received: ${received} | Due: ${due}`);
             
-            if (Math.abs(calculatedDue - dueNum) > 0.01) {
+            if (Math.abs(calculatedDue - dueNum) > 0) {
                 console.warn(`⚠️ Calculation mismatch for ${month}!`);
             } else {
                 console.log(`✅ Calculation correct for ${month}`);

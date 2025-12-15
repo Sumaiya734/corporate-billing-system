@@ -191,6 +191,7 @@ class AssignProduct extends Component
                         $customerProduct->c_id = $this->selectedCustomer->c_id;
                         $customerProduct->p_id = $product->p_id;
                         $customerProduct->custom_price = $product->monthly_price * $this->billingMonths[$index];
+                        $customerProduct->is_custom_price = true; // Set the flag to indicate custom price is being used
                         $customerProduct->billing_cycle_months = $this->billingMonths[$index];
                         $customerProduct->assign_date = $this->assignDates[$index];
                         

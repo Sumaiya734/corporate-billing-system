@@ -471,13 +471,11 @@ class CustomerProductController extends Controller
             }
             
             // Calculate invoice amount
-            // Use custom price if set (which is already the total for the billing cycle),
-            // otherwise calculate: monthly_price × billing_cycle_months
+            // ONLY use custom_price - no calculated price or fallback logic
             if ($customerProduct->custom_price !== null && $customerProduct->custom_price > 0) {
                 $subtotal = (float) $customerProduct->custom_price;
-            } else {
-                $subtotal = $product->monthly_price * $customerProduct->billing_cycle_months;
             }
+            // If no custom price is set, subtotal remains 0 (no fallback to calculated price)
             
             // No service charge or VAT for now - keep it simple
             $serviceCharge = 0.00;
@@ -688,10 +686,10 @@ class CustomerProductController extends Controller
                 ? (float) $request->custom_price 
                 : null;
             
-            // Calculate effective price
+            // Calculate effective price - ONLY use custom_price, no fallback
             $effectivePrice = $customPrice !== null 
                 ? $customPrice 
-                : ($customerProduct->product->monthly_price * $billingCycleMonths);
+                : 0;
             
             // Update the customer product
             $customerProduct->update([

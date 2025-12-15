@@ -24,6 +24,7 @@ class CustomerProduct extends Model
         'c_id',
         'p_id',
         'custom_price',
+        'is_custom_price',
         'customer_product_id',
         'invoice_id',
         'assign_date',
@@ -34,13 +35,13 @@ class CustomerProduct extends Model
         'is_active',
         'deleted_at'
     ];
-
     protected $casts = [
         'assign_date' => 'date',
         'due_date' => 'date',
         'custom_due_date' => 'date',
         'billing_cycle_months' => 'integer',
         'is_active' => 'boolean',
+        'is_custom_price' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
@@ -82,23 +83,25 @@ class CustomerProduct extends Model
 
     public function getProductPriceAttribute(): float
     {
-        // Use custom price if set, otherwise use product's monthly price
+        // Always use custom price - no fallback to product's monthly price
         if ($this->custom_price !== null) {
             // If custom price is set, divide by billing cycle months to get monthly price
             return (float) $this->custom_price / max(1, $this->billing_cycle_months);
         }
         
-        return $this->product ? (float) $this->product->monthly_price : 0.0;
+        // If no custom price is set, return 0 (no fallback to product price)
+        return 0.0;
     }
 
     public function getTotalAmountAttribute(): float
     {
-        // Use custom price if set, otherwise calculate from product's monthly price
+        // Always use custom price - no fallback to calculated amount
         if ($this->custom_price !== null) {
             return (float) $this->custom_price;
         }
         
-        return $this->product_price * $this->billing_cycle_months;
+        // If no custom price is set, return 0 (no fallback to calculated amount)
+        return 0.0;
     }
 
     public function getFormattedTotalAmountAttribute(): string
@@ -201,5 +204,41 @@ class CustomerProduct extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active')->where('is_active', 1);
+    }
+
+    /**
+     * Check if a given month is a billing month for this customer product
+     *
+     * @param \Carbon\Carbon $monthDate
+     * @return bool
+     */
+    public function isBillingMonth(\Carbon\Carbon $monthDate): bool
+    {
+        $assignDate = \Carbon\Carbon::parse($this->assign_date);
+        $monthsSinceAssign = $assignDate->diffInMonths($monthDate);
+        $isBillingMonth = ($monthsSinceAssign % ($this->billing_cycle_months ?? 1)) === 0;
+        return $isBillingMonth;
+    }
+
+    /**
+     * Get the subtotal amount for a given month
+     * Always uses custom_price for billing months, 0 for carry-forward months
+     *
+     * @param \Carbon\Carbon $monthDate
+     * @return float
+     */
+    public function getSubtotalForMonth(\Carbon\Carbon $monthDate): float
+    {
+        // For billing months, use custom_price if available
+        if ($this->isBillingMonth($monthDate)) {
+            // ONLY use custom_price - no calculated price or fallback logic
+            if ($this->is_custom_price && $this->custom_price !== null && $this->custom_price > 0) {
+                return (float) $this->custom_price;
+            }
+            // If no custom price is set, subtotal remains 0 (no billing)
+        }
+        
+        // For carry-forward months, subtotal is always 0
+        return 0.0;
     }
 }

@@ -482,7 +482,10 @@ class MonthlyBillController extends Controller
                 continue; // Skip if invoice already exists for this product
             }
             
-            $productAmount = $product['monthly_price'] * $product['billing_cycle_months'];
+            // Use custom price if set, otherwise use product's monthly price
+            $productAmount = isset($product['custom_price']) && $product['custom_price'] !== null 
+                ? $product['custom_price'] 
+                : $product['monthly_price'] * $product['billing_cycle_months'];
 
             // Get previous due amount from unpaid invoices for THIS SPECIFIC PRODUCT
             $previousDue = Invoice::where('cp_id', $product['cp_id'])
@@ -923,13 +926,49 @@ class MonthlyBillController extends Controller
                     ->first();
 
                 if ($existingNextInvoice) {
-                    // Update existing next month invoice - add carried forward amount to previous_due
-                    $existingNextInvoice->update([
-                        'previous_due' => $existingNextInvoice->previous_due + $dueAmount,
-                        'total_amount' => $existingNextInvoice->subtotal + $existingNextInvoice->previous_due + $dueAmount,
-                        'next_due' => ($existingNextInvoice->subtotal + $existingNextInvoice->previous_due + $dueAmount) - $existingNextInvoice->received_amount,
-                        'notes' => ($existingNextInvoice->notes ?? '') . "\nAdded ৳" . number_format($dueAmount, 0) . " carried forward from invoice {$invoice->invoice_number}"
-                    ]);
+                    // Check if this carry-forward amount was already added to prevent duplication
+                    $notes = $existingNextInvoice->notes ?? '';
+                    
+                    // More robust duplication check - look for the pattern regardless of formatting
+                    $pattern = '/Added\s*৳\s*[0-9,]+\s*carried\s*forward\s*from\s*invoice\s*' . preg_quote($invoice->invoice_number, '/') . '/i';
+                    $alreadyAdded = preg_match($pattern, $notes) === 1;
+                    
+                    if (!$alreadyAdded) {
+                        // Update existing next month invoice - set previous_due to exactly the carried forward amount
+                        $newPreviousDue = $dueAmount;
+                        $newTotalAmount = $existingNextInvoice->subtotal + $newPreviousDue;
+                        $newNextDue = max(0, $newTotalAmount - $existingNextInvoice->received_amount);
+                        
+                        // Update status based on the new amounts
+                        $newStatus = 'unpaid';
+                        if ($newNextDue <= 0) {
+                            $newStatus = 'paid';
+                        } elseif ($existingNextInvoice->received_amount > 0) {
+                            $newStatus = 'partial';
+                        }
+                        
+                        $existingNextInvoice->update([
+                            'previous_due' => $newPreviousDue,
+                            'total_amount' => $newTotalAmount,
+                            'next_due' => $newNextDue,
+                            'status' => $newStatus,
+                            'notes' => $notes . "\nAdded ৳" . number_format($dueAmount, 0) . " carried forward from invoice {$invoice->invoice_number}"
+                        ]);
+                        
+                        // Validate that the updated invoice amounts are consistent
+                        $existingNextInvoice->refresh();
+                        if (!$existingNextInvoice->validateAmounts()) {
+                            $existingNextInvoice->fixAmounts();
+                            $existingNextInvoice->refresh();
+                        }
+                    } else {
+                        // Log that we prevented duplication
+                        \Illuminate\Support\Facades\Log::info('Prevented duplicate carry-forward for invoice', [
+                            'invoice_id' => $invoice->invoice_id,
+                            'next_invoice_id' => $existingNextInvoice->invoice_id,
+                            'amount' => $dueAmount
+                        ]);
+                    }
                 } else {
                     // Create new invoice for next month with carried forward amount as previous_due
                     $newInvoice = Invoice::create([
@@ -947,6 +986,13 @@ class MonthlyBillController extends Controller
                         'notes' => "Carried forward amount from invoice {$invoice->invoice_number}",
                         'created_by' => \Illuminate\Support\Facades\Auth::id()
                     ]);
+                    
+                    // Validate that the new invoice amounts are consistent
+                    $newInvoice->refresh();
+                    if (!$newInvoice->validateAmounts()) {
+                        $newInvoice->fixAmounts();
+                        $newInvoice->refresh();
+                    }
                 }
             } else {
                 // Fully paid, just mark as closed
@@ -1440,7 +1486,10 @@ class MonthlyBillController extends Controller
     private function createSingleProductInvoice($customer, $product, Carbon $monthDate, $serviceCharge = 0.00, $vatPercentage = 0.00)
     {
         try {
-            $productAmount = $product['monthly_price'] * $product['billing_cycle_months'];
+            // Use custom price if set, otherwise use product's monthly price
+            $productAmount = isset($product['custom_price']) && $product['custom_price'] !== null 
+                ? $product['custom_price'] 
+                : $product['monthly_price'] * $product['billing_cycle_months'];
 
             // Get previous due amount from unpaid invoices for THIS SPECIFIC PRODUCT
             $previousDue = Invoice::where('cp_id', $product['cp_id'])

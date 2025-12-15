@@ -1390,7 +1390,7 @@ class BillingController extends Controller
     public function updatePayment(Request $request, $paymentId)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|numeric|min:0',
             'payment_method' => 'required|in:cash,bank_transfer,mobile_banking,card,online',
             'payment_date' => 'required|date',
             'notes' => 'nullable|string|max:1000',
