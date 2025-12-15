@@ -190,7 +190,7 @@ class PaymentModal {
         const dueAmt = parseFloat(dueAmount) || 0;
         paymentAmountField.val(totalAmt.toFixed(2));
         paymentAmountField.attr('max', totalAmt);
-        paymentAmountField.attr('min', 0.01);
+        paymentAmountField.attr('min', 0);
 
         // Update max amount display
         $('#payment_max_amount').text('৳ ' + totalAmt.toLocaleString('en-BD', { minimumFractionDigits: 2 }));
@@ -263,7 +263,7 @@ class PaymentModal {
         const paymentAmountField = $('#payment_amount');
         paymentAmountField.val(totalAmount.toFixed(2));
         paymentAmountField.attr('max', totalAmount);
-        paymentAmountField.attr('min', 0.01);
+        paymentAmountField.attr('min', 0);
 
         // Update max amount display
         $('#payment_max_amount').text('৳ ' + totalAmount.toLocaleString('en-BD', { minimumFractionDigits: 2 }));

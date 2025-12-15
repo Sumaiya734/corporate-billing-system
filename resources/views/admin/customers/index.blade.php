@@ -280,10 +280,10 @@
                                 $hasRegularproduct = (bool) $regularproduct;
                                 $hasSpecialproducts = $specialproducts->count() > 0;
                                 
-                                // Calculate monthly total using custom price if available
+                                // Calculate monthly total using ONLY custom price
                                 $monthlyTotal = $activeproducts->sum(function($cp) {
-                                    // Use custom price if set, otherwise use product's monthly price
-                                    $price = $cp->product_price ?? $cp->product->monthly_price ?? 0;
+                                    // ONLY use custom price - no fallback to product's monthly price
+                                    $price = $cp->custom_price ?? 0;
                                     return $price;
                                 });
                                 

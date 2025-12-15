@@ -82,23 +82,25 @@ class CustomerProduct extends Model
 
     public function getProductPriceAttribute(): float
     {
-        // Use custom price if set, otherwise use product's monthly price
+        // Always use custom price - no fallback to product's monthly price
         if ($this->custom_price !== null) {
             // If custom price is set, divide by billing cycle months to get monthly price
             return (float) $this->custom_price / max(1, $this->billing_cycle_months);
         }
         
-        return $this->product ? (float) $this->product->monthly_price : 0.0;
+        // If no custom price is set, return 0 (no fallback to product price)
+        return 0.0;
     }
 
     public function getTotalAmountAttribute(): float
     {
-        // Use custom price if set, otherwise calculate from product's monthly price
+        // Always use custom price - no fallback to calculated amount
         if ($this->custom_price !== null) {
             return (float) $this->custom_price;
         }
         
-        return $this->product_price * $this->billing_cycle_months;
+        // If no custom price is set, return 0 (no fallback to calculated amount)
+        return 0.0;
     }
 
     public function getFormattedTotalAmountAttribute(): string

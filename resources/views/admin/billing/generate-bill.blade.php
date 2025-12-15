@@ -234,7 +234,7 @@
                             $productAmount = $totalAmount - $previousDue;
                             
                             // Determine status
-                            $isPaid = !$isPending && ($nextDue < 0.01);
+                            $isPaid = !$isPending && ($nextDue < 0);
                             $isPartial = !$isPending && !$isPaid && $receivedAmount > 0;
                             
                             $statusClass = 'badge-pending';
@@ -301,7 +301,7 @@
                                     <input type="number" class="form-control form-control-sm received-amount" 
                                            value="{{ number_format($receivedAmount, 0) }}" 
                                            min="0" max="{{ $totalAmount }}" 
-                                           step="0.01"
+                                           step="0"
                                            data-invoice-id="{{ $invoice->id }}"
                                            readonly>
                                     <small class="text-muted">Payments made</small>

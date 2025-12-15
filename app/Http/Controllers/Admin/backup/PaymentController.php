@@ -45,7 +45,7 @@ class PaymentController extends Controller
         $data = $request->validate([
             'invoice_id' => ['required', 'integer', 'exists:invoices,invoice_id'],
             'c_id' => ['required', 'integer'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            'amount' => ['required', 'numeric', 'min:0'],
             'payment_method' => ['required', 'in:cash,bank_transfer,mobile_banking,card,online'],
             'payment_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -117,7 +117,7 @@ class PaymentController extends Controller
     public function recordPayment(Request $request, $invoiceId)
     {
         $request->validate([
-            'amount'         => 'required|numeric|min:0.01', // Accept any amount >= 0.01
+            'amount'         => 'required|numeric|min:0', // Accept any amount >= 0
             // Accept the same methods used in the UI and Payment model
             'payment_method' => 'required|in:cash,bank_transfer,mobile_banking,card,online',
             'payment_date'   => 'required|date',
@@ -131,11 +131,11 @@ class PaymentController extends Controller
         $amount = floatval($request->amount);
         $due = floatval($invoice->next_due ?? $invoice->total_amount);
 
-        // Validate: amount must be between 0.01 and due amount
-        if ($amount < 0.01) {
+        // Validate: amount must be between 0 and due amount
+        if ($amount < 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Payment amount must be at least ৳0.01'
+                'message' => 'Payment amount cannot be negative'
             ], 422);
         }
 

@@ -140,7 +140,12 @@ class GenerateInvoicesForAllCustomers extends Command
                         continue; // Skip if invoice already exists for this product
                     }
                     
-                    $productAmount = $customerProduct->product->monthly_price * $customerProduct->billing_cycle_months;
+                    // Use custom price if set, otherwise use product's monthly price
+                    // ONLY use custom_price - no calculated price or fallback logic
+                    if ($customerProduct->custom_price !== null && $customerProduct->custom_price > 0) {
+                        $productAmount = (float) $customerProduct->custom_price;
+                    }
+                    // If no custom price is set, productAmount remains 0 (no fallback to calculated price)
                     
                     // Get previous due amount from unpaid invoices for THIS SPECIFIC PRODUCT
                     $previousDue = Invoice::where('cp_id', $customerProduct->cp_id)

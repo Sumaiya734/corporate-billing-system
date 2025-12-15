@@ -80,8 +80,8 @@
                                 <div class="mb-3">
                                     <label for="amount" class="form-label">Amount (৳)</label>
                                     <input type="number" 
-                                           step="0.01" 
-                                           min="0.01" 
+                                           step="0" 
+                                           min="0" 
                                            max="{{ ($payment->invoice->total_amount ?? 0) + ($payment->amount ?? 0) }}" 
                                            class="form-control" 
                                            id="amount" 
@@ -251,9 +251,9 @@
             const amount = parseFloat(amountInput.value);
             const maxAmount = parseFloat(amountInput.max);
             
-            if (amount < 0.01) {
+            if (amount < 0) {
                 e.preventDefault();
-                alert('Payment amount must be at least ৳0.01');
+                alert('Payment amount cannot be negative');
                 return;
             }
             

@@ -88,8 +88,8 @@
                                         <label class="form-label fw-semibold">Payment Amount <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0">৳</span>
-                                            <input type="number" step="0.01" name="amount" class="form-control border-start-0" required 
-                                                   id="payment_amount" min="0.01" placeholder="0.00">
+                                            <input type="number" step="0" name="amount" class="form-control border-start-0" required 
+                                                   id="payment_amount" min="0" placeholder="0.00">
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center mt-1">
                                             <small class="text-muted">Due: <span id="payment_due_amount_helper" class="fw-bold text-danger">৳ 0.00</span></small>
@@ -107,7 +107,7 @@
                                         <label class="form-label fw-semibold">Remaining Balance</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0">৳</span>
-                                            <input type="number" step="0.01" name="next_due" class="form-control border-start-0" 
+                                            <input type="number" step="0" name="next_due" class="form-control border-start-0" 
                                                    id="next_due" min="0" placeholder="0.00" style="background-color: #f8f9fa;">
                                         </div>
                                         <div class="form-text text-muted">Amount remaining after this payment (editable)</div>
@@ -623,7 +623,7 @@ class PaymentModal {
             const dueAmt = parseFloat(dueAmount) || 0;
             paymentAmountField.value = dueAmt > 0 ? dueAmt.toFixed(0) : '';
             paymentAmountField.max = dueAmt;
-            paymentAmountField.min = 0.01;
+            paymentAmountField.min = 0;
             
             // Reset validation
             paymentAmountField.classList.remove('is-invalid');
@@ -1016,13 +1016,13 @@ class PaymentModal {
             const dueAmountText = document.getElementById('payment_due_amount_display').textContent;
             const dueAmount = dueAmountText ? parseFloat(dueAmountText.replace(/[^\d.]/g, '')) || 0 : 0;
             
-            if (paymentAmount <= 0) {
-                this.showToast('Payment amount must be greater than zero', 'error');
+            if (paymentAmount < 0) {
+                this.showToast('Payment amount cannot be negative', 'error');
                 this.isSubmitting = false;
                 return;
             }
             
-            if (paymentAmount > dueAmount + 0.01) {
+            if (paymentAmount > dueAmount + 0) {
                 this.showToast(`Payment amount cannot exceed due amount (৳${dueAmount.toFixed(0)})`, 'error');
                 this.isSubmitting = false;
                 return;

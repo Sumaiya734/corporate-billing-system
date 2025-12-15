@@ -395,7 +395,7 @@ class BillingController extends Controller
         Log::info('Payment Request Data:', $request->all());
         
         $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|numeric|min:0',
             'payment_method' => 'required|string|max:50',
             'payment_date' => 'required|date',
             'note' => 'nullable|string'
@@ -429,7 +429,7 @@ class BillingController extends Controller
             $newDue = max(0, $invoice->total_amount - $newReceivedAmount);
 
             // Handle floating point precision
-            if ($newDue < 0.01) {
+            if ($newDue < 0) {
                 $newDue = 0;
                 $status = 'paid';
             } elseif ($newReceivedAmount > 0) {
@@ -1219,10 +1219,10 @@ class BillingController extends Controller
         if ($customerProduct->is_custom_price && $customerProduct->custom_price > 0) {
             // Custom price set
             return $customerProduct->custom_price;
-        } else {
-            // Standard monthly price
-            return $customerProduct->monthly_price * $billingCycle;
         }
+        
+        // If no custom price is set, return 0 (no fallback to calculated price)
+        return 0;
     }
     
     /**
@@ -1714,7 +1714,7 @@ class BillingController extends Controller
     public function updatePayment(Request $request, $paymentId)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|numeric|min:0',
             'payment_method' => 'required|in:cash,bank_transfer,mobile_banking,card,online',
             'payment_date' => 'required|date',
             'notes' => 'nullable|string|max:1000',
@@ -1895,6 +1895,13 @@ class BillingController extends Controller
                 'notes' => ($nextMonthInvoice->notes ?? '') . "\n[" . now()->format('Y-m-d H:i:s') . "] Carried forward ৳" . number_format($remainingDue, 2) . " from previous invoice #" . $invoice->invoice_number
             ]);
             
+            // Validate that the updated invoice amounts are consistent
+            $nextMonthInvoice->refresh();
+            if (!$nextMonthInvoice->validateAmounts()) {
+                $nextMonthInvoice->fixAmounts();
+                $nextMonthInvoice->refresh();
+            }
+            
             Log::info('Updated existing next month invoice with carried forward amount', [
                 'original_invoice_id' => $invoice->invoice_id,
                 'next_invoice_id' => $nextMonthInvoice->invoice_id,
@@ -1920,6 +1927,13 @@ class BillingController extends Controller
                 'notes' => 'Auto-generated for carry-forward of ৳' . number_format($remainingDue, 2) . " from previous invoice #" . $invoice->invoice_number . "\n[" . now()->format('Y-m-d H:i:s') . "] Carried forward from previous invoice",
                 'created_by' => Auth::id() ?? 1
             ]);
+            
+            // Validate that the new invoice amounts are consistent
+            $nextMonthInvoice->refresh();
+            if (!$nextMonthInvoice->validateAmounts()) {
+                $nextMonthInvoice->fixAmounts();
+                $nextMonthInvoice->refresh();
+            }
             
             Log::info('Created new invoice for next month with carried forward amount', [
                 'original_invoice_id' => $invoice->invoice_id,

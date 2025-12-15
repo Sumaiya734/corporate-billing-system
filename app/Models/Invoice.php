@@ -492,6 +492,36 @@ class Invoice extends Model
     }
 
     /**
+     * Validate that the invoice amounts are mathematically consistent
+     * Ensures: total_amount = subtotal + previous_due and next_due = total_amount - received_amount
+     */
+    public function validateAmounts(): bool
+    {
+        $expectedTotal = $this->subtotal + $this->previous_due;
+        $expectedNextDue = max(0, $expectedTotal - $this->received_amount);
+        
+        $isTotalValid = abs($this->total_amount - $expectedTotal) < 0;
+        $isNextDueValid = abs($this->next_due - $expectedNextDue) < 0;
+        
+        return $isTotalValid && $isNextDueValid;
+    }
+
+    /**
+     * Fix any inconsistencies in the invoice amounts
+     * Corrects: total_amount = subtotal + previous_due and next_due = total_amount - received_amount
+     */
+    public function fixAmounts(): bool
+    {
+        $correctTotal = $this->subtotal + $this->previous_due;
+        $correctNextDue = max(0, $correctTotal - $this->received_amount);
+        
+        return $this->update([
+            'total_amount' => $correctTotal,
+            'next_due' => $correctNextDue
+        ]);
+    }
+
+    /**
      * Recalculate payment amounts based on actual payments in database
      * This ensures next_due = total_amount - received_amount is always accurate
      */
@@ -555,14 +585,24 @@ class Invoice extends Model
         $nextInvoice = null;
         
         if ($existingNextInvoice) {
-            // Update existing invoice with carried forward amount
-            $existingNextInvoice->update([
-                'previous_due' => $existingNextInvoice->previous_due + $dueAmount,
-                'total_amount' => $existingNextInvoice->subtotal + $existingNextInvoice->previous_due + $dueAmount,
-                'next_due' => max(0, ($existingNextInvoice->subtotal + $existingNextInvoice->previous_due + $dueAmount) - $existingNextInvoice->received_amount),
-                'notes' => ($existingNextInvoice->notes ?? '') . "\nAdded ৳" . number_format($dueAmount, 0) . 
-                          " carried forward from invoice #{$this->invoice_number}"
-            ]);
+            // Check if this carry-forward amount was already added to prevent duplication
+            $notes = $existingNextInvoice->notes ?? '';
+            $alreadyAdded = strpos($notes, "Added ৳" . number_format($dueAmount, 0) . " carried forward from invoice #{$this->invoice_number}") !== false;
+            
+            if (!$alreadyAdded) {
+                // Update existing invoice with carried forward amount
+                $newPreviousDue = $dueAmount;
+                $newTotalAmount = $existingNextInvoice->subtotal + $newPreviousDue;
+                $newNextDue = max(0, $newTotalAmount - $existingNextInvoice->received_amount);
+                
+                $existingNextInvoice->update([
+                    'previous_due' => $newPreviousDue,
+                    'total_amount' => $newTotalAmount,
+                    'next_due' => $newNextDue,
+                    'notes' => $notes . "\nAdded ৳" . number_format($dueAmount, 0) . 
+                              " carried forward from invoice #{$this->invoice_number}"
+                ]);
+            }
             $nextInvoice = $existingNextInvoice;
         } else {
             // Create new invoice for next month
@@ -575,7 +615,11 @@ class Invoice extends Model
             $isBillingMonth = ($monthsSinceAssign % $billingCycle) === 0;
             
             if ($isBillingMonth) {
-                $subtotal = $product->monthly_price * $billingCycle;
+                // Always use custom price if available and is_custom_price is true
+                if ($customerProduct->is_custom_price && $customerProduct->custom_price !== null && $customerProduct->custom_price > 0) {
+                    $subtotal = $customerProduct->custom_price;
+                }
+                // If no custom price is set, subtotal remains 0 (no fallback to calculated price)
             }
             
             $nextInvoice = Invoice::create([
@@ -593,6 +637,16 @@ class Invoice extends Model
             ]);
         }
 
+        // Validate that the next invoice amounts are consistent
+        if ($nextInvoice) {
+            $nextInvoice->refresh();
+            if (!$nextInvoice->validateAmounts()) {
+                // Fix any inconsistencies
+                $nextInvoice->fixAmounts();
+                $nextInvoice->refresh();
+            }
+        }
+        
         return [
             'success' => true,
             'carried_forward_amount' => $dueAmount,
@@ -863,5 +917,73 @@ class Invoice extends Model
             $productId, 
             $cycleNumber
         );
+    }
+    
+    /**
+     * Get or create rolling invoice for a customer product
+     */
+    public static function getOrCreateRollingInvoice($cpId, Carbon $monthDate)
+    {
+        // Get customer product details
+        $customerProduct = \App\Models\CustomerProduct::with('product')->find($cpId);
+        
+        if (!$customerProduct) {
+            return null;
+        }
+        
+        // Check if invoice already exists for this month
+        $existingInvoice = self::where('cp_id', $cpId)
+            ->whereYear('issue_date', $monthDate->year)
+            ->whereMonth('issue_date', $monthDate->month)
+            ->first();
+            
+        if ($existingInvoice) {
+            return $existingInvoice;
+        }
+        
+        // Calculate if this is a billing month
+        $assignDate = Carbon::parse($customerProduct->assign_date);
+        $monthsSinceAssign = $assignDate->diffInMonths($monthDate);
+        $isBillingMonth = ($monthsSinceAssign % $customerProduct->billing_cycle_months) === 0;
+        
+        // Calculate subtotal
+        $subtotal = 0;
+        if ($isBillingMonth) {
+            // ONLY use custom_price - no calculated price fallback
+
+            if ($customerProduct->is_custom_price && $customerProduct->custom_price !== null && $customerProduct->custom_price > 0) {
+
+                $subtotal = $customerProduct->custom_price;
+
+            }
+
+            // If no custom price is set, don't bill anything (subtotal remains 0)
+        }
+        
+        // Get previous due amount
+        $previousDue = self::where('cp_id', $cpId)
+            ->where('status', '!=', 'paid')
+            ->where('next_due', '>', 0)
+            ->sum('next_due');
+        
+        $totalAmount = $subtotal + $previousDue;
+        
+        // Create new invoice
+        $invoice = self::create([
+            'cp_id' => $cpId,
+            'issue_date' => $monthDate->format('Y-m-d'),
+            'previous_due' => $previousDue,
+            'subtotal' => $subtotal,
+            'total_amount' => $totalAmount,
+            'received_amount' => 0,
+            'next_due' => $totalAmount,
+            'status' => 'unpaid',
+            'is_active_rolling' => 0, // Monthly invoice, not rolling
+            'notes' => "Monthly invoice for {$monthDate->format('F Y')} - " . 
+                      ($isBillingMonth ? "Billing month" : "Carry forward"),
+            'created_by' => \Illuminate\Support\Facades\Auth::id() ?? 1
+        ]);
+        
+        return $invoice;
     }
 }
