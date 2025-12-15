@@ -467,7 +467,7 @@ footer{
 
                 @auth
                   @if(Auth::user()->role === 'customer')
-                    <a href="{{ route('customer.subscribe', ['id'=> $product->p_id]) }}" class="btn btn-cta w-50">Subscribe</a>
+                    <a href="{{ route('customer.register') }}" class="btn btn-cta w-50">Subscribe</a>
                   @else
                     <a href="#contact" class="btn btn-cta w-50">Contact Sales</a>
                   @endif

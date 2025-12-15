@@ -18,14 +18,40 @@ class PaymentController extends Controller
     public function getInvoicePayments($invoiceId)
     {
         try {
+            $invoice = Invoice::with(['customerProduct.customer', 'payments'])
+                ->findOrFail($invoiceId);
+
+            $customer = $invoice->customerProduct ? $invoice->customerProduct->customer : null;
+            
             $payments = Payment::with('collector')
                 ->where('invoice_id', $invoiceId)
                 ->orderBy('payment_date', 'desc')
                 ->orderBy('created_at', 'desc')
-                ->get();
+                ->get()
+                ->map(function ($payment) {
+                    // Format the payment data to match what the frontend expects
+                    return [
+                        'id' => $payment->payment_id,
+                        'payment_id' => $payment->payment_id,
+                        'invoice_id' => $payment->invoice_id,
+                        'amount' => $payment->amount,
+                        'payment_method' => $payment->payment_method,
+                        'payment_date' => $payment->payment_date,
+                        'note' => $payment->notes,
+                        'notes' => $payment->notes,
+                        'collected_by' => $payment->collected_by,
+                        'created_at' => $payment->created_at,
+                        'updated_at' => $payment->updated_at,
+                    ];
+                });
 
             return response()->json([
                 'success' => true,
+                'invoice_number' => $invoice->invoice_number,
+                'customer_name' => $customer ? $customer->name : 'Unknown',
+                'total_amount' => $invoice->total_amount,
+                'received_amount' => $invoice->received_amount ?? 0,
+                'next_due' => $invoice->next_due ?? 0,
                 'payments' => $payments
             ]);
 
@@ -40,8 +66,7 @@ class PaymentController extends Controller
 
     }
 
-    public function store(Request $request)
-    {
+    public function store(Request $request)    {
         $data = $request->validate([
             'invoice_id' => ['required', 'integer', 'exists:invoices,invoice_id'],
             'c_id' => ['required', 'integer'],
@@ -85,10 +110,9 @@ class PaymentController extends Controller
                     'payment_method' => $data['payment_method'],
                     'payment_date' => $data['payment_date'],
                     'notes' => $data['notes'] ?? null,
-                    'collected_by' => auth()->id(),
+                    'collected_by' => Auth::id(),
                     'status' => 'completed',
                 ]);
-
                 // Update invoice aggregates
                 $invoice->received_amount = $received + $amount;
                 $invoice->next_due = max(0.0, $total - $invoice->received_amount);
@@ -155,10 +179,9 @@ class PaymentController extends Controller
                 'payment_method' => $request->payment_method,
                 'payment_date'   => $request->payment_date,
                 'notes'          => $request->notes ?? null,
-                'collected_by'   => auth()->id(),
+                'collected_by'   => Auth::id(),
                 'status'         => 'completed',
             ]);
-
             // 2. Update invoice
             $newReceived = ($invoice->received_amount ?? 0) + $amount;
             $newDue = $invoice->total_amount - $newReceived;

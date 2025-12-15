@@ -34,9 +34,13 @@ Route::get('/login', function () {
 // Authentication routes (outside auth middleware)
 Route::middleware('web')->group(function () {
     // Customer Authentication
-    Route::get('/customer/login', [CustomerController::class, 'showLoginForm'])->name('customer.login');
-    Route::post('/customer/login', [CustomerController::class, 'login'])->name('customer.login.submit');
-    Route::post('/customer/logout', [CustomerController::class, 'logout'])->name('customer.logout');
+    Route::get('/customer/login', [App\Http\Controllers\Customer\CustomerController::class, 'showLoginForm'])->name('customer.login');
+    Route::post('/customer/login', [App\Http\Controllers\Customer\CustomerController::class, 'login'])->name('customer.login.submit');
+    Route::post('/customer/logout', [App\Http\Controllers\Customer\CustomerController::class, 'logout'])->name('customer.logout');
+    
+    // Customer Registration
+    Route::get('/customer/register', [App\Http\Controllers\Customer\CustomerController::class, 'showRegistrationForm'])->name('customer.register');
+    Route::post('/customer/register', [App\Http\Controllers\Customer\CustomerController::class, 'register'])->name('customer.register.submit');
 
     // Admin Authentication
     Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('admin.login');
@@ -239,8 +243,8 @@ Route::prefix('admin')->middleware(['web', 'auth'])->name('admin.')->group(funct
 });
 
 // ==================== CUSTOMER PROTECTED ROUTES ====================
-Route::prefix('customer')->middleware(['auth:customer'])->group(function () {
-    Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('customer.dashboard');
+Route::prefix('customer')->middleware(['auth:web'])->group(function () {
+    Route::get('/dashboard', [\App\Http\Controllers\Customer\CustomerController::class, 'dashboard'])->name('customer.dashboard');
 });
 
 // ==================== DEBUG/DEVELOPMENT ROUTES ====================

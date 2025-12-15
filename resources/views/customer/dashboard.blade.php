@@ -6,147 +6,205 @@
     <title>Customer Dashboard - NetBill BD</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
     <style>
-    .sidebar {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        padding: 0;
-        transition: all 0.3s;
-    }
-    .sidebar .nav-link {
-        color: #ffffff;
-        padding: 12px 20px;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        transition: all 0.3s;
-    }
-    .sidebar .nav-link:hover {
-        background: rgba(255,255,255,0.1);
-        color: #ffffff;
-        padding-left: 25px;
-    }
-    .sidebar .nav-link.active {
-        background: rgba(255,255,255,0.2);
-        color: white;
-        border-left: 4px solid #ffffff;
-    }
+        /* ---------------------------
+           Soft Blue / White Theme A
+           --------------------------- */
+        :root{
+            --primary: #3A7BD5;
+            --primary-700: #2F63B8;
+            --secondary: #2C3E50;
+            --muted: #6b7280;
+            --bg:rgb(238, 238, 240);
+            --card-radius: 14px;
+            --glass: rgba(255,255,255,0.85);
+        }
 
-    /* --- Dropdown Animation --- */
-    .sidebar .dropdown-menu {
-        display: block;
-        max-height: 0;
-        overflow: hidden;
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(-5px);
-        transition: all 0.3s ease;
-        background: rgba(86, 101, 115, 0.95);
-        border: none;
-        border-radius: 0;
-        backdrop-filter: blur(10px);
-    }
-    .sidebar .dropdown:hover > .dropdown-menu {
-        max-height: 500px;
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
-        border-left: 3px solid #ffffff;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
+        html,body{height:100%;}
+        body{
+            margin:0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: #1f2937;
+            -webkit-font-smoothing:antialiased;
+        }
 
-    .sidebar .dropdown-item {
-        color: #ffffff;
-        padding: 10px 20px 10px 40px;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        transition: all 0.3s ease;
-    }
-    .sidebar .dropdown-item:hover {
-        background: rgba(255,255,255,0.2);
-        color: white;
-        padding-left: 45px;
-    }
+        /* NAVBAR */
+        .navbar-brand { font-weight:700; color:var(--primary); display:flex; gap:.6rem; align-items:center; }
+        .navbar { background: #ffffff; box-shadow: 0 6px 18px rgba(15,23,42,0.06); padding: .6rem 1rem; }
 
-    /* Dropdown arrow rotation */
-    .sidebar .dropdown-toggle i.fa-chevron-right {
-        transition: transform 0.3s ease;
-    }
-    .sidebar .dropdown:hover .dropdown-toggle i.fa-chevron-right {
-        transform: rotate(90deg);
-    }
+        /* TOP AREA */
+        .page-header {
+            background: #fff;
+            border-radius: var(--card-radius);
+            padding: 20px;
+            box-shadow: 0 6px 18px rgba(12, 15, 29, 0.04);
+            margin-bottom: 1.25rem;
+            border-left: 4px solid rgba(58, 123, 213, 0.08);
+        }
 
-    .sidebar-brand {
-        padding: 25px 20px;
-        background: rgba(0,0,0,0.1);
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
+        /* SIDEBAR */
+        .sidebar {
+            background: linear-gradient(180deg,rgb(57, 74, 99) 0%, #263a4f 100%);
+            color: #ecf2ff;
+            min-height: 100vh;
+            padding: 0;
+            transition: transform .28s ease;
+            position: relative;
+        }
+        @media (min-width: 992px) {
+            /* Keep a consistent fixed width on large screens but use col-lg-auto so
+               the grid doesn't allocate a percentage column AND a fixed width. */
+            .sidebar { width: 250px; }
+            .main-content { padding: 24px; }
+        }
+        .sidebar .sidebar-brand { padding: 20px; background: rgba(0,0,0,0.06); display:flex; align-items:center; gap:12px; }
+        .sidebar .sidebar-brand img { height:36px; width:auto; border-radius:8px; }
+        .sidebar .nav-link{
+            color: rgba(236,242,255,0.92);
+            padding: 12px 18px;
+            border-left: 4px solid transparent;
+            transition: all .22s ease;
+            display:flex;
+            gap:.8rem;
+            align-items:center;
+        }
+        .sidebar .nav-link i { color: rgba(255,255,255,0.9); min-width:22px; text-align:center; font-size:1.05rem; }
+        .sidebar .nav-link:hover {
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            padding-left: 22px;
+            border-left: 4px solid var(--primary);
+            text-decoration:none;
+        }
+        .sidebar .nav-link.active {
+            background: linear-gradient(90deg, rgba(58,123,213,0.12), rgba(58,123,213,0.06));
+            color: #fff;
+            border-left: 4px solid var(--primary);
+        }
+        .sidebar .dropdown-menu { background: transparent; border: none; box-shadow:none; padding:0; }
+        .sidebar .dropdown-item { color: rgba(236,242,255,0.95); padding-left: 46px; border-radius: 0; }
+        .sidebar .dropdown-item:hover { background: rgba(255,255,255,0.03); color: #fff; }
 
-    .main-content {
-        background: #f8f9fa;
-        min-height: 100vh;
-    }
+        /* MAIN CONTENT */
+        .main-content { padding: 24px; margin-left: 0; transition: margin-left .28s ease; }
 
-    .stat-card {
-        border-radius: 15px;
-        transition: transform 0.3s ease;
-        border: none;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        border-left: 5px solid;
-    }
-    .stat-card:hover {
-        transform: translateY(-5px);
-    }
+        /* CARDS & STAT */
+        .stat-card {
+            border-radius: 12px;
+            overflow: hidden;
+            border: none;
+            transition: transform .28s ease, box-shadow .28s ease;
+            background: linear-gradient(180deg, #fff, #fbfdff);
+            box-shadow: 0 8px 30px rgba(40,45,62,0.04);
+        }
+        .stat-card:hover {
+            background: linear-gradient(180deg, #fff, #fbfdff);
+            transform: translateY(-6px);
+            box-shadow: 0 18px 40px rgba(26,32,44,0.07);
+        }
+        .stat-card .card-body { padding: 20px; }
+        .stat-title { font-size: .90rem; color: var(--muted); margin-bottom: .4rem; font-weight:600; }
+        .stat-value { font-size: 28px; font-weight:700; color: var(--secondary); }
 
-    .welcome-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 15px;
-    }
+        /* Gradient badges (for stat cards) */
+        .bg-gradient-primary { background: linear-gradient(135deg, #6EA8FE 0%, #3A7BD5 100%); color: #fff; }
+        .bg-gradient-success { background: linear-gradient(135deg, #86EFAC 0%, #34D399 100%); color: #fff; }
+        .bg-gradient-warning { background: linear-gradient(135deg, #FFD27A 0%, #FB9A64 100%); color: #fff; }
+        .bg-gradient-info    { background: linear-gradient(135deg, #A5F3FC 0%, #67E8F9 100%); color:#fff; }
 
-    .quick-action-btn {
-        transition: all 0.3s ease;
-        border-radius: 10px;
-        padding: 15px;
-    }
-    .quick-action-btn:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    }
-</style>
+        .stat-icon {
+            font-size: 36px;
+            opacity: .95;
+        }
+
+        /* small animations */
+        .fade-in { animation: fadeIn .6s ease both; }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none; } }
+
+        /* TABLE & DATATABLES */
+        .table thead th { background: #f1f5f9; border-bottom: none; font-weight:700; color: #2b2d42; }
+        .table tbody td { vertical-align: middle; border-top: 1px solid #eff3f6; }
+
+        /* overlay (mobile) */
+        .overlay {
+            display:none;
+            position:fixed;
+            inset:0;
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            transition: opacity .2s ease;
+        }
+        .overlay.show { display:block; opacity:1; }
+
+        /* small helpers */
+        .btn-ghost { background: transparent; border: 1px solid rgba(58,123,213,0.08); color:var(--primary); border-radius:10px; padding:8px 12px; }
+        .notification-badge { position:absolute; top:10px; right:12px; background: #e74c3c; color:#fff; border-radius:50%; width:18px; height:18px; font-size:.72rem; display:flex; align-items:center; justify-content:center; }
+
+        /* responsive adjustments */
+        @media (max-width: 991.98px) {
+                .sidebar { position: fixed; left: -100%; width: 80%; z-index: 1100; }
+                .sidebar.show { left:0; }
+                .main-content { margin-left: 0 !important; }
+                .overlay { display:block; opacity:0; }
+            }
+
+            /* Prevent admin layout stacking on large screens while resources load */
+            @media (min-width: 992px) {
+                .admin-layout-row { flex-wrap: nowrap; }
+                .main-content { flex: 1 1 auto; min-width: 0; margin-top: 56px; }
+            }
+    </style>
 
 </head>
 <body>
     <!-- Top Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container-fluid">
-            <button class="btn btn-light d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar">
-                <i class="fas fa-bars"></i>
-            </button>
-            <a class="navbar-brand fw-bold" href="{{ route('customer.dashboard') }}">
-                <i class="fas fa-wifi me-2"></i>NetBill BD
-            </a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text text-white me-3">
-                    <i class="fas fa-user-circle me-1"></i>Welcome, {{ $customer->name }}
-                </span>
-                <form method="POST" action="{{ route('customer.logout') }}">
-                    @csrf
-                    <button type="submit" class="btn btn-outline-light btn-sm">
-                        <i class="fas fa-sign-out-alt me-1"></i>Logout
-                    </button>
-                </form>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-light d-lg-none" id="sidebarToggle" aria-label="Toggle sidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <a class="navbar-brand ms-2" href="{{ route('welcome') }}">
+                    <i class="fas fa-wifi me-2"></i>NetBill BD
+                </a>
+            </div>
+
+            <div class="d-flex align-items-center ms-auto gap-3">
+                <div class="d-flex align-items-center">
+                    <div class="me-3 text-secondary d-none d-md-block">
+                        <div style="font-weight:700">{{ $customer->name }}</div>
+                        <small class="text-muted">Customer</small>
+                    </div>
+                    
+                    <form method="POST" action="{{ route('customer.logout') }}" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Logout">
+                            <i class="fas fa-right-from-bracket"></i>
+                            <span class="d-none d-md-inline ms-1">Logout</span>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </nav>
 
+    <!-- overlay for mobile sidebar -->
+    <div class="overlay" id="overlay"></div>
+
     <div class="container-fluid">
-        <div class="row">
+        <div class="row admin-layout-row">
             <!-- Sidebar -->
-            <div class="col-md-3 col-lg-2 sidebar collapse d-md-block" id="sidebar">
+            <div id="sidebar" class="col-12 col-lg-auto sidebar p-0">
                 <div class="sidebar-brand">
                     <h6 class="text-white mb-1"><i class="fas fa-user me-2"></i>My Account</h6>
                     <small class="text-light opacity-75">ID: {{ $customer->customer_id }}</small>
                 </div>
                 
-                <nav class="nav flex-column">
+                <nav class="nav flex-column p-2">
                     <!-- Dashboard -->
                     <a class="nav-link active" href="{{ route('customer.dashboard') }}">
                         <i class="fas fa-home me-2"></i>Dashboard
@@ -232,7 +290,7 @@
             </div>
 
             <!-- Main Content -->
-            <div class="col-md-9 col-lg-10 main-content">
+            <main class="col main-content">
                 <div class="p-4">
                     <!-- Welcome Card -->
                     <div class="card welcome-card mb-4">
@@ -455,33 +513,69 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Disable click dropdown behavior (use hover instead)
-    document.querySelectorAll('.sidebar .dropdown-toggle').forEach(toggle => {
-        toggle.addEventListener('click', e => e.preventDefault());
-    });
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const overlay = document.getElementById('overlay');
+            const body = document.body;
 
-    // Add active state for current page
-    const currentPage = window.location.pathname;
-    const navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
-        if (link.getAttribute('href') === currentPage) {
-            link.classList.add('active');
-        }
-    });
+            // Mobile sidebar toggle
+            if (sidebarToggle && sidebar && overlay) {
+                sidebarToggle.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    sidebar.classList.toggle('show');
+                    overlay.classList.toggle('show');
+                });
 
-    // Auto-collapse sidebar on small screens
-    if (window.innerWidth < 768) {
-        document.getElementById('sidebar').classList.remove('show');
-    }
-});
-</script>
+                overlay.addEventListener('click', function () {
+                    sidebar.classList.remove('show');
+                    overlay.classList.remove('show');
+                });
+
+                // close sidebar on nav link click (mobile)
+                sidebar.querySelectorAll('.nav-link, .dropdown-item').forEach(link => {
+                    link.addEventListener('click', function () {
+                        if (window.innerWidth < 992) {
+                            sidebar.classList.remove('show');
+                            overlay.classList.remove('show');
+                        }
+                    });
+                });
+            }
+            
+            // Disable click dropdown behavior (use hover instead)
+            document.querySelectorAll('.sidebar .dropdown-toggle').forEach(toggle => {
+                toggle.addEventListener('click', e => e.preventDefault());
+            });
+
+            // Add active state for current page
+            const currentPage = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPage) {
+                    link.classList.add('active');
+                }
+            });
+
+            // Auto-close alerts (except those with persistent-alert class)
+            document.querySelectorAll('.alert:not(.persistent-alert)').forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                    bsAlert.close();
+                }, 6000);
+            });
+            
+            // Tooltips init
+            const tList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tList.map(function (t) { return new bootstrap.Tooltip(t); });
+        });
+    </script>
 
 </body>
 </html>

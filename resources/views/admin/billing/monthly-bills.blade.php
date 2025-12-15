@@ -2716,6 +2716,5 @@
     }
 
 
-    // Note: loadExistingPayments and payment edit/delete are handled by payment-modal.js
-</script>
+    // Note: loadExistingPayments and payment edit/delete are now handled by the inline JavaScript in payment-modal.blade.php</script>
 @endsection

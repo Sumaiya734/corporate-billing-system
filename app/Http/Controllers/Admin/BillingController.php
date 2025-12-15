@@ -1615,14 +1615,8 @@ class BillingController extends Controller
 
             $customer = $invoice->customerProduct ? $invoice->customerProduct->customer : null;
             
-            // Get current month from invoice issue date
-            $invoiceMonth = \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m');
-            
-            // Filter payments by invoice month only
-            $filteredPayments = $invoice->payments->filter(function($payment) use ($invoice, $invoiceMonth) {
-                $paymentMonth = \Carbon\Carbon::parse($payment->payment_date)->format('Y-m');
-                return $paymentMonth === $invoiceMonth;
-            });
+            // Get all payments for this invoice (without month filtering)
+            $allPayments = $invoice->payments;
 
             return response()->json([
                 'success' => true,
@@ -1631,7 +1625,7 @@ class BillingController extends Controller
                 'total_amount' => $invoice->total_amount,
                 'received_amount' => $invoice->received_amount ?? 0,
                 'next_due' => $invoice->next_due ?? 0,
-                'payments' => $filteredPayments->map(function($payment) {
+                'payments' => $allPayments->map(function($payment) {
                     return [
                         'payment_id' => $payment->payment_id,
                         'amount' => $payment->amount,
@@ -1767,6 +1761,23 @@ class BillingController extends Controller
             
             DB::commit();
             
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment updated successfully. Invoice amounts have been recalculated.',
+                    'payment' => $payment,
+                    'invoice' => [
+                        'invoice_id' => $invoice->invoice_id,
+                        'total_amount' => $invoice->total_amount,
+                        'received_amount' => $invoice->received_amount,
+                        'next_due' => $invoice->next_due,
+                        'status' => $invoice->status
+                    ]
+                ]);
+            }
+            
+            // Fallback to redirect for non-AJAX requests
             return redirect()
                 ->route('admin.billing.monthly-bills', ['month' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m')])
                 ->with('success', 'Payment updated successfully. Invoice amounts have been recalculated.');
@@ -1774,10 +1785,19 @@ class BillingController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Update payment error: ' . $e->getMessage());
+            
+            // Return JSON error response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update payment: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            // Fallback to redirect for non-AJAX requests
             return redirect()->back()->with('error', 'Failed to update payment: ' . $e->getMessage())->withInput();
         }
-    }
-    
+    }    
     /**
      * Update an invoice
      */

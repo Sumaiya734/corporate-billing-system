@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
 
 class CustomerController extends Controller
@@ -33,7 +34,7 @@ class CustomerController extends Controller
 
         // Get customer's latest invoices and payments - FIXED TO USE CORRECT RELATIONSHIP
         $invoices = $customer->invoices()->latest()->take(5)->get();
-        $payments = Payment::where('c_id', $customer->c_id)->latest()->take(5)->get();
+        $payments = $customer->payments()->latest()->take(5)->get();
         $totalDue = $customer->unpaidInvoices()->get()->sum(function($invoice) {
             return $invoice->total_amount - $invoice->received_amount;
         });
@@ -355,6 +356,60 @@ class CustomerController extends Controller
 
     // ========== CUSTOMER AUTHENTICATION METHODS ==========
     
+    public function showRegistrationForm()
+    {
+        return view('customer.register');
+    }
+    
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'phone' => 'required|string|max:30',
+            'address' => 'required|string|max:500',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Create User account
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'customer',
+                'email_verified_at' => now(),
+            ]);
+
+            // Create Customer profile
+            $customer = CustomerModel::create([
+                'user_id' => $user->id,
+                'customer_id' => CustomerModel::generateCustomerId(),
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'is_active' => true, // New customers are active by default
+            ]);
+
+            DB::commit();
+
+            // Log the user in automatically after registration
+            Auth::login($user);
+
+            return redirect()->route('customer.dashboard')
+                ->with('success', 'Account created successfully! Welcome to NetBill BD.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Error creating account: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+    
     public function showLoginForm()
     {
         if (Auth::check() && Auth::user()->role === 'customer') {
@@ -370,20 +425,27 @@ class CustomerController extends Controller
             'password' => 'required',
         ]);
 
+        // Add debugging
+        \Illuminate\Support\Facades\Log::info('Login attempt for email: ' . $credentials['email']);
+        
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
+            \Illuminate\Support\Facades\Log::info('Authentication successful for user ID: ' . $user->id . ' with role: ' . ($user->role ?? 'NULL'));
             
             if ($user->role === 'customer') {
                 $request->session()->regenerate();
+                \Illuminate\Support\Facades\Log::info('Redirecting customer to dashboard');
                 return redirect()->route('customer.dashboard');
             } else {
                 Auth::logout();
+                \Illuminate\Support\Facades\Log::info('Non-customer user attempted to login to customer area');
                 return back()->withErrors([
                     'email' => 'Access denied. Customer login only.',
                 ])->withInput();
             }
         }
 
+        \Illuminate\Support\Facades\Log::info('Authentication failed for email: ' . $credentials['email']);
         return back()->withErrors([
             'email' => 'The provided credentials do not match our records.',
         ])->withInput();

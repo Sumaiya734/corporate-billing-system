@@ -1,4 +1,5 @@
 // Payment Modal Functions
+/*
 class PaymentModal {
     constructor() {
         this.isSubmitting = false;
@@ -825,11 +826,14 @@ class PaymentModal {
 
 // Initialize payment modal when document is ready
 document.addEventListener('DOMContentLoaded', function () {
-    new PaymentModal();
+    // DISABLED: Not using this implementation
+    // new PaymentModal();
 });
+*/
+console.log('Payment modal JS file loaded but functionality is implemented inline in the blade template');
 
 // Global function to execute payment deletion from modal
-window.executeDeletePayment = async function () {
+/* window.executeDeletePayment = async function () {
     console.log('executeDeletePayment called');
 
     if (!window.deletePaymentData) {
@@ -903,14 +907,14 @@ window.executeDeletePayment = async function () {
         confirmBtn.disabled = false;
         button.html(originalHtml).prop('disabled', false);
     }
-};
+}; */
 
 // Reset delete modal on close
-$(document).on('hidden.bs.modal', '#deletePaymentModal', function () {
+/* $(document).on('hidden.bs.modal', '#deletePaymentModal', function () {
     const confirmBtn = document.getElementById('confirmDeletePaymentBtn');
     if (confirmBtn) {
         confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Delete Payment';
         confirmBtn.disabled = false;
     }
     window.deletePaymentData = null;
-});
+}); */
