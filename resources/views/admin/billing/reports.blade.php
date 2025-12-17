@@ -15,7 +15,7 @@
         <p class="text-muted mb-0">Generate detailed billing reports with advanced filters</p>
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary" onclick="window.print()">
+        <button class="btn btn-outline-primary" onclick="printReport()">
             <i class="fas fa-print me-1"></i>Print Report
         </button>
         <a href="{{ route('admin.billing.export-reports', request()->all()) }}" class="btn btn-success">
@@ -152,11 +152,18 @@
     </div>
 </div>
 
-
+<!-- Print Header (Hidden on screen, visible in print) -->
+<div class="print-header" style="display: none;">
+    <h2>Billing Report</h2>
+    <p>Generated on: {{ now()->format('F d, Y h:i A') }}</p>
+    @if(request()->hasAny(['date_range', 'from_date', 'to_date', 'due_status', 'customer_id', 'status', 'search']))
+    <p><small>(Filtered Results)</small></p>
+    @endif
+</div>
 
 <!-- Report Table -->
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white py-3">
+<div class="card shadow-sm border-0" id="reportTable">
+    <div class="card-header bg-white py-3 table-search-section">
         <div class="d-flex justify-content-between align-items-center">
             <h5 class="card-title mb-0">
                 <i class="fas fa-table me-2"></i>Billing Report
@@ -182,7 +189,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle" id="reportTable">
+            <table class="table table-hover mb-0 align-middle" id="billingTable">
                 <thead class="table-light">
                     <tr>
                         <th class="border-end">Invoice ID</th>
@@ -287,25 +294,35 @@
                         </td>
                     </tr>
                     @endforelse
-                </tbody>
-                @if($invoices->count() > 0)
-                <tfoot class="table-light">
-                    <tr>
-                        <th colspan="3" class="text-end">Totals:</th>
-                        <th class="text-end">৳ {{ number_format($totals->total_subtotal ?? 0, 2) }}</th>
-                        <th class="text-end">৳ {{ number_format($totals->total_previous_due ?? 0, 2) }}</th>
-                        <th class="text-end">৳ {{ number_format($totals->total_amount ?? 0, 2) }}</th>
-                        <th class="text-end">৳ {{ number_format($totals->total_received ?? 0, 2) }}</th>
-                        <th class="text-end">
+                    
+                    <!-- Total Summary Row - ONLY AT THE END -->
+                    @if($invoices->count() > 0)
+                    <tr style="background-color: #f8f9fa; font-weight: bold;">
+                        <td colspan="3" class="text-end border-end">
+                            <strong>GRAND TOTAL:</strong>
+                        </td>
+                        <td class="text-end border-end">
+                            <strong>৳ {{ number_format($totals->total_subtotal ?? 0, 2) }}</strong>
+                        </td>
+                        <td class="text-end border-end">
+                            <strong>৳ {{ number_format($totals->total_previous_due ?? 0, 2) }}</strong>
+                        </td>
+                        <td class="text-end border-end">
+                            <strong>৳ {{ number_format($totals->total_amount ?? 0, 2) }}</strong>
+                        </td>
+                        <td class="text-end border-end">
+                            <strong>৳ {{ number_format($totals->total_received ?? 0, 2) }}</strong>
+                        </td>
+                        <td class="text-end border-end">
                             @php
                                 $totalNextDue = max(0, ($totals->total_amount ?? 0) - ($totals->total_received ?? 0));
                             @endphp
-                            ৳ {{ number_format($totalNextDue, 2) }}
-                        </th>
-                        <th></th>
+                            <strong>৳ {{ number_format($totalNextDue, 2) }}</strong>
+                        </td>
+                        <td class="text-center"></td>
                     </tr>
-                </tfoot>
-                @endif
+                    @endif
+                </tbody>
             </table>
         </div>
     </div>
@@ -389,7 +406,7 @@
                     <div class="col-12 mt-3">
                         <div class="progress" style="height: 20px;">
                             <div class="progress-bar bg-success" role="progressbar" 
-                                 style="width: {{ $collectionRate }}%">
+                                 data-collection-rate="{{ $collectionRate }}">
                                 {{ $collectionRate }}%
                             </div>
                         </div>
@@ -540,7 +557,44 @@
 
     /* Print styles */
     @media print {
-        .card-header, .card-footer, .btn, .filter-section {
+        body * {
+            visibility: hidden;
+        }
+        
+        #reportTable,
+        #reportTable *,
+        .print-header,
+        .print-header * {
+            visibility: visible;
+        }
+        
+        #reportTable {
+            position: absolute;
+            left: 0;
+            top: 80px;
+            width: 100%;
+        }
+        
+        .print-header {
+            display: block !important;
+            text-align: center;
+            margin-bottom: 20px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+        }
+        
+        .card-header, 
+        .card-footer, 
+        .btn, 
+        .filter-section,
+        .page-title,
+        .row.mt-4,
+        .table-search-section,
+        .pagination,
+        #toastContainer,
+        .card:not(#reportTable) {
             display: none !important;
         }
         
@@ -549,12 +603,40 @@
             box-shadow: none !important;
         }
         
-        table {
-            border: 1px solid #dee2e6 !important;
+        .table {
+            border: 1px solid #000 !important;
+            page-break-inside: auto;
         }
         
         th, td {
-            border: 1px solid #dee2e6 !important;
+            border: 1px solid #000 !important;
+            padding: 8px !important;
+            color: #000 !important;
+            font-size: 11px !important;
+        }
+        
+        tr {
+            page-break-inside: avoid;
+        }
+        
+        /* Prevent page break in the middle of total row */
+        tr:last-child {
+            page-break-inside: avoid !important;
+            page-break-after: avoid !important;
+        }
+        
+        thead {
+            display: table-header-group;
+        }
+        
+        .badge {
+            border: 1px solid #000 !important;
+            color: #000 !important;
+            background-color: transparent !important;
+        }
+        
+        .text-primary, .text-success, .text-danger, .text-info, .text-warning {
+            color: #000 !important;
         }
     }
 
@@ -645,49 +727,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Initialize Chart.js if data exists
-    @if($invoices->count() > 0)
-    const ctx = document.getElementById('paymentChart');
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Paid', 'Partial', 'Unpaid', 'Confirmed'],
-                datasets: [{
-                    data: [
-                        {{ $invoices->where('status', 'paid')->count() }},
-                        {{ $invoices->where('status', 'partial')->count() }},
-                        {{ $invoices->where('status', 'unpaid')->count() }},
-                        {{ $invoices->where('status', 'confirmed')->count() }}
-                    ],
-                    backgroundColor: [
-                        'rgba(76, 175, 80, 0.8)',
-                        'rgba(255, 152, 0, 0.8)',
-                        'rgba(244, 67, 54, 0.8)',
-                        'rgba(33, 150, 243, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgba(76, 175, 80, 1)',
-                        'rgba(255, 152, 0, 1)',
-                        'rgba(244, 67, 54, 1)',
-                        'rgba(33, 150, 243, 1)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                cutout: '70%'
-            }
-        });
+    /* Chart.js initialization handled separately with Blade conditionals */
+    
+    // Set progress bar width dynamically
+    const progressBar = document.querySelector('.progress-bar[data-collection-rate]');
+    if (progressBar) {
+        const rate = progressBar.getAttribute('data-collection-rate');
+        progressBar.style.width = rate + '%';
     }
-    @endif
-
+    
     // Table search functionality
     const tableSearchInput = document.getElementById('tableSearch');
     if (tableSearchInput) {
@@ -761,6 +809,132 @@ function resetFilters() {
     
     // Submit form
     form.submit();
+}
+
+// Custom print function for report
+function printReport() {
+    // Get report content
+    const printHeader = document.querySelector('.print-header')?.outerHTML || '';
+    const reportTable = document.querySelector('#reportTable')?.outerHTML || '';
+    
+    // Create print document - শুধু header এবং table
+    const printContent = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <title>Billing Report - {{ now()->format('Y-m-d') }}</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 12px;
+                    color: #000;
+                    padding: 10mm;
+                    line-height: 1.4;
+                }
+                
+                .print-header {
+                    text-align: center;
+                    margin-bottom: 15px;
+                    padding-bottom: 10px;
+                    border-bottom: 2px solid #000;
+                }
+                
+                .print-header h2 {
+                    font-size: 18px;
+                    margin-bottom: 5px;
+                    color: #000;
+                }
+                
+                .print-header p {
+                    font-size: 10px;
+                    color: #666;
+                    margin: 2px 0;
+                }
+                
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                    page-break-inside: auto;
+                }
+                
+                th {
+                    background-color: #f2f2f2 !important;
+                    font-weight: bold;
+                    text-align: left;
+                    padding: 8px;
+                    border: 1px solid #000;
+                    font-size: 10px;
+                    text-transform: uppercase;
+                }
+                
+                td {
+                    padding: 6px 8px;
+                    border: 1px solid #000;
+                    vertical-align: middle;
+                    font-size: 10px;
+                }
+                
+                tr:last-child {
+                    background-color: #f0f0f0 !important;
+                    font-weight: bold;
+                    page-break-inside: avoid !important;
+                }
+                
+                .text-end {
+                    text-align: right;
+                }
+                
+                .text-center {
+                    text-align: center;
+                }
+                
+                .fw-bold {
+                    font-weight: bold;
+                }
+                
+                @page {
+                    size: landscape;
+                    margin: 10mm;
+                }
+            </style>
+        </head>
+        <body>
+            ${printHeader}
+            ${reportTable}
+            
+            <script>
+                window.onload = function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 500);
+                    
+                    window.onafterprint = function() {
+                        window.close();
+                    };
+                };
+            <\/script>
+        </body>
+        </html>
+    `;
+    
+    // Open print window
+    const printWindow = window.open('', '_blank', 'width=1200,height=800');
+    if (!printWindow) {
+        alert('Please allow popups for printing');
+        return;
+    }
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
 }
 
 // Toast notification function
