@@ -157,7 +157,7 @@
     <div style="text-align: center; margin-bottom: 20px;">
         <h2 style="color: #6c63ff; margin: 0 0 5px 0;">Nanosoft</h2>
         <p style="margin: 0; font-size: 16px; font-weight: bold;">Monthly Billing Report</p>
-        <p style="margin: 0; font-size: 12px; color: #666;">Generated on: {{ now()->format('F d, Y') }}</p>
+        <p style="margin: 0; font-size: 12px; color: #666;">Generated on: {{ now()->format('F d, Y h:i A') }}</p>
         @php
             $filterText = [];
             if(request('date_range')) {
@@ -632,6 +632,9 @@
             position: fixed;
             top: 0;
             left: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
             background: white;
             z-index: 1000;
@@ -876,7 +879,7 @@ function printReport() {
     }
     const reportTable = document.querySelector('#reportTable')?.outerHTML || '';
     
-    // Create print document 
+    // Create print document
     const printContent = `
         <!DOCTYPE html>
         <html lang="en">
@@ -918,6 +921,8 @@ function printReport() {
                     margin: 0 0 5px 0;
                     font-size: 12px;
                     color: #666;
+                    color: #666;
+                    margin: 2px 0;
                 }
                 
                 table {
@@ -1010,7 +1015,7 @@ function printReport() {
             ${printHeader}
         </head>
         <body>
-            
+            ${printHeader}
             ${reportTable}
             
             <script>

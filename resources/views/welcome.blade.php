@@ -35,8 +35,9 @@
 
     /* NAV */
     .navbar {
-      background: rgba(242, 245, 247, 0.9);
-      backdrop-filter: blur(6px);
+      position: fixed;
+      background: rgba(242, 245, 247, 0.31);
+      backdrop-filter: blur(8px);
       box-shadow: 0 6px 20px rgba(19, 24, 47, 0.06);
       padding: .6rem 1rem;
     }
