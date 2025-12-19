@@ -271,6 +271,14 @@ class Customer extends Model
 
         }
 
+        public function supportTickets(): HasMany
+
+        {
+
+            return $this->hasMany(SupportTicket::class, 'customer_id', 'c_id');
+
+        }
+
     
 
         public function unpaidInvoices(): HasManyThrough

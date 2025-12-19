@@ -215,12 +215,42 @@ class BillingReportController extends Controller
         $query = $this->applyFilters($query, $request);
         $invoices = $query->orderBy('invoices.issue_date', 'desc')->get();
 
-        // Here you can implement Excel export using Laravel Excel or CSV
-        // For now, return a simple CSV
-        return response()->streamDownload(function() use ($invoices) {
+        // Add company header information
+        $reportTitle = 'Nanosoft Monthly Billing Report';
+        $generatedDate = Carbon::now()->format('F d, Y');
+        
+        // Return CSV with enhanced header
+        return response()->streamDownload(function() use ($invoices, $reportTitle, $generatedDate, $request) {
             $handle = fopen('php://output', 'w');
             
-            // Add headers
+            // Add company header
+            fputcsv($handle, [$reportTitle]);
+            fputcsv($handle, ['Generated on: ' . $generatedDate]);
+            
+            // Add filter information if any
+            if ($request->hasAny(['date_range', 'from_date', 'to_date', 'customer_id', 'status', 'product_id'])) {
+                $filters = [];
+                if ($request->date_range) $filters[] = 'Period: ' . ucfirst(str_replace('_', ' ', $request->date_range));
+                if ($request->from_date && $request->to_date) $filters[] = 'From: ' . $request->from_date . ' To: ' . $request->to_date;
+                if ($request->customer_id) {
+                    $customer = Customer::find($request->customer_id);
+                    if ($customer) $filters[] = 'Customer: ' . $customer->name;
+                }
+                if ($request->status) $filters[] = 'Status: ' . ucfirst($request->status);
+                if ($request->product_id) {
+                    $product = Product::find($request->product_id);
+                    if ($product) $filters[] = 'Product: ' . $product->name;
+                }
+                
+                if (!empty($filters)) {
+                    fputcsv($handle, ['Filters: ' . implode(', ', $filters)]);
+                }
+            }
+            
+            // Empty line for spacing
+            fputcsv($handle, []);
+            
+            // Add column headers
             fputcsv($handle, [
                 'Invoice ID', 'Invoice Date', 'Customer Name', 'Customer ID', 'Phone',
                 'Product', 'Subtotal', 'Previous Due', 'Total Amount', 

@@ -13,9 +13,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
 
-class CustomerController extends Controller
+class CustomersController extends Controller
 {
     // ========== CUSTOMER DASHBOARD ==========
     
@@ -476,6 +477,108 @@ class CustomerController extends Controller
         $request->session()->regenerateToken();
         return redirect('/');
     }
+    // In your CustomersController.php
+public function updateProfile(Request $request)
+{
+    /** @var \App\Models\User $user */
+    $user = Auth::user();
+    $customer = CustomerModel::where('user_id', $user->id)->firstOrFail();
+
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|max:255|unique:users,email,' . $customer->user_id,
+        'phone' => 'required|string|max:30',
+        'address' => 'required|string|max:500',
+        'connection_address' => 'nullable|string|max:500',
+        'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB max
+        'id_card_front' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB max
+        'id_card_back' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB max
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        // Handle profile picture upload
+        if ($request->hasFile('profile_picture')) {
+            // Delete old profile picture if exists
+            if ($customer->profile_picture && Storage::disk('public')->exists($customer->profile_picture)) {
+                Storage::disk('public')->delete($customer->profile_picture);
+            }
+
+            $profilePicturePath = $request->file('profile_picture')->store('customers/profiles', 'public');
+            $customer->profile_picture = $profilePicturePath;
+        }
+
+        // Handle ID card front upload
+        if ($request->hasFile('id_card_front')) {
+            // Delete old ID card front if exists
+            if ($customer->id_card_front && Storage::disk('public')->exists($customer->id_card_front)) {
+                Storage::disk('public')->delete($customer->id_card_front);
+            }
+
+            $idCardFrontPath = $request->file('id_card_front')->store('customers/id_cards', 'public');
+            $customer->id_card_front = $idCardFrontPath;
+        }
+
+        // Handle ID card back upload
+        if ($request->hasFile('id_card_back')) {
+            // Delete old ID card back if exists
+            if ($customer->id_card_back && Storage::disk('public')->exists($customer->id_card_back)) {
+                Storage::disk('public')->delete($customer->id_card_back);
+            }
+
+            $idCardBackPath = $request->file('id_card_back')->store('customers/id_cards', 'public');
+            $customer->id_card_back = $idCardBackPath;
+        }
+
+        // Update user information
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->save();
+
+        // Update customer information using update method (preferred for bulk updates)
+        $customer->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'address' => $request->address,
+        ]);
+
+        DB::commit();
+
+        return redirect()->route('customer.profile.index')
+            ->with('success', 'Profile updated successfully!');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()
+            ->with('error', 'Error updating profile: ' . $e->getMessage())
+            ->withInput();
+    }
+}
+
+public function changePassword(Request $request)
+{
+    $request->validate([
+        'current_password' => 'required',
+        'new_password' => 'required|min:8|confirmed',
+    ]);
+    
+    /** @var \App\Models\User $user */
+    $user = Auth::user();
+    
+    // Check current password
+    if (!Hash::check($request->current_password, $user->password)) {
+        return back()->withErrors(['current_password' => 'Current password is incorrect']);
+    }
+    
+    // Update password
+    $user->password = Hash::make($request->new_password);
+    $user->save();
+    
+    return redirect()->route('customer.profile.index')
+        ->with('success', 'Password changed successfully!');
+}
 
     // ========== DEBUG METHODS ==========
     public function debugCustomers()

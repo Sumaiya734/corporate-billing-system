@@ -1366,8 +1366,8 @@
     };
 
     window.viewInvoice = function(invoiceId) {
-        const baseUrl = "{{ url('admin/billing/invoice') }}";
-        const viewInvoiceUrl = baseUrl + '/' + invoiceId + '/html';
+        const baseUrl = "{{ url('admin/billing') }}";
+        const viewInvoiceUrl = baseUrl + '/invoice-html/' + invoiceId;
         const contentDiv = document.getElementById('viewInvoiceContent');
 
         // Show loading

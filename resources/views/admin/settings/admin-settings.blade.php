@@ -322,87 +322,7 @@
                 </div>
 
                 <!-- Tax Settings Card -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">
-                            <i class="fas fa-percentage me-2"></i>Tax Settings
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="tax_enabled" class="form-label">Enable Tax Calculation</label>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" 
-                                           type="checkbox" 
-                                           id="tax_enabled" 
-                                           name="tax_enabled" 
-                                           value="1"
-                                           {{ old('tax_enabled', $settings['tax_enabled'] ?? false) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="tax_enabled">
-                                        Enable tax calculation on invoices
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="tax_rate" class="form-label">Default Tax Rate (%)</label>
-                                <input type="number" 
-                                       class="form-control @error('tax_rate') is-invalid @enderror" 
-                                       id="tax_rate" 
-                                       name="tax_rate" 
-                                       value="{{ old('tax_rate', $settings['tax_rate'] ?? 0) }}" 
-                                       step="0.01"
-                                       min="0"
-                                       max="100">
-                                @error('tax_rate')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="tax_types" class="form-label">Tax Types</label>
-                            <div id="taxTypesContainer">
-                                @php
-                                    $taxTypes = old('tax_types', $settings['tax_types'] ?? [['name' => 'VAT', 'rate' => '']]);
-                                @endphp
-                                @foreach($taxTypes as $index => $taxType)
-                                <div class="tax-type-item row mb-2">
-                                    <div class="col-md-5">
-                                        <input type="text" 
-                                               class="form-control" 
-                                               name="tax_types[{{ $index }}][name]" 
-                                               placeholder="Tax Name (e.g., VAT, GST)"
-                                               value="{{ $taxType['name'] ?? '' }}">
-                                    </div>
-                                    <div class="col-md-5">
-                                        <div class="input-group">
-                                            <input type="number" 
-                                                   class="form-control" 
-                                                   name="tax_types[{{ $index }}][rate]" 
-                                                   placeholder="Rate"
-                                                   step="0.01"
-                                                   min="0"
-                                                   value="{{ $taxType['rate'] ?? '' }}">
-                                            <span class="input-group-text">%</span>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        @if($index > 0)
-                                        <button type="button" class="btn btn-danger btn-sm remove-tax-type">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                        @endif
-                                    </div>
-                                </div>
-                                @endforeach
-                            </div>
-                            <button type="button" id="addTaxType" class="btn btn-sm btn-secondary mt-2">
-                                <i class="fas fa-plus me-1"></i> Add Tax Type
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
+               
                 <!-- Invoice Settings Card -->
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
@@ -424,6 +344,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+                            <!-- Currency Settings -->
                             <div class="col-md-6 mb-3">
                                 <label for="currency" class="form-label">Default Currency</label>
                                 <select class="form-control @error('currency') is-invalid @enderror" 
@@ -435,13 +356,14 @@
                                     <option value="CAD" {{ (old('currency', $settings['currency'] ?? 'USD') == 'CAD') ? 'selected' : '' }}>CAD - Canadian Dollar</option>
                                     <option value="AUD" {{ (old('currency', $settings['currency'] ?? 'USD') == 'AUD') ? 'selected' : '' }}>AUD - Australian Dollar</option>
                                     <option value="JPY" {{ (old('currency', $settings['currency'] ?? 'USD') == 'JPY') ? 'selected' : '' }}>JPY - Japanese Yen</option>
-                                    <option value="INR" {{ (old('currency', $settings['currency'] ?? 'USD') == 'INR') ? 'selected' : '' }}>INR - Indian Rupee</option>
+                                    <option value="BDT" {{ (old('currency', $settings['currency'] ?? 'USD') == 'BDT') ? 'selected' : '' }}>BDT - Bangladeshi Taka</option>
                                 </select>
                                 @error('currency')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
+                        <!-- Late Payment Fee Settings -->
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="late_fee_enabled" class="form-label">Late Payment Fee</label>
@@ -594,23 +516,23 @@
                             <div class="form-check mb-2">
                                 <input class="form-check-input" 
                                        type="checkbox" 
-                                       id="payment_paypal" 
+                                       id="payment_bkash" 
                                        name="payment_methods[]" 
-                                       value="paypal"
-                                       {{ in_array('paypal', old('payment_methods', $settings['payment_methods'] ?? [])) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="payment_paypal">
-                                    PayPal
+                                       value="bkash"
+                                       {{ in_array('bkash', old('payment_methods', $settings['payment_methods'] ?? [])) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="payment_bkash">
+                                    Bkash
                                 </label>
                             </div>
                             <div class="form-check mb-2">
                                 <input class="form-check-input" 
                                        type="checkbox" 
-                                       id="payment_stripe" 
+                                       id="payment_nagad" 
                                        name="payment_methods[]" 
-                                       value="stripe"
-                                       {{ in_array('stripe', old('payment_methods', $settings['payment_methods'] ?? [])) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="payment_stripe">
-                                    Stripe
+                                       value="nagad"
+                                       {{ in_array('nagad', old('payment_methods', $settings['payment_methods'] ?? [])) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="payment_nagad">
+                                    Nagad
                                 </label>
                             </div>
                             <div class="form-check">
@@ -639,62 +561,7 @@
                 </div>
 
                 <!-- Notification Settings Card -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">
-                            <i class="fas fa-bell me-2"></i>Notifications
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" 
-                                       type="checkbox" 
-                                       id="notify_new_invoice" 
-                                       name="notify_new_invoice" 
-                                       value="1"
-                                       {{ old('notify_new_invoice', $settings['notify_new_invoice'] ?? false) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="notify_new_invoice">
-                                    Notify on new invoice
-                                </label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" 
-                                       type="checkbox" 
-                                       id="notify_payment_received" 
-                                       name="notify_payment_received" 
-                                       value="1"
-                                       {{ old('notify_payment_received', $settings['notify_payment_received'] ?? false) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="notify_payment_received">
-                                    Notify on payment received
-                                </label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" 
-                                       type="checkbox" 
-                                       id="notify_overdue_invoice" 
-                                       name="notify_overdue_invoice" 
-                                       value="1"
-                                       {{ old('notify_overdue_invoice', $settings['notify_overdue_invoice'] ?? false) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="notify_overdue_invoice">
-                                    Notify on overdue invoice
-                                </label>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="notification_email" class="form-label">Notification Email</label>
-                            <input type="email" 
-                                   class="form-control @error('notification_email') is-invalid @enderror" 
-                                   id="notification_email" 
-                                   name="notification_email" 
-                                   value="{{ old('notification_email', $settings['notification_email'] ?? '') }}">
-                            @error('notification_email')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
-
+                
                 <!-- Invoice Template Card -->
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">

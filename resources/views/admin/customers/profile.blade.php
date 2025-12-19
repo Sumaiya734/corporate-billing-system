@@ -310,7 +310,7 @@
                                     </td>
                                     <td>
                                         @if($invoice->invoice_id)
-                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $invoice->invoice_id]) }}" class="btn btn-sm btn-outline-primary">
+                                            <a href="{{ route('admin.billing.view-invoice', ['id' => $invoice->invoice_id]) }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         @else
@@ -363,7 +363,7 @@
                                     </td>
                                     <td>
                                         @if($payment->invoice && $payment->invoice_id)
-                                            <a href="{{ route('admin.billing.view-invoice', ['invoiceId' => $payment->invoice_id]) }}">
+                                            <a href="{{ route('admin.billing.view-invoice', ['id' => $payment->invoice_id]) }}">
                                                 {{ $payment->invoice->invoice_number }}
                                             </a>
                                         @elseif($payment->invoice_id)

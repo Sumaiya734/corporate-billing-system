@@ -46,4 +46,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the customer associated with the user.
+     */
+    public function customer()
+    {
+        return $this->hasOne(Customer::class, 'user_id');
+    }
 }

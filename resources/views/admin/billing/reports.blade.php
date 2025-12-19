@@ -15,7 +15,7 @@
         <p class="text-muted mb-0">Generate detailed billing reports with advanced filters</p>
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary" onclick="window.print()">
+        <button class="btn btn-outline-primary" onclick="printReport()">
             <i class="fas fa-print me-1"></i>Print Report
         </button>
         <a href="{{ route('admin.billing.export-reports', request()->all()) }}" class="btn btn-success">
@@ -39,13 +39,13 @@
                     <label class="form-label text-primary fw-medium">Quick Date Range</label>
                     <select class="form-select form-select-sm" name="date_range" id="dateRange">
                         <option value="">Select Range</option>
-                        <option value="today" {{ $filterData['date_range'] == 'today' ? 'selected' : '' }}>Today</option>
-                        <option value="this_week" {{ $filterData['date_range'] == 'this_week' ? 'selected' : '' }}>This Week</option>
-                        <option value="this_month" {{ $filterData['date_range'] == 'this_month' ? 'selected' : '' }}>This Month</option>
-                        <option value="last_month" {{ $filterData['date_range'] == 'last_month' ? 'selected' : '' }}>Last Month</option>
-                        <option value="last_3_months" {{ $filterData['date_range'] == 'last_3_months' ? 'selected' : '' }}>Last 3 Months</option>
-                        <option value="last_6_months" {{ $filterData['date_range'] == 'last_6_months' ? 'selected' : '' }}>Last 6 Months</option>
-                        <option value="this_year" {{ $filterData['date_range'] == 'this_year' ? 'selected' : '' }}>This Year</option>
+                        <option value="today" {{ $filterData['date_range'] == 'today' ? 'selected' : '' }}>Today ({{ now()->format('M j, Y') }})</option>
+                        <option value="this_week" {{ $filterData['date_range'] == 'this_week' ? 'selected' : '' }}>This Week ({{ now()->startOfWeek()->format('M j') }} - {{ now()->endOfWeek()->format('M j, Y') }})</option>
+                        <option value="this_month" {{ $filterData['date_range'] == 'this_month' ? 'selected' : '' }}>This Month ({{ now()->format('F Y') }})</option>
+                        <option value="last_month" {{ $filterData['date_range'] == 'last_month' ? 'selected' : '' }}>Last Month ({{ now()->subMonth()->format('F Y') }})</option>
+                        <option value="last_3_months" {{ $filterData['date_range'] == 'last_3_months' ? 'selected' : '' }}>Last 3 Months ({{ now()->subMonths(2)->startOfMonth()->format('M Y') }} - {{ now()->format('M Y') }})</option>
+                        <option value="last_6_months" {{ $filterData['date_range'] == 'last_6_months' ? 'selected' : '' }}>Last 6 Months ({{ now()->subMonths(5)->startOfMonth()->format('M Y') }} - {{ now()->format('M Y') }})</option>
+                        <option value="this_year" {{ $filterData['date_range'] == 'this_year' ? 'selected' : '' }}>This Year ({{ now()->format('Y') }})</option>
                         <option value="custom">Custom Range</option>
                     </select>
                 </div>
@@ -152,13 +152,69 @@
     </div>
 </div>
 
-
+<!-- Print Header (Hidden on screen, visible in print) -->
+<div class="print-header" style="display: none;">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: #6c63ff; margin: 0 0 5px 0;">Nanosoft</h2>
+        <p style="margin: 0; font-size: 16px; font-weight: bold;">Monthly Billing Report</p>
+        <p style="margin: 0; font-size: 12px; color: #666;">Generated on: {{ now()->format('F d, Y') }}</p>
+        @php
+            $filterText = [];
+            if(request('date_range')) {
+                $dateRange = request('date_range');
+                $now = now();
+                switch($dateRange) {
+                    case 'today':
+                        $filterText[] = 'Date Range: ' . $now->format('F j, Y');
+                        break;
+                    case 'this_week':
+                        $start = $now->copy()->startOfWeek();
+                        $end = $now->copy()->endOfWeek();
+                        $filterText[] = 'Date Range: ' . $start->format('M j') . ' - ' . $end->format('M j, Y');
+                        break;
+                    case 'this_month':
+                        $filterText[] = 'Date Range: ' . $now->format('F Y');
+                        break;
+                    case 'last_month':
+                        $lastMonth = $now->copy()->subMonth();
+                        $filterText[] = 'Date Range: ' . $lastMonth->format('F Y');
+                        break;
+                    case 'last_3_months':
+                        $start = $now->copy()->subMonths(2)->startOfMonth();
+                        $end = $now->copy()->endOfMonth();
+                        $filterText[] = 'Date Range: ' . $start->format('M Y') . ' - ' . $end->format('M Y');
+                        break;
+                    case 'last_6_months':
+                        $start = $now->copy()->subMonths(5)->startOfMonth();
+                        $end = $now->copy()->endOfMonth();
+                        $filterText[] = 'Date Range: ' . $start->format('M Y') . ' - ' . $end->format('M Y');
+                        break;
+                    case 'this_year':
+                        $filterText[] = 'Date Range: ' . $now->format('Y');
+                        break;
+                    default:
+                        $filterText[] = 'Date Range: ' . ucfirst(str_replace('_', ' ', $dateRange));
+                }
+            }
+            if(request('from_date') && request('to_date')) $filterText[] = 'From: ' . request('from_date') . ' To: ' . request('to_date');
+            if(request('due_status')) $filterText[] = 'Due Status: ' . ucfirst(str_replace('_', ' ', request('due_status')));
+            if(request('customer_id')) $filterText[] = 'Customer: ' . ($filterData['customers']->firstWhere('c_id', request('customer_id'))->name ?? 'N/A');
+            if(request('status')) $filterText[] = 'Status: ' . ucfirst(request('status'));
+            if(request('product_id')) $filterText[] = 'Product: ' . ($filterData['products']->firstWhere('p_id', request('product_id'))->name ?? 'N/A');
+            if(request('billing_cycle')) $filterText[] = 'Billing Cycle: ' . request('billing_cycle') . ' months';
+            if(request('search')) $filterText[] = 'Search: ' . request('search');
+        @endphp
+        @if(count($filterText) > 0)
+        <p style="margin: 5px 0 0 0; font-size: 10px; color: #666;"> {{ implode(' | ', $filterText) }}</p>
+        @endif
+    </div>
+</div>
 
 <!-- Report Table -->
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white py-3">
+<div class="card shadow-sm border-0" id="reportTable">
+    <div class="card-header bg-white py-3 table-search-section">
         <div class="d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">
+            <!-- <h5 class="card-title mb-0">
                 <i class="fas fa-table me-2"></i>Billing Report
                 @if(request()->hasAny(['date_range', 'from_date', 'to_date', 'due_status', 'customer_id', 'status', 'search']))
                 <small class="text-muted ms-2">(Filtered Results)</small>
@@ -177,12 +233,12 @@
                     <option value="unpaid">Unpaid</option>
                     <option value="partial">Partial</option>
                 </select>
-            </div>
+            </div> -->
         </div>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle" id="reportTable">
+            <table class="table table-hover mb-0 align-middle" id="billingTable">
                 <thead class="table-light">
                     <tr>
                         <th class="border-end">Invoice ID</th>
@@ -287,25 +343,35 @@
                         </td>
                     </tr>
                     @endforelse
-                </tbody>
-                @if($invoices->count() > 0)
-                <tfoot class="table-light">
-                    <tr>
-                        <th colspan="3" class="text-end">Totals:</th>
-                        <th class="text-end">৳ {{ number_format($totals->total_subtotal ?? 0, 2) }}</th>
-                        <th class="text-end">৳ {{ number_format($totals->total_previous_due ?? 0, 2) }}</th>
-                        <th class="text-end">৳ {{ number_format($totals->total_amount ?? 0, 2) }}</th>
-                        <th class="text-end">৳ {{ number_format($totals->total_received ?? 0, 2) }}</th>
-                        <th class="text-end">
+                    
+                    <!-- Total Summary Row - ONLY AT THE END -->
+                    @if($invoices->count() > 0)
+                    <tr style="background-color: #f8f9fa; font-weight: bold;">
+                        <td colspan="3" class="text-end border-end">
+                            <strong>GRAND TOTAL:</strong>
+                        </td>
+                        <td class="text-end border-end">
+                            <strong>৳ {{ number_format($totals->total_subtotal ?? 0, 2) }}</strong>
+                        </td>
+                        <td class="text-end border-end">
+                            <strong>৳ {{ number_format($totals->total_previous_due ?? 0, 2) }}</strong>
+                        </td>
+                        <td class="text-end border-end">
+                            <strong>৳ {{ number_format($totals->total_amount ?? 0, 2) }}</strong>
+                        </td>
+                        <td class="text-end border-end">
+                            <strong>৳ {{ number_format($totals->total_received ?? 0, 2) }}</strong>
+                        </td>
+                        <td class="text-end border-end">
                             @php
                                 $totalNextDue = max(0, ($totals->total_amount ?? 0) - ($totals->total_received ?? 0));
                             @endphp
-                            ৳ {{ number_format($totalNextDue, 2) }}
-                        </th>
-                        <th></th>
+                            <strong>৳ {{ number_format($totalNextDue, 2) }}</strong>
+                        </td>
+                        <td class="text-center"></td>
                     </tr>
-                </tfoot>
-                @endif
+                    @endif
+                </tbody>
             </table>
         </div>
     </div>
@@ -389,7 +455,7 @@
                     <div class="col-12 mt-3">
                         <div class="progress" style="height: 20px;">
                             <div class="progress-bar bg-success" role="progressbar" 
-                                 style="width: {{ $collectionRate }}%">
+                                 data-collection-rate="{{ $collectionRate }}">
                                 {{ $collectionRate }}%
                             </div>
                         </div>
@@ -540,7 +606,47 @@
 
     /* Print styles */
     @media print {
-        .card-header, .card-footer, .btn, .filter-section {
+        body * {
+            visibility: hidden;
+        }
+        
+        #reportTable,
+        #reportTable *,
+        .print-header,
+        .print-header * {
+            visibility: visible;
+        }
+        
+        #reportTable {
+            position: absolute;
+            left: 0;
+            top: 80px;
+            width: 100%;
+            margin-top: 80px; /* Adjust for fixed header */
+        }
+        
+        .print-header {
+            display: block !important;
+            text-align: center;
+            margin-bottom: 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: white;
+            z-index: 1000;
+        }
+        
+        .card-header, 
+        .card-footer, 
+        .btn, 
+        .filter-section,
+        .page-title,
+        .row.mt-4,
+        .table-search-section,
+        .pagination,
+        #toastContainer,
+        .card:not(#reportTable) {
             display: none !important;
         }
         
@@ -549,12 +655,40 @@
             box-shadow: none !important;
         }
         
-        table {
-            border: 1px solid #dee2e6 !important;
+        .table {
+            border: 1px solid #000 !important;
+            page-break-inside: auto;
         }
         
         th, td {
-            border: 1px solid #dee2e6 !important;
+            border: 1px solid #000 !important;
+            padding: 8px !important;
+            color: #000 !important;
+            font-size: 11px !important;
+        }
+        
+        tr {
+            page-break-inside: avoid;
+        }
+        
+        /* Prevent page break in the middle of total row */
+        tr:last-child {
+            page-break-inside: avoid !important;
+            page-break-after: avoid !important;
+        }
+        
+        thead {
+            display: table-header-group;
+        }
+        
+        .badge {
+            border: 1px solid #000 !important;
+            color: #000 !important;
+            background-color: transparent !important;
+        }
+        
+        .text-primary, .text-success, .text-danger, .text-info, .text-warning {
+            color: #000 !important;
         }
     }
 
@@ -645,49 +779,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Initialize Chart.js if data exists
-    @if($invoices->count() > 0)
-    const ctx = document.getElementById('paymentChart');
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Paid', 'Partial', 'Unpaid', 'Confirmed'],
-                datasets: [{
-                    data: [
-                        {{ $invoices->where('status', 'paid')->count() }},
-                        {{ $invoices->where('status', 'partial')->count() }},
-                        {{ $invoices->where('status', 'unpaid')->count() }},
-                        {{ $invoices->where('status', 'confirmed')->count() }}
-                    ],
-                    backgroundColor: [
-                        'rgba(76, 175, 80, 0.8)',
-                        'rgba(255, 152, 0, 0.8)',
-                        'rgba(244, 67, 54, 0.8)',
-                        'rgba(33, 150, 243, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgba(76, 175, 80, 1)',
-                        'rgba(255, 152, 0, 1)',
-                        'rgba(244, 67, 54, 1)',
-                        'rgba(33, 150, 243, 1)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                cutout: '70%'
-            }
-        });
+    /* Chart.js initialization handled separately with Blade conditionals */
+    
+    // Set progress bar width dynamically
+    const progressBar = document.querySelector('.progress-bar[data-collection-rate]');
+    if (progressBar) {
+        const rate = progressBar.getAttribute('data-collection-rate');
+        progressBar.style.width = rate + '%';
     }
-    @endif
-
+    
     // Table search functionality
     const tableSearchInput = document.getElementById('tableSearch');
     if (tableSearchInput) {
@@ -761,6 +861,182 @@ function resetFilters() {
     
     // Submit form
     form.submit();
+}
+
+// Custom print function for report
+function printReport() {
+    // Get report content
+    const printHeaderElement = document.querySelector('.print-header');
+    let printHeader = '';
+    if (printHeaderElement) {
+        // Temporarily remove display: none to get clean HTML
+        printHeaderElement.style.display = 'block';
+        printHeader = printHeaderElement.outerHTML;
+        printHeaderElement.style.display = 'none'; // Restore original state
+    }
+    const reportTable = document.querySelector('#reportTable')?.outerHTML || '';
+    
+    // Create print document 
+    const printContent = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <title>Billing Report - {{ now()->format('Y-m-d') }}</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 12px;
+                    color: #000;
+                    padding: 10mm;
+                    line-height: 1.4;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+                
+                .print-header {
+                    margin: 0 auto 20px auto;
+                    text-align: center;
+                    max-width: 800px;
+                }
+                
+                .print-header h2 {
+                    color: #6c63ff;
+                    margin: 0 0 5px 0;
+                    font-size: 24px;
+                }
+                
+                .print-header p {
+                    margin: 0 0 5px 0;
+                    font-size: 12px;
+                    color: #666;
+                }
+                
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                    page-break-inside: auto;
+                }
+                
+                th {
+                    background-color: #f2f2f2 !important;
+                    font-weight: bold;
+                    text-align: left;
+                    padding: 8px;
+                    border: 1px solid #000;
+                    font-size: 10px;
+                    text-transform: uppercase;
+                }
+                
+                td {
+                    padding: 6px 8px;
+                    border: 1px solid #000;
+                    vertical-align: middle;
+                    font-size: 10px;
+                }
+                
+                tr:last-child {
+                    background-color: #f0f0f0 !important;
+                    font-weight: bold;
+                    page-break-inside: avoid !important;
+                }
+                
+                .text-end {
+                    text-align: right;
+                }
+                
+                .text-center {
+                    text-align: center;
+                }
+                
+                .fw-bold {
+                    font-weight: bold;
+                }
+                
+                @page {
+                    size: landscape;
+                    margin: 10mm;
+                }
+                
+                /* Enhanced header styles */
+                .print-header div[style*='border-bottom'] {
+                    border-bottom: 3px solid #6c63ff !important;
+                    padding-bottom: 15px;
+                    margin-bottom: 20px;
+                }
+                
+                .print-header div[style*='display: flex'] {
+                    display: flex !important;
+                    justify-content: center !important;
+                    align-items: flex-start !important;
+                }
+                
+                .print-header div[style*='text-align: right'] {
+                    text-align: right !important;
+                }
+                
+                .print-header div[style*='background-color: #6c63ff'] {
+                    background-color: #6c63ff !important;
+                    color: white !important;
+                    padding: 8px 15px !important;
+                    border-radius: 5px !important;
+                    display: inline-block !important;
+                }
+                
+                .print-header div[style*='width: 50%'] {
+                    width: 50% !important;
+                }
+                
+                .print-header h4 {
+                    margin: 0 0 10px 0 !important;
+                    color: #333 !important;
+                }
+                
+                .print-header div[style*='display: flex; justify-content: space-between'] {
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    margin-bottom: 20px !important;
+                }
+            </style>
+            ${printHeader}
+        </head>
+        <body>
+            
+            ${reportTable}
+            
+            <script>
+                window.onload = function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 500);
+                    
+                    window.onafterprint = function() {
+                        window.close();
+                    };
+                };
+            <\/script>
+        </body>
+        </html>
+    `;
+    
+    // Open print window
+    const printWindow = window.open('', '_blank', 'width=1200,height=800');
+    if (!printWindow) {
+        alert('Please allow popups for printing');
+        return;
+    }
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
 }
 
 // Toast notification function

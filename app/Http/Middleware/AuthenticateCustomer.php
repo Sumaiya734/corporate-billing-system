@@ -14,7 +14,7 @@ class AuthenticateCustomer
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!Auth::guard('customer')->check()) {
+        if (!Auth::check() || Auth::user()->role !== 'customer') {
             return redirect()->route('customer.login');
         }
 

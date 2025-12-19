@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\SupportTicket;
 
 class DashboardController extends Controller
 {
@@ -48,6 +49,14 @@ class DashboardController extends Controller
         $newCustomers = DB::table('customers')
             ->where('is_active', 1)
             ->where(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"), $currentMonth)
+            ->count();
+
+        // Get open support tickets
+        $openTickets = SupportTicket::where('status', 'open')->count();
+
+        // Get urgent support tickets
+        $urgentTickets = SupportTicket::where('priority', 'urgent')
+            ->where('status', 'open')
             ->count();
 
         // Get revenue data for chart (last 12 months)
@@ -98,6 +107,12 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
+        // Get recent support tickets
+        $recentTickets = SupportTicket::with(['customer'])
+            ->latest()
+            ->take(5)
+            ->get();
+
         return view('admin.dashboard', compact(
             'totalCustomers',
             'monthlyRevenue',
@@ -106,9 +121,12 @@ class DashboardController extends Controller
             'overdueBills',
             'paidInvoices',
             'newCustomers',
+            'openTickets',
+            'urgentTickets',
             'revenueData',
             'productDistribution',
-            'recentActivity'
+            'recentActivity',
+            'recentTickets'
         ));
     }
 
@@ -123,6 +141,7 @@ class DashboardController extends Controller
                 ->sum('received_amount'),
             'pendingBills' => DB::table('invoices')->whereIn('status', ['unpaid', 'partial'])->count(),
             'activeproducts' => DB::table('customer_to_products')->where('is_active', 1)->where('status', 'active')->count(),
+            'openTickets' => SupportTicket::where('status', 'open')->count(),
         ];
 
         return response()->json($data);

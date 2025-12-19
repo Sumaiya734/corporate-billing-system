@@ -1,624 +1,659 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Dashboard - NetBill BD</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <style>
-        /* ---------------------------
-           Soft Blue / White Theme A
-           --------------------------- */
-        :root{
-            --primary: #3A7BD5;
-            --primary-700: #2F63B8;
-            --secondary: #2C3E50;
-            --muted: #6b7280;
-            --bg:rgb(238, 238, 240);
-            --card-radius: 14px;
-            --glass: rgba(255,255,255,0.85);
-        }
+@extends('layouts.customer')
 
-        html,body{height:100%;}
-        body{
-            margin:0;
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--bg);
-            color: #1f2937;
-            -webkit-font-smoothing:antialiased;
-            padding-top: 56px; /* Height of fixed navbar */
-        }
-        /* NAVBAR */
-        .navbar-brand { font-weight:700; color:var(--primary); display:flex; gap:.6rem; align-items:center; }
-        .navbar { 
-            background: #ffffff; 
-            box-shadow: 0 6px 18px rgba(15,23,42,0.06); 
-            padding: .6rem 1rem;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1050;
-        }
-        /* TOP AREA */
-        .page-header {
-            background: #fff;
-            border-radius: var(--card-radius);
-            padding: 8px;
-            box-shadow: 0 6px 18px rgba(12, 15, 29, 0.04);
-            margin-bottom: 1.25rem;
-            border-left: 4px solid rgba(58, 123, 213, 0.08);
-        }
+@section('title', 'Customer Dashboard - Nanosoft')
 
-        /* SIDEBAR */
-        .sidebar {
-            background: linear-gradient(180deg,rgb(57, 74, 99) 0%, #263a4f 100%);
-            color: #ecf2ff;
-            min-height: 100vh;
-            padding: 0;
-            transition: transform .28s ease;
-            position: fixed; /* Fixed position for sidebar */
-            top: 56px; /* Height of navbar */
-            left: 0;
-            bottom: 0;
-            width: 250px; /* Fixed width */
-            overflow-y: auto; /* Enable scrolling */
-            z-index: 1000;
-        }
+@section('content')
+    <div class="customer-dashboard">
         
-        /* Adjust main content to accommodate fixed sidebar */
-        .main-content {
-            margin-left: 250px; /* Same as sidebar width */
-            padding: 24px;
-            transition: margin-left .28s ease;
-        }
-        
-        @media (max-width: 991.98px) {
-            .sidebar {
-                position: fixed;
-                left: -100%;
-                width: 80%;
-                z-index: 1100;
-                top: 56px;
-            }            .sidebar.show {
-                left: 0;
-            }
-            .main-content {
-                margin-left: 0 !important;
-            }
-        }
-        
-        .sidebar .sidebar-brand { 
-            padding: 20px; 
-            background: rgba(0,0,0,0.06); 
-            display:flex; 
-            align-items:center; 
-            gap:12px;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .sidebar .sidebar-brand img { height:36px; width:auto; border-radius:8px; }
-        .sidebar .nav-link{
-            color: rgba(236,242,255,0.92);
-            padding: 12px 18px;
-            border-left: 4px solid transparent;
-            transition: all .22s ease;
-            display:flex;
-            gap:.8rem;
-            align-items:center;
-        }
-        .sidebar .nav-link i { color: rgba(255,255,255,0.9); min-width:22px; text-align:center; font-size:1.05rem; }
-        .sidebar .nav-link:hover {
-            background: rgba(255,255,255,0.04);
-            color: #fff;
-            padding-left: 22px;
-            border-left: 4px solid var(--primary);
-            text-decoration:none;
-        }
-        .sidebar .nav-link.active {
-            background: linear-gradient(90deg, rgba(58,123,213,0.12), rgba(58,123,213,0.06));
-            color: #fff;
-            border-left: 4px solid var(--primary);
-        }
-        .sidebar .dropdown-menu { background: transparent; border: none; box-shadow:none; padding:0; }
-        .sidebar .dropdown-item { color: rgba(236,242,255,0.95); padding-left: 46px; border-radius: 0; }
-        .sidebar .dropdown-item:hover { background: rgba(255,255,255,0.03); color: #fff; }
 
-        /* CARDS & STAT */
-        .stat-card {
-            border-radius: 12px;
-            overflow: hidden;
-            border: none;
-            transition: transform .28s ease, box-shadow .28s ease;
-            background: linear-gradient(180deg, #fff, #fbfdff);
-            box-shadow: 0 8px 30px rgba(40,45,62,0.04);
-        }
-        .stat-card:hover {
-            background: linear-gradient(180deg, #fff, #fbfdff);
-            transform: translateY(-6px);
-            box-shadow: 0 18px 40px rgba(26,32,44,0.07);
-        }
-        .stat-card .card-body { padding: 20px; }
-        .stat-title { font-size: .90rem; color: var(--muted); margin-bottom: .4rem; font-weight:600; }
-        .stat-value { font-size: 28px; font-weight:700; color: var(--secondary); }
-
-        /* Gradient badges (for stat cards) */
-        .bg-gradient-primary { background: linear-gradient(135deg, #6EA8FE 0%, #3A7BD5 100%); color: #fff; }
-        .bg-gradient-success { background: linear-gradient(135deg, #86EFAC 0%, #34D399 100%); color: #fff; }
-        .bg-gradient-warning { background: linear-gradient(135deg, #FFD27A 0%, #FB9A64 100%); color: #fff; }
-        .bg-gradient-info    { background: linear-gradient(135deg, #A5F3FC 0%, #67E8F9 100%); color:#fff; }
-
-        .stat-icon {
-            font-size: 36px;
-            opacity: .95;
-        }
-
-        /* small animations */
-        .fade-in { animation: fadeIn .6s ease both; }
-        @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none; } }
-
-        /* TABLE & DATATABLES */
-        .table thead th { background: #f1f5f9; border-bottom: none; font-weight:700; color: #2b2d42; }
-        .table tbody td { vertical-align: middle; border-top: 1px solid #eff3f6; }
-
-        /* overlay (mobile) */
-        .overlay {
-            display:none;
-            position:fixed;
-            inset:0;
-            background: rgba(0,0,0,0.45);
-            backdrop-filter: blur(4px);
-            z-index: 999;
-            transition: opacity .2s ease;
-        }
-        .overlay.show { display:block; opacity:1; }
-
-        /* small helpers */
-        .btn-ghost { background: transparent; border: 1px solid rgba(58,123,213,0.08); color:var(--primary); border-radius:10px; padding:8px 12px; }
-        .notification-badge { position:absolute; top:10px; right:12px; background: #e74c3c; color:#fff; border-radius:50%; width:18px; height:18px; font-size:.72rem; display:flex; align-items:center; justify-content:center; }
-
-        /* responsive adjustments */
-        @media (max-width: 991.98px) {
-                .overlay { display:block; opacity:0; }
-            }
-
-            /* Prevent admin layout stacking on large screens while resources load */
-            @media (min-width: 992px) {
-                .admin-layout-row { flex-wrap: nowrap; }
-            }
-    </style>
-
-</head>
-<body>
-    <!-- Top Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light">
-        <div class="container-fluid">
-            <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-light d-lg-none" id="sidebarToggle" aria-label="Toggle sidebar">
-                    <i class="fa-solid fa-bars"></i>
-                </button>
-
-                <a class="navbar-brand ms-2" href="{{ route('welcome') }}">
-                    <i class="fas fa-wifi me-2"></i>Corporate Billing
-                </a>
-            </div>
-
-            <div class="d-flex align-items-center ms-auto gap-3">
-                <div class="d-flex align-items-center">
-                    <div>
-                        {{ now()->format('g:i A, F j, Y') }}
-                    </div> <br>
-                    <div class="me-3 text-secondary d-none d-md-block">
-                        <div style="font-weight:700">{{ $customer->name }}</div>
-                        <small class="text-muted">Customer</small>
+        <!-- Welcome Banner -->
+        <div class="card gradient-card welcome-banner mb-4 border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-icon me-3">
+                                <i class="fas fa-user-circle fa-3x text-white opacity-90"></i>
+                            </div>
+                            <div>
+                                <h2 class="h3 mb-1 text-white">
+                                    <i class="fas fa-hand-wave me-2"></i>Welcome back, {{ $customer->name }}!
+                                </h2>
+                                <p class="mb-0 text-white opacity-90">
+                                    Here's your account overview and quick access to your products.
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <form method="POST" action="{{ route('customer.logout') }}" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Logout">
-                            <i class="fas fa-right-from-bracket"></i>
-                            <span class="d-none d-md-inline ms-1">Logout</span>
-                        </button>
-                    </form>
+                    <div class="col-lg-4 text-lg-end">
+                        <span class="badge bg-light text-primary px-3 py-2">
+                            <i class="fas fa-calendar-day me-1"></i> {{ now()->format('l, F j') }}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
-    </nav>
 
-    <!-- overlay for mobile sidebar -->
-    <div class="overlay" id="overlay"></div>
-
-    <div class="container-fluid">
-        <div class="row admin-layout-row">
-            <!-- Sidebar -->
-            <div id="sidebar" class="sidebar p-0">
-                <div class="sidebar-brand">
-                    <h6 class="text-white mb-1"><i class="fas fa-user me-2"></i>My Account</h6>
-                    <small class="text-light opacity-75">ID: {{ $customer->customer_id }}</small>
+        <!-- Statistics Cards -->
+        <div class="row g-4 mb-4">
+            <!-- Total Due -->
+            <div class="col-xl-3 col-lg-6">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-wrapper bg-soft-primary rounded-3 p-3 me-3">
+                                <i class="fas fa-file-invoice text-primary fa-2x"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="text-muted mb-1">Total Due</h6>
+                                <h3 class="fw-bold text-primary">৳{{ number_format($totalDue, 2) }}</h3>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge {{ $totalDue > 0 ? 'bg-light text-danger' : 'bg-light text-success' }} px-3 py-1">
+                                <i class="fas {{ $totalDue > 0 ? 'fa-exclamation-circle me-1' : 'fa-check-circle me-1' }}"></i>
+                                {{ $totalDue > 0 ? 'Unpaid amount' : 'All bills paid' }}
+                            </span>
+                            <small class="text-muted ms-auto">
+                                <i class="fas fa-clock me-1"></i> Updated now
+                            </small>
+                        </div>
+                    </div>
                 </div>
-                
-                <nav class="nav flex-column p-2">
-                    <!-- Dashboard -->
-                    <a class="nav-link active" href="{{ route('customer.dashboard') }}">
-                        <i class="fas fa-home me-2"></i>Dashboard
-                    </a>
-
-                    <!-- My Bills & Payments -->
-                    <div class="dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                            <i class="fas fa-file-invoice me-2"></i>My Bills & Payments
-                        </a>
-                        <!-- <div class="dropdown-menu">
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-credit-card me-2"></i>Current Bill
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-history me-2"></i>Payment History
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-archive me-2"></i>Invoice Archive
-                            </a>
-                        </div> -->
-                    </div>
-
-                    <!-- My Services -->
-                    <div class="dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                            <i class="fas fa-wifi me-2"></i>My Services
-                        </a>
-                        <!-- <div class="dropdown-menu">
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-rocket me-2"></i>Current products
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-sync me-2"></i>Change product
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-plus me-2"></i>Add Special products
-                            </a>
-                        </div> -->
-                    </div>
-
-                    <!-- My Profile -->
-                    <div class="dropdown">
-                        <a class="nav-link dropdown-toggle" href="{{ route('customer.profile') }}" data-bs-toggle="dropdown">
-                            <i class="fas fa-user me-2"></i>My Profile
-                        </a>
-                        <!-- <div class="dropdown-menu">
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-edit me-2"></i>Personal Information
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-lock me-2"></i>Change Password
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-bell me-2"></i>Notification Settings
-                            </a>
-                        </div> -->
-                    </div>
-
-                    <!-- Support Center -->
-                    <div class="dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                            <i class="fas fa-life-ring me-2"></i>Support Center
-                        </a>
-                        <!-- <div class="dropdown-menu">
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-ticket-alt me-2"></i>Raise a Ticket
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-list me-2"></i>My Tickets
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-question-circle me-2"></i>Help & FAQ
-                            </a>
-                        </div> -->
-                    </div>
-
-                    <!-- Contact Us -->
-                    <a class="nav-link" href="#">
-                        <i class="fas fa-phone me-2"></i>Contact
-                    </a>
-                </nav>
             </div>
 
-            <!-- Main Content -->
-            <main class="col main-content">
-                <div class="p-4">
-                    <!-- Welcome Card -->
-                    <div class="card welcome-card mb-4">
-                        <div class="card-body">
-                            <div class="row align-items-center">
-                                <div class="col-md-8">
-                                    <h3 class="card-title mb-2">
-                                        <i class="fas fa-hand-wave me-2"></i>Welcome back, {{ $customer->name }}!
-                                    </h3>
-                                    <p class="card-text mb-0 opacity-90">
-                                        Here's your account overview and quick access to your services.
-                                    </p>
-                                </div>
-                                <div class="col-md-4 text-end">
-                                    <div class="display-4 opacity-75">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                </div>
+            <!-- Active Products -->
+            <div class="col-xl-3 col-lg-6">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-wrapper bg-soft-success rounded-3 p-3 me-3">
+                                <i class="fas fa-box text-success fa-2x"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="text-muted mb-1">Active Products</h6>
+                                <h3 class="fw-bold text-success">{{ $customer->customerproducts->where('is_active', 1)->where('status', 'active')->count() }}</h3>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-light text-success px-3 py-1">
+                                <i class="fas fa-check-circle me-1"></i> Products running
+                            </span>
+                            <a href="{{ route('customer.products.index') ?? '#' }}" class="text-decoration-none ms-auto">
+                                <small class="text-primary">
+                                    View all <i class="fas fa-arrow-right ms-1"></i>
+                                </small>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Invoices -->
+            <div class="col-xl-3 col-lg-6">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-wrapper bg-soft-warning rounded-3 p-3 me-3">
+                                <i class="fas fa-file-alt text-warning fa-2x"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="text-muted mb-1">Total Invoices</h6>
+                                <h3 class="fw-bold text-warning">{{ $customer->invoices->count() }}</h3>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-light text-warning px-3 py-1">
+                                <i class="fas fa-history me-1"></i> All time
+                            </span>
+                            <a href="{{ route('customer.invoices.index') ?? '#' }}" class="text-decoration-none ms-auto">
+                                <small class="text-primary">
+                                    View all <i class="fas fa-arrow-right ms-1"></i>
+                                </small>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Member Since -->
+            <div class="col-xl-3 col-lg-6">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-wrapper bg-soft-info rounded-3 p-3 me-3">
+                                <i class="fas fa-calendar-alt text-info fa-2x"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="text-muted mb-1">Member Since</h6>
+                                <h3 class="fw-bold text-info">{{ $customer->created_at->format('M Y') }}</h3>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-light text-info px-3 py-1">
+                                <i class="fas fa-award me-1"></i> Loyal customer
+                            </span>
+                            <small class="text-muted ms-auto">
+                                {{ $customer->created_at->diffForHumans() }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="row g-4">
+            <!-- Left Column -->
+            <div class="col-lg-8">
+                <!-- Recent Activity Card -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history me-2 text-primary"></i>Recent Activity
+                            </h5>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary active" data-filter="all">
+                                    <i class="fas fa-th-large me-1"></i> All
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="invoices">
+                                    <i class="fas fa-file-invoice me-1"></i> Invoices
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="payments">
+                                    <i class="fas fa-credit-card me-1"></i> Payments
+                                </button>
                             </div>
                         </div>
                     </div>
+                    <div class="card-body p-0">
+                        <div class="activity-timeline">
+                            @php
+                                $activities = collect();
+                                foreach ($invoices->take(5) as $invoice) {
+                                    $activities->push([
+                                        'type' => 'invoice',
+                                        'data' => $invoice,
+                                        'date' => $invoice->issue_date
+                                    ]);
+                                }
+                                foreach ($payments->take(5) as $payment) {
+                                    $activities->push([
+                                        'type' => 'payment',
+                                        'data' => $payment,
+                                        'date' => $payment->payment_date
+                                    ]);
+                                }
+                                $activities = $activities->sortByDesc('date')->take(6);
+                            @endphp
 
-                    <!-- Statistics Cards -->
-                    <div class="row g-4 mb-4">
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card border-left-primary">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">Current Bill</h6>
-                                            <h3 class="text-primary">৳0.00</h3>
-                                            <small class="text-muted">Due in 15 days</small>
-                                        </div>
-                                        <div class="text-primary">
-                                            <i class="fas fa-file-invoice fa-2x"></i>
+                            @forelse($activities as $activity)
+                                <div class="activity-item {{ $activity['type'] }}">
+                                    <div class="activity-icon">
+                                        @if($activity['type'] == 'invoice')
+                                            <i class="fas fa-file-invoice text-info"></i>
+                                        @else
+                                            <i class="fas fa-credit-card text-success"></i>
+                                        @endif
+                                    </div>
+                                    <div class="activity-content">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1">
+                                                    @if($activity['type'] == 'invoice')
+                                                        Invoice #{{ $activity['data']->invoice_number }}
+                                                    @else
+                                                        Payment #{{ $activity['data']->payment_id }}
+                                                    @endif
+                                                </h6>
+                                                <p class="mb-1 text-muted small">
+                                                    @if($activity['type'] == 'invoice')
+                                                        Issued: {{ $activity['data']->issue_date->format('M d, Y') }}
+                                                        • Status: <span class="badge bg-{{ $activity['data']->status == 'paid' ? 'success' : ($activity['data']->status == 'partial' ? 'warning' : 'danger') }}">
+                                                            {{ ucfirst($activity['data']->status) }}
+                                                        </span>
+                                                    @else
+                                                        Paid on: {{ $activity['data']->payment_date->format('M d, Y') }}
+                                                        • Method: {{ ucfirst($activity['data']->payment_method) }}
+                                                    @endif
+                                                </p>
+                                            </div>
+                                            <div class="text-end">
+                                                <h6 class="mb-1 fw-bold">
+                                                    ৳{{ number_format($activity['type'] == 'invoice' ? $activity['data']->total_amount : $activity['data']->amount, 2) }}
+                                                </h6>
+                                                <small class="text-muted">
+                                                    @if($activity['type'] == 'invoice')
+                                                        Due: ৳{{ number_format($activity['data']->total_amount - $activity['data']->received_amount, 2) }}
+                                                    @else
+                                                        Ref: {{ $activity['data']->transaction_id ?? 'N/A' }}
+                                                    @endif
+                                                </small>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            @empty
+                                <div class="text-center py-5">
+                                    <i class="fas fa-history fa-3x text-muted mb-3 opacity-50"></i>
+                                    <p class="text-muted mb-0">No recent activity found</p>
+                                </div>
+                            @endforelse
                         </div>
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card border-left-success">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">Active products</h6>
-                                            <h3 class="text-success">1</h3>
-                                            <small class="text-muted">Services active</small>
-                                        </div>
-                                        <div class="text-success">
-                                            <i class="fas fa-wifi fa-2x"></i>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <a href="{{ route('customer.invoices.index') ?? '#' }}" class="quick-action-card text-decoration-none">
+                                    <div class="card border-0 h-100 hover-shadow">
+                                        <div class="card-body text-center p-4">
+                                            <div class="icon-wrapper bg-soft-primary rounded-circle p-3 mb-3 mx-auto">
+                                                <i class="fas fa-file-invoice text-primary fa-2x"></i>
+                                            </div>
+                                            <h6 class="fw-bold mb-2">View Invoices</h6>
+                                            <p class="text-muted small mb-0">Check all your bills</p>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
                             </div>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card border-left-warning">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">Support Tickets</h6>
-                                            <h3 class="text-warning">0</h3>
-                                            <small class="text-muted">Open requests</small>
-                                        </div>
-                                        <div class="text-warning">
-                                            <i class="fas fa-ticket-alt fa-2x"></i>
+
+                            <div class="col-md-4">
+                                <a href="{{ route('customer.payments.index') ?? '#' }}" class="quick-action-card text-decoration-none">
+                                    <div class="card border-0 h-100 hover-shadow">
+                                        <div class="card-body text-center p-4">
+                                            <div class="icon-wrapper bg-soft-success rounded-circle p-3 mb-3 mx-auto">
+                                                <i class="fas fa-history text-success fa-2x"></i>
+                                            </div>
+                                            <h6 class="fw-bold mb-2">Payment History</h6>
+                                            <p class="text-muted small mb-0">View past payments</p>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
                             </div>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <div class="card stat-card border-left-info">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-muted">Member Since</h6>
-                                            <h3 class="text-info">{{ $customer->created_at->format('M Y') }}</h3>
-                                            <small class="text-muted">Loyal customer</small>
-                                        </div>
-                                        <div class="text-info">
-                                            <i class="fas fa-calendar-alt fa-2x"></i>
+
+                            <div class="col-md-4">
+                                <a href="{{ route('customer.products.index') ?? '#' }}" class="quick-action-card text-decoration-none">
+                                    <div class="card border-0 h-100 hover-shadow">
+                                        <div class="card-body text-center p-4">
+                                            <div class="icon-wrapper bg-soft-info rounded-circle p-3 mb-3 mx-auto">
+                                                <i class="fas fa-box text-info fa-2x"></i>
+                                            </div>
+                                            <h6 class="fw-bold mb-2">My Products</h6>
+                                            <p class="text-muted small mb-0">Manage products</p>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
+                            </div>
+
+                            <div class="col-md-4">
+                                <a href="{{ route('customer.profile.index') }}" class="quick-action-card text-decoration-none">
+                                    <div class="card border-0 h-100 hover-shadow">
+                                        <div class="card-body text-center p-4">
+                                            <div class="icon-wrapper bg-soft-warning rounded-circle p-3 mb-3 mx-auto">
+                                                <i class="fas fa-user-edit text-warning fa-2x"></i>
+                                            </div>
+                                            <h6 class="fw-bold mb-2">Update Profile</h6>
+                                            <p class="text-muted small mb-0">Edit information</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+
+                            <div class="col-md-4">
+                                <a href="{{ route('customer.support.create') ?? '#' }}" class="quick-action-card text-decoration-none">
+                                    <div class="card border-0 h-100 hover-shadow">
+                                        <div class="card-body text-center p-4">
+                                            <div class="icon-wrapper bg-soft-danger rounded-circle p-3 mb-3 mx-auto">
+                                                <i class="fas fa-ticket-alt text-danger fa-2x"></i>
+                                            </div>
+                                            <h6 class="fw-bold mb-2">Get Support</h6>
+                                            <p class="text-muted small mb-0">Raise a ticket</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+
+                            <div class="col-md-4">
+                                <a href="{{ route('customer.invoices.download', $invoices->first()->id ?? '#') ?? '#' }}" class="quick-action-card text-decoration-none {{ !$invoices->count() ? 'disabled' : '' }}">
+                                    <div class="card border-0 h-100 hover-shadow">
+                                        <div class="card-body text-center p-4">
+                                            <div class="icon-wrapper bg-soft-secondary rounded-circle p-3 mb-3 mx-auto">
+                                                <i class="fas fa-download text-secondary fa-2x"></i>
+                                            </div>
+                                            <h6 class="fw-bold mb-2">Download Invoice</h6>
+                                            <p class="text-muted small mb-0">Latest bill PDF</p>
+                                        </div>
+                                    </div>
+                                </a>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="row g-4">
-                        <!-- Account Information -->
-                        <div class="col-lg-6">
-                            <div class="card">
-                                <div class="card-header bg-white">
-                                    <h5 class="card-title mb-0">
-                                        <i class="fas fa-user-circle me-2 text-primary"></i>Account Information
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <strong><i class="fas fa-id-card me-2 text-muted"></i>Customer ID</strong>
-                                            <p class="mb-0">{{ $customer->customer_id }}</p>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <strong><i class="fas fa-user me-2 text-muted"></i>Full Name</strong>
-                                            <p class="mb-0">{{ $customer->name }}</p>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <strong><i class="fas fa-envelope me-2 text-muted"></i>Email Address</strong>
-                                            <p class="mb-0">{{ $customer->email }}</p>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <strong><i class="fas fa-phone me-2 text-muted"></i>Phone Number</strong>
-                                            <p class="mb-0">{{ $customer->phone }}</p>
-                                        </div>
-                                        <div class="col-12">
-                                            <strong><i class="fas fa-map-marker-alt me-2 text-muted"></i>Address</strong>
-                                            <p class="mb-0">{{ $customer->address }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Quick Actions -->
-                        <div class="col-lg-6">
-                            <div class="card">
-                                <div class="card-header bg-white">
-                                    <h5 class="card-title mb-0">
-                                        <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-primary quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-credit-card fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Pay Bill</strong>
-                                                    <br>
-                                                    <small>Current invoice</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-success quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-history fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Payment History</strong>
-                                                    <br>
-                                                    <small>View past bills</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-info quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-wifi fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>My Services</strong>
-                                                    <br>
-                                                    <small>Manage products</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-warning quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-user-edit fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Update Profile</strong>
-                                                    <br>
-                                                    <small>Edit information</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-danger quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-ticket-alt fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Get Support</strong>
-                                                    <br>
-                                                    <small>Raise a ticket</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <a href="#" class="btn btn-secondary quick-action-btn w-100 d-flex align-items-center">
-                                                <i class="fas fa-download fa-2x me-3"></i>
-                                                <div class="text-start">
-                                                    <strong>Download Invoice</strong>
-                                                    <br>
-                                                    <small>Latest bill PDF</small>
-                                                </div>
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <!-- Right Column -->
+            <div class="col-lg-4">
+                <!-- Account Information -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user-circle me-2 text-primary"></i>Account Information
+                        </h5>
                     </div>
-
-                    <!-- Recent Activity -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header bg-white">
-                                    <h5 class="card-title mb-0">
-                                        <i class="fas fa-clock me-2 text-info"></i>Recent Activity
-                                    </h5>
+                    <div class="card-body">
+                        <div class="info-list">
+                            <div class="info-item d-flex align-items-center mb-3">
+                                <div class="info-icon bg-soft-primary rounded-2 p-2 me-3">
+                                    <i class="fas fa-id-card text-primary"></i>
                                 </div>
-                                <div class="card-body">
-                                    <div class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-3x mb-3 opacity-50"></i>
-                                        <p>No recent activity to display</p>
-                                        <small>Your recent bills, payments, and service changes will appear here.</small>
-                                    </div>
+                                <div>
+                                    <small class="text-muted d-block">Customer ID</small>
+                                    <span class="fw-bold">{{ $customer->customer_id }}</span>
+                                </div>
+                            </div>
+                            <div class="info-item d-flex align-items-center mb-3">
+                                <div class="info-icon bg-soft-success rounded-2 p-2 me-3">
+                                    <i class="fas fa-user text-success"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block">Full Name</small>
+                                    <span class="fw-bold">{{ $customer->name }}</span>
+                                </div>
+                            </div>
+                            <div class="info-item d-flex align-items-center mb-3">
+                                <div class="info-icon bg-soft-info rounded-2 p-2 me-3">
+                                    <i class="fas fa-envelope text-info"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block">Email Address</small>
+                                    <span class="fw-bold">{{ $customer->email }}</span>
+                                </div>
+                            </div>
+                            <div class="info-item d-flex align-items-center mb-3">
+                                <div class="info-icon bg-soft-warning rounded-2 p-2 me-3">
+                                    <i class="fas fa-phone text-warning"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block">Phone Number</small>
+                                    <span class="fw-bold">{{ $customer->phone }}</span>
+                                </div>
+                            </div>
+                            <div class="info-item d-flex align-items-center">
+                                <div class="info-icon bg-soft-secondary rounded-2 p-2 me-3">
+                                    <i class="fas fa-map-marker-alt text-secondary"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block">Address</small>
+                                    <span class="fw-bold">{{ $customer->address }}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </main>
+
+                <!-- Active Products -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-box me-2 text-success"></i>Active Products
+                            </h5>
+                            <span class="badge bg-success rounded-pill">
+                                {{ $customer->customerproducts->where('is_active', 1)->where('status', 'active')->count() }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if($customer->customerproducts->where('is_active', 1)->where('status', 'active')->count() > 0)
+                            <div class="product-list">
+                                @foreach($customer->customerproducts->where('is_active', 1)->where('status', 'active')->take(3) as $customerProduct)
+                                    <div class="product-item mb-3 p-3 rounded-3 border">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="product-icon bg-soft-success rounded-2 p-2 me-3">
+                                                <i class="fas fa-cube text-success"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-0 fw-bold">{{ $customerProduct->product->name ?? 'Unknown Product' }}</h6>
+                                                <small class="text-success">
+                                                    <i class="fas fa-circle fa-xs me-1"></i> Active
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small mb-2">
+                                            {{ $customerProduct->product->description ?? 'No description available' }}
+                                        </p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="badge bg-light text-primary">
+                                                ৳{{ number_format($customerProduct->product->monthly_price ?? 0, 2) }}/month
+                                            </span>
+                                            <a href="#" class="text-decoration-none small">
+                                                <i class="fas fa-info-circle me-1"></i> Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                            @if($customer->customerproducts->where('is_active', 1)->where('status', 'active')->count() > 3)
+                                <div class="text-center mt-3">
+                                    <a href="{{ route('customer.products.index') ?? '#' }}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye me-1"></i> View All Products
+                                    </a>
+                                </div>
+                            @endif
+                        @else
+                            <div class="text-center py-4">
+                                <div class="empty-state-icon mb-3">
+                                    <i class="fas fa-box fa-3x text-muted opacity-50"></i>
+                                </div>
+                                <h6 class="text-muted mb-2">No Active Products</h6>
+                                <p class="text-muted small mb-0">You don't have any active products yet.</p>
+                                <a href="#" class="btn btn-outline-primary btn-sm mt-3">
+                                    <i class="fas fa-plus me-1"></i> Browse Products
+                                </a>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        .customer-dashboard {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .gradient-card.welcome-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+
+        .stat-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        }
+
+        .icon-wrapper {
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bg-soft-primary { background-color: rgba(58, 123, 213, 0.1); }
+        .bg-soft-success { background-color: rgba(34, 197, 94, 0.1); }
+        .bg-soft-warning { background-color: rgba(245, 158, 11, 0.1); }
+        .bg-soft-info { background-color: rgba(6, 182, 212, 0.1); }
+        .bg-soft-danger { background-color: rgba(239, 68, 68, 0.1); }
+        .bg-soft-secondary { background-color: rgba(107, 114, 128, 0.1); }
+
+        .activity-timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .activity-timeline::before {
+            content: '';
+            position: absolute;
+            left: 28px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, #667eea, #764ba2);
+            opacity: 0.2;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 15px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background-color 0.2s ease;
+        }
+
+        .activity-item:hover {
+            background-color: #f8fafc;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 56px;
+            height: 56px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .quick-action-card .card {
+            transition: all 0.3s ease;
+            border: 1px solid #f1f5f9;
+        }
+
+        .quick-action-card .card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+        }
+
+        .hover-shadow:hover {
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        }
+
+        .info-list .info-item {
+            transition: transform 0.2s ease;
+        }
+
+        .info-list .info-item:hover {
+            transform: translateX(5px);
+        }
+
+        .product-item {
+            transition: all 0.3s ease;
+            border-color: #e2e8f0 !important;
+        }
+
+        .product-item:hover {
+            border-color: #667eea !important;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .empty-state-icon {
+            width: 80px;
+            height: 80px;
+            background: #f8fafc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .activity-timeline::before {
+                left: 20px;
+            }
+            
+            .activity-icon {
+                width: 40px;
+                height: 40px;
+                margin-right: 15px;
+            }
+        }
+    </style>
+
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const overlay = document.getElementById('overlay');
-            const body = document.body;
-
-            // Mobile sidebar toggle
-            if (sidebarToggle && sidebar && overlay) {
-                sidebarToggle.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    sidebar.classList.toggle('show');
-                    overlay.classList.toggle('show');
-                });
-
-                overlay.addEventListener('click', function () {
-                    sidebar.classList.remove('show');
-                    overlay.classList.remove('show');
-                });
-
-                // close sidebar on nav link click (mobile)
-                sidebar.querySelectorAll('.nav-link, .dropdown-item').forEach(link => {
-                    link.addEventListener('click', function () {
-                        if (window.innerWidth < 992) {
-                            sidebar.classList.remove('show');
-                            overlay.classList.remove('show');
+        document.addEventListener('DOMContentLoaded', function() {
+            // Activity filter
+            const filterButtons = document.querySelectorAll('[data-filter]');
+            const activityItems = document.querySelectorAll('.activity-item');
+            
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const filter = this.getAttribute('data-filter');
+                    
+                    // Update active button
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Filter activities
+                    activityItems.forEach(item => {
+                        if (filter === 'all' || item.classList.contains(filter)) {
+                            item.style.display = 'flex';
+                        } else {
+                            item.style.display = 'none';
                         }
                     });
                 });
-            }
-            
-            // Handle window resize to adjust sidebar visibility
-            window.addEventListener('resize', function() {
-                if (window.innerWidth >= 992) {
-                    sidebar.classList.remove('show');
-                    overlay.classList.remove('show');
-                }
-            });            
-            // Disable click dropdown behavior (use hover instead)
-            document.querySelectorAll('.sidebar .dropdown-toggle').forEach(toggle => {
-                toggle.addEventListener('click', e => e.preventDefault());
-            });
-
-            // Add active state for current page
-            const currentPage = window.location.pathname;
-            const navLinks = document.querySelectorAll('.nav-link');
-            navLinks.forEach(link => {
-                if (link.getAttribute('href') === currentPage) {
-                    link.classList.add('active');
-                }
-            });
-
-            // Auto-close alerts (except those with persistent-alert class)
-            document.querySelectorAll('.alert:not(.persistent-alert)').forEach(alert => {
-                setTimeout(() => {
-                    const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
-                    bsAlert.close();
-                }, 6000);
             });
             
-            // Tooltips init
-            const tList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tList.map(function (t) { return new bootstrap.Tooltip(t); });
+            // Add hover effect to stat cards
+            const statCards = document.querySelectorAll('.stat-card');
+            statCards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-5px)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
         });
     </script>
-
-</body>
-</html>
+@endsection

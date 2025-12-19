@@ -8,8 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use App\Models\Invoice;
-
 class AdminSettingsController extends Controller
 {
     public function index(Request $request)
@@ -22,60 +22,72 @@ class AdminSettingsController extends Controller
             'overdue_invoices' => Invoice::where('status', 'overdue')->count(),
         ];
 
+        // Get all settings from database
+        $dbSettings = DB::table('system_settings')->pluck('value', 'key')->toArray();
+        
+        // Decode JSON values
+        foreach ($dbSettings as $key => $value) {
+            if (is_string($value) && (substr($value, 0, 1) === '[' || substr($value, 0, 1) === '{')) {
+                $decoded = json_decode($value, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $dbSettings[$key] = $decoded;
+                }
+            }
+        }
+
         $settings = [
             // Admin Information
-            'admin_name' => config('billing.admin_name', Auth::user()->name ?? ''),
-            'admin_email' => config('billing.admin_email', Auth::user()->email ?? ''),
-            'admin_phone' => config('billing.admin_phone', ''),
-            'admin_role' => config('billing.admin_role', 'System Administrator'),
-            'admin_avatar' => config('billing.admin_avatar', ''),
-            'admin_signature' => config('billing.admin_signature', ''),
+            'admin_name' => $dbSettings['admin_name'] ?? config('billing.admin_name', Auth::user()->name ?? ''),
+            'admin_email' => $dbSettings['admin_email'] ?? config('billing.admin_email', Auth::user()->email ?? ''),
+            'admin_phone' => $dbSettings['admin_phone'] ?? config('billing.admin_phone', ''),
+            'admin_role' => $dbSettings['admin_role'] ?? config('billing.admin_role', 'System Administrator'),
+            'admin_avatar' => $dbSettings['admin_avatar'] ?? config('billing.admin_avatar', ''),
+            'admin_signature' => $dbSettings['admin_signature'] ?? config('billing.admin_signature', ''),
             'last_login' => config('billing.last_login', Auth::user()->last_login_at?->format('M d, Y H:i') ?? 'Never'),
             'account_created' => config('billing.account_created', Auth::user()->created_at?->format('M d, Y') ?? 'N/A'),
-            'system_version' => config('billing.system_version', '1.0.0'),
+            'system_version' => $dbSettings['system_version'] ?? config('billing.system_version', '1.0.0'),
 
             // Company Information
-            'company_name' => config('billing.company_name', ''),
-            'company_email' => config('billing.company_email', ''),
-            'company_phone' => config('billing.company_phone', ''),
-            'company_website' => config('billing.company_website', ''),
-            'company_address' => config('billing.company_address', ''),
-            'company_logo' => config('billing.company_logo', ''),
-            'invoice_prefix' => config('billing.invoice_prefix', 'INV-'),
-            'invoice_start_number' => config('billing.invoice_start_number', 1001),
+            'company_name' => $dbSettings['company_name'] ?? config('billing.company_name', ''),
+            'company_email' => $dbSettings['company_email'] ?? config('billing.company_email', ''),
+            'company_phone' => $dbSettings['company_phone'] ?? config('billing.company_phone', ''),
+            'company_website' => $dbSettings['company_website'] ?? config('billing.company_website', ''),
+            'company_address' => $dbSettings['company_address'] ?? config('billing.company_address', ''),
+            'company_logo' => $dbSettings['company_logo'] ?? config('billing.company_logo', ''),
+            'invoice_prefix' => $dbSettings['invoice_prefix'] ?? config('billing.invoice_prefix', 'INV-'),
+            'invoice_start_number' => $dbSettings['invoice_start_number'] ?? config('billing.invoice_start_number', 1001),
 
             // Tax Settings
-            'tax_enabled' => config('billing.tax_enabled', false),
-            'tax_rate' => config('billing.tax_rate', 0),
-            'tax_types' => config('billing.tax_types', [['name' => 'VAT', 'rate' => '']]),
+            'tax_enabled' => $dbSettings['tax_enabled'] ?? config('billing.tax_enabled', false),
+            'tax_rate' => $dbSettings['tax_rate'] ?? config('billing.tax_rate', 0),
+            'tax_types' => $dbSettings['tax_types'] ?? config('billing.tax_types', [['name' => 'VAT', 'rate' => '']]),
 
             // Invoice & Payment Settings
-            'payment_terms' => config('billing.payment_terms', 30),
-            'currency' => config('billing.currency', 'USD'),
-            'late_fee_enabled' => config('billing.late_fee_enabled', false),
-            'late_fee_type' => config('billing.late_fee_type', 'percentage'),
-            'late_fee_amount' => config('billing.late_fee_amount', 0),
-            'auto_reminders' => config('billing.auto_reminders', false),
+            'payment_terms' => $dbSettings['payment_terms'] ?? config('billing.payment_terms', 30),
+            'currency' => $dbSettings['currency'] ?? config('billing.currency', 'USD'),
+            'late_fee_enabled' => $dbSettings['late_fee_enabled'] ?? config('billing.late_fee_enabled', false),
+            'late_fee_type' => $dbSettings['late_fee_type'] ?? config('billing.late_fee_type', 'percentage'),
+            'late_fee_amount' => $dbSettings['late_fee_amount'] ?? config('billing.late_fee_amount', 0),
+            'auto_reminders' => $dbSettings['auto_reminders'] ?? config('billing.auto_reminders', false),
 
             // Payment Methods
-            'payment_methods' => config('billing.payment_methods', []),
-            'bank_details' => config('billing.bank_details', ''),
+            'payment_methods' => $dbSettings['payment_methods'] ?? config('billing.payment_methods', []),
+            'bank_details' => $dbSettings['bank_details'] ?? config('billing.bank_details', ''),
 
             // Notification Settings
-            'notify_new_invoice' => config('billing.notify_new_invoice', false),
-            'notify_payment_received' => config('billing.notify_payment_received', false),
-            'notify_overdue_invoice' => config('billing.notify_overdue_invoice', false),
-            'notification_email' => config('billing.notification_email', ''),
+            'notify_new_invoice' => $dbSettings['notify_new_invoice'] ?? config('billing.notify_new_invoice', false),
+            'notify_payment_received' => $dbSettings['notify_payment_received'] ?? config('billing.notify_payment_received', false),
+            'notify_overdue_invoice' => $dbSettings['notify_overdue_invoice'] ?? config('billing.notify_overdue_invoice', false),
+            'notification_email' => $dbSettings['notification_email'] ?? config('billing.notification_email', ''),
 
             // Invoice Template
-            'invoice_theme' => config('billing.invoice_theme', 'light'),
-            'invoice_footer' => config('billing.invoice_footer', ''),
-            'invoice_notes' => config('billing.invoice_notes', ''),
+            'invoice_theme' => $dbSettings['invoice_theme'] ?? config('billing.invoice_theme', 'light'),
+            'invoice_footer' => $dbSettings['invoice_footer'] ?? config('billing.invoice_footer', ''),
+            'invoice_notes' => $dbSettings['invoice_notes'] ?? config('billing.invoice_notes', ''),
         ];
 
         return view('admin.settings.admin-settings', compact('settings', 'stats'));
     }
-
     public function update(Request $request)
     {
         $validated = $request->validate([
@@ -146,23 +158,28 @@ class AdminSettingsController extends Controller
         //     $user->save();
         // }
 
-        // Store settings in database or config
+        // Store settings in database
         foreach ($validated as $key => $value) {
             if (in_array($key, ['admin_avatar', 'admin_signature', 'company_logo', 'remove_admin_avatar', 
                 'remove_admin_signature', 'remove_company_logo'])) {
                 continue; // Skip file-related fields
             }
             
-            // Store in database or update config
-            // Example using database:
-            // Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+            // Convert arrays to JSON for storage
+            $valueToStore = is_array($value) ? json_encode($value) : $value;
             
-            // Or using config file:
-            config(['billing.' . $key => $value]);
+            // Store in database
+            DB::table('system_settings')->updateOrInsert(
+                ['key' => $key],
+                [
+                    'key' => $key,
+                    'value' => $valueToStore,
+                    'updated_at' => now()
+                ]
+            );
         }
-
+        
         Cache::forget('billing_settings');
-
         return redirect()->route('admin.admin-settings.index')
             ->with('success', 'Billing settings updated successfully.');
     }
