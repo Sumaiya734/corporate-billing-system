@@ -893,7 +893,7 @@ function printReport() {
                     padding: 0;
                     box-sizing: border-box;
                 }
-                
+
                 body {
                     font-family: Arial, sans-serif;
                     font-size: 12px;
@@ -904,34 +904,33 @@ function printReport() {
                     flex-direction: column;
                     align-items: center;
                 }
-                
+
                 .print-header {
                     margin: 0 auto 20px auto;
                     text-align: center;
                     max-width: 800px;
                 }
-                
+
                 .print-header h2 {
                     color: #6c63ff;
                     margin: 0 0 5px 0;
                     font-size: 24px;
                 }
-                
+
                 .print-header p {
                     margin: 0 0 5px 0;
                     font-size: 12px;
                     color: #666;
-                    color: #666;
                     margin: 2px 0;
                 }
-                
+
                 table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-top: 10px;
                     page-break-inside: auto;
                 }
-                
+
                 th {
                     background-color: #f2f2f2 !important;
                     font-weight: bold;
@@ -941,54 +940,54 @@ function printReport() {
                     font-size: 10px;
                     text-transform: uppercase;
                 }
-                
+
                 td {
                     padding: 6px 8px;
                     border: 1px solid #000;
                     vertical-align: middle;
                     font-size: 10px;
                 }
-                
+
                 tr:last-child {
                     background-color: #f0f0f0 !important;
                     font-weight: bold;
                     page-break-inside: avoid !important;
                 }
-                
+
                 .text-end {
                     text-align: right;
                 }
-                
+
                 .text-center {
                     text-align: center;
                 }
-                
+
                 .fw-bold {
                     font-weight: bold;
                 }
-                
+
                 @page {
                     size: landscape;
                     margin: 10mm;
                 }
-                
+
                 /* Enhanced header styles */
                 .print-header div[style*='border-bottom'] {
                     border-bottom: 3px solid #6c63ff !important;
                     padding-bottom: 15px;
                     margin-bottom: 20px;
                 }
-                
+
                 .print-header div[style*='display: flex'] {
                     display: flex !important;
                     justify-content: center !important;
                     align-items: flex-start !important;
                 }
-                
+
                 .print-header div[style*='text-align: right'] {
                     text-align: right !important;
                 }
-                
+
                 .print-header div[style*='background-color: #6c63ff'] {
                     background-color: #6c63ff !important;
                     color: white !important;
@@ -996,23 +995,22 @@ function printReport() {
                     border-radius: 5px !important;
                     display: inline-block !important;
                 }
-                
+
                 .print-header div[style*='width: 50%'] {
                     width: 50% !important;
                 }
-                
+
                 .print-header h4 {
                     margin: 0 0 10px 0 !important;
                     color: #333 !important;
                 }
-                
+
                 .print-header div[style*='display: flex; justify-content: space-between'] {
                     display: flex !important;
                     justify-content: space-between !important;
                     margin-bottom: 20px !important;
                 }
             </style>
-            ${printHeader}
         </head>
         <body>
             ${printHeader}
